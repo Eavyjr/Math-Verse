@@ -65,16 +65,20 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 bg-transparent p-0">
+        <TabsList className="flex w-full overflow-x-auto items-center space-x-2 bg-transparent p-1 border-b">
           {workstations.map((ws) => (
-            <TabsTrigger key={ws.value} value={ws.value} className="py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all">
+            <TabsTrigger
+              key={ws.value}
+              value={ws.value}
+              className="py-3 px-3 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm"
+            >
               {ws.icon} {ws.title}
             </TabsTrigger>
           ))}
         </TabsList>
         {workstations.map((ws) => (
           <TabsContent key={ws.value} value={ws.value}>
-            <Card className="shadow-xl border-t-4 border-primary">
+            <Card className="shadow-xl border-t-4 border-primary mt-2">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center">
                   {ws.icon} {ws.title}
