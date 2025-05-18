@@ -9,66 +9,44 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle } from 'lucide-react';
+import { handlePerformAlgebraicOperationAction } from '@/app/actions';
+import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 
-interface NewtonApiResponse {
+interface ApiResponse {
   operation: string;
   expression: string;
   result: string;
 }
 
-async function callNewtonApi(operation: string, expression: string): Promise<NewtonApiResponse> {
-  if (!expression.trim()) {
-    throw new Error("Expression cannot be empty.");
-  }
-  if (!operation) {
-    throw new Error("Operation must be selected.");
-  }
-
-  const encodedExpression = encodeURIComponent(expression);
-  const apiUrl = `https://newton.vercel.app/api/v2/${operation}/${encodedExpression}`;
-
-  const response = await fetch(apiUrl);
-
-  if (!response.ok) {
-    let errorData;
-    let errorMessage = `API Error (${response.status}): `;
-    try {
-      errorData = await response.json();
-      errorMessage += errorData.error || response.statusText || "An unknown API error occurred.";
-    } catch (e) {
-      // If response is not JSON or response.json() fails
-      errorMessage += response.statusText || "Failed to parse error response.";
-    }
-    throw new Error(errorMessage);
-  }
-  return response.json();
-}
-
-const operations = [
+const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
   { value: "factor", label: "Factor", example: "e.g., x^2-1" },
   { value: "derive", label: "Derivative", example: "e.g., x^2 (for d/dx)" },
   { value: "integrate", label: "Integrate", example: "e.g., 2x (for ∫2x dx)" },
   { value: "zeroes", label: "Find Zeros", example: "e.g., x^2-4" },
-  { value: "expand", label: "Expand (uses simplify)", example: "e.g., (x+1)(x-1)" },
-  { value: "log", label: "Logarithm", example: "e.g., 2:8 (for log base 2 of 8)" },
+  { value: "expand", label: "Expand", example: "e.g., (x+1)(x-1)" },
+  { value: "log", label: "Logarithm", example: "e.g., 2:8 (for log base 2 of 8) or e^x" },
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
-  const [selectedOperation, setSelectedOperation] = useState<string | null>(null);
-  const [apiResponse, setApiResponse] = useState<NewtonApiResponse | null>(null);
+  const [selectedOperation, setSelectedOperation] = useState<AlgebraicOperationInput['operation'] | null>(null);
+  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      if (window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise();
-      } else if (window.MathJax.Hub && window.MathJax.Hub.Queue) {
-        // Fallback for MathJax v2 if needed, though v3 is expected
-        window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+      // Ensure MathJax is fully loaded and ready
+      if (window.MathJax.startup?.promise) {
+        window.MathJax.startup.promise.then(() => {
+          window.MathJax.typesetPromise?.();
+        });
+      } else if (window.MathJax.typesetPromise) {
+         window.MathJax.typesetPromise();
+      } else if (window.MathJax.Hub?.Queue) { // Fallback for older MathJax versions (less likely)
+         window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
       }
     }
   }, [apiResponse]);
@@ -88,17 +66,21 @@ export default function BasicAlgebraCalculatorPage() {
     setIsLoading(true);
     setError(null);
     setApiResponse(null);
-
-    let apiOperation = selectedOperation;
-    if (selectedOperation === 'expand' || selectedOperation === 'trigsimplify') {
-      apiOperation = 'simplify';
-    }
     
     try {
-      const result = await callNewtonApi(apiOperation, expression);
-      setApiResponse(result);
+      const actionResult = await handlePerformAlgebraicOperationAction(expression, selectedOperation);
+      if (actionResult.error) {
+        setError(actionResult.error);
+        setApiResponse(null);
+      } else if (actionResult.data) {
+        setApiResponse(actionResult.data);
+      } else {
+        setError('Received no data from the server. Please try again.');
+        setApiResponse(null);
+      }
     } catch (e: any) {
-      setError(e.message || 'An error occurred while processing the expression.');
+      setError(e.message || 'An unexpected error occurred while processing the expression.');
+      setApiResponse(null);
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +88,7 @@ export default function BasicAlgebraCalculatorPage() {
 
   const handleClear = () => {
     setExpression('');
-    setSelectedOperation(null); // This will make Select show placeholder due to `value={selectedOperation || ""}`
+    setSelectedOperation(null); 
     setApiResponse(null);
     setError(null);
   };
@@ -126,7 +108,7 @@ export default function BasicAlgebraCalculatorPage() {
             Basic Algebra Calculator
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Enter an expression, select an operation, and get the result. Powered by Newton API.
+            Enter an expression, select an operation, and get the result. Powered by AI.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -154,7 +136,7 @@ export default function BasicAlgebraCalculatorPage() {
               </label>
               <Select 
                 value={selectedOperation || ""} 
-                onValueChange={(value) => {
+                onValueChange={(value: AlgebraicOperationInput['operation']) => {
                   setSelectedOperation(value);
                   if (error) setError(null);
                   if (apiResponse) setApiResponse(null);
@@ -202,7 +184,7 @@ export default function BasicAlgebraCalculatorPage() {
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
-                Calculating for &quot;{expression}&quot; using {operations.find(op => op.value === selectedOperation)?.label || selectedOperation}...
+                Calculating &quot;{expression}&quot; using {operations.find(op => op.value === selectedOperation)?.label || selectedOperation}...
               </p>
             </div>
           )}
@@ -235,12 +217,12 @@ export default function BasicAlgebraCalculatorPage() {
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
                   <div className="p-4 border border-dashed rounded-md bg-background min-h-[70px] flex items-center justify-center text-2xl font-mono text-accent-foreground select-all">
-                    {/* MathJax will render this */}
+                    {/* MathJax will render this. It expects valid LaTeX or plain math expressions. */}
                     {`\\[ ${apiResponse.result} \\]`}
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground italic">
-                  Results are rendered using MathJax. If not displaying correctly, ensure your browser supports it and there are no console errors related to MathJax.
+                  Results are rendered using MathJax. Ensure the AI's output is a valid mathematical expression.
                 </p>
               </CardContent>
             </Card>
@@ -248,9 +230,8 @@ export default function BasicAlgebraCalculatorPage() {
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50">
             <p className="text-sm text-muted-foreground">
-                Newton API URL: <code className="text-xs">https://newton.vercel.app/api/v2/:operation/:expression</code>. 
-                This tool is a frontend for this public API. Note: For logarithm, use format <code className="text-xs">base:number</code> in expression field e.g., <code className="text-xs">2:8</code> for log<sub>2</sub>(8).
-                'Expand' and 'Trig Simplify' operations use the 'simplify' API endpoint.
+                This tool uses an AI model to perform algebraic operations. Results may vary in precision. 
+                For logarithm, use format <code className="text-xs">base:number</code> (e.g., <code className="text-xs">2:8</code> for log<sub>2</sub>(8)) or a standard expression (e.g. <code className="text-xs">ln(x)</code>, <code className="text-xs">log(100)</code> for log base 10).
             </p>
         </CardFooter>
       </Card>
