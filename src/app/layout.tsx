@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MathGenius',
-  description: 'AI-powered math assistance and exploration tool by Firebase Studio',
+  title: 'MathVerse',
+  description: 'MathVerse: Your Universe for Mathematical Exploration and AI Assistance.',
 };
 
 export default function RootLayout({

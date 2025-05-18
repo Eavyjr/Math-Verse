@@ -8,7 +8,7 @@ export default function Header() {
       <div className="container mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary hover:text-primary/90 transition-colors">
           <MathLogoIcon className="h-8 w-8" />
-          <span>MathGenius</span>
+          <span>MathVerse</span>
         </Link>
         {/* Placeholder for future navigation or user avatar */}
         {/* <nav className="flex items-center gap-4">
