@@ -1,69 +1,100 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle2, Loader2, Brain } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle } from 'lucide-react';
 
-// Mock Newton API client (replace with actual API calls to Newton API or a similar service)
-async function callNewtonApi(operation: string, expression: string): Promise<string> {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+interface NewtonApiResponse {
+  operation: string;
+  expression: string;
+  result: string;
+}
 
+async function callNewtonApi(operation: string, expression: string): Promise<NewtonApiResponse> {
   if (!expression.trim()) {
     throw new Error("Expression cannot be empty.");
   }
-
-  // Simulate some basic responses - a real API would be far more capable.
-  // Examples for Newton API syntax (though we are just mocking the response string here):
-  // solve: '2x+5=10' -> 'x=2.5'
-  // simplify: '(x+2)(x-2)' -> 'x^2-4'
-  // factor: 'x^2-4' -> '(x-2)(x+2)'
-  switch (operation) {
-    case 'solve':
-      if (expression.includes('x + 5 = 10')) return 'x = 5';
-      if (expression.includes('2*x = 6')) return 'x = 3';
-      if (expression.includes('y = mx + c')) return 'Cannot solve for multiple variables without more equations (mock response).';
-      return `Solution for "${expression}" (e.g., x = ...). Note: This is a simplified mock response.`;
-    case 'simplify':
-      if (expression.toLowerCase().includes('2 + 2')) return '4';
-      if (expression.toLowerCase().includes('x + x')) return '2x';
-      if (expression.toLowerCase().includes('(a+b)^2')) return 'a^2 + 2ab + b^2';
-      return `Simplified: "${expression}". Note: This is a simplified mock response.`;
-    case 'factor':
-      if (expression.includes('x^2 - 4')) return '(x - 2)(x + 2)';
-      if (expression.includes('a^2 - b^2')) return '(a - b)(a + b)';
-      if (expression.includes('x^2 + 2x + 1')) return '(x + 1)^2';
-      return `Factored: "${expression}". Note: This is a simplified mock response.`;
-    default:
-      throw new Error(`Invalid operation: ${operation}. Supported operations are solve, simplify, factor.`);
+  if (!operation) {
+    throw new Error("Operation must be selected.");
   }
+
+  const encodedExpression = encodeURIComponent(expression);
+  // The Newton API uses the expression directly in the path, so no need for a separate 'expression=' query param
+  const apiUrl = `https://newton.vercel.app/api/v2/${operation}/${encodedExpression}`;
+
+  const response = await fetch(apiUrl);
+
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // If response is not JSON, use status text
+      errorData = { error: response.statusText || "An unknown API error occurred." };
+    }
+    throw new Error(`API Error (${response.status}): ${errorData.error || response.statusText}`);
+  }
+  return response.json();
 }
 
-export default function BasicAlgebraPage() {
+const operations = [
+  { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
+  { value: "factor", label: "Factor", example: "e.g., x^2-1" },
+  { value: "derive", label: "Derivative", example: "e.g., x^2 (for d/dx)" },
+  { value: "integrate", label: "Integrate", example: "e.g., 2x (for ∫2x dx)" },
+  { value: "zeroes", label: "Find Zeros", example: "e.g., x^2-4" },
+  { value: "expand", label: "Expand (uses simplify)", example: "e.g., (x+1)(x-1)" },
+  { value: "log", label: "Logarithm", example: "e.g., 2:8 (for log base 2 of 8)" },
+  { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
+];
+
+export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
-  const [result, setResult] = useState<string | null>(null);
+  const [selectedOperation, setSelectedOperation] = useState<string | null>(null);
+  const [apiResponse, setApiResponse] = useState<NewtonApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentOperation, setCurrentOperation] = useState<string | null>(null);
 
-  const handleProcessExpression = async (operation: 'solve' | 'simplify' | 'factor') => {
+  useEffect(() => {
+    if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
+      window.MathJax.typesetPromise();
+    }
+  }, [apiResponse]);
+
+  const handleProcessExpression = async () => {
     if (!expression.trim()) {
       setError("Please enter a mathematical expression.");
-      setResult(null);
+      setApiResponse(null);
       return;
     }
+    if (!selectedOperation) {
+      setError("Please select an operation.");
+      setApiResponse(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
-    setResult(null);
-    setCurrentOperation(operation);
+    setApiResponse(null);
+
+    let apiOperation = selectedOperation;
+    if (selectedOperation === 'expand' || selectedOperation === 'trigsimplify') {
+      apiOperation = 'simplify';
+    }
+    
+    // For log, the expression should be like base:number, e.g., "2:8" for log base 2 of 8
+    // The Newton API path for log is /log/base:number e.g. /log/2:8
+    // So, if selectedOperation is 'log', the expression entered by user (e.g. 2:8) is already correct for the path.
 
     try {
-      const apiResult = await callNewtonApi(operation, expression);
-      setResult(apiResult);
+      const result = await callNewtonApi(apiOperation, expression);
+      setApiResponse(result);
     } catch (e: any) {
       setError(e.message || 'An error occurred while processing the expression.');
     } finally {
@@ -71,65 +102,100 @@ export default function BasicAlgebraPage() {
     }
   };
 
+  const handleClear = () => {
+    setExpression('');
+    setSelectedOperation(null);
+    setApiResponse(null);
+    setError(null);
+    // Force re-render of Select to show placeholder
+    const selectTrigger = document.querySelector('#operation-select button');
+    if (selectTrigger) (selectTrigger as HTMLElement).click(); // Open and close to reset display if needed (hacky, better to control Select value)
+  };
+
+
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="space-y-8">
+      <Link href="/" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Workstations
+      </Link>
+
       <Card className="shadow-xl rounded-lg overflow-hidden">
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
             <Brain className="h-8 w-8 mr-3" />
-            Basic Algebra Solver
+            Basic Algebra Calculator
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Input an algebraic expression and select an operation: Solve, Simplify, or Factor. 
-            Our system will process it and display the result.
+            Enter an expression, select an operation, and see the magic! Powered by Newton API.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div>
-            <label htmlFor="expression-input" className="block text-md font-semibold text-foreground mb-2">
-              Enter Algebraic Expression:
-            </label>
-            <Input
-              id="expression-input"
-              type="text"
-              placeholder="e.g., 2x + 5 = 15,  (y+1)(y-1),  a^2 - 9"
-              value={expression}
-              onChange={(e) => {
-                setExpression(e.target.value);
-                if (error) setError(null); 
-                if (result) setResult(null);
-              }}
-              className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+            <div className="space-y-2">
+              <label htmlFor="expression-input" className="block text-md font-semibold text-foreground">
+                Enter Expression:
+              </label>
+              <Input
+                id="expression-input"
+                type="text"
+                placeholder="e.g., x^2 + 2x + 1"
+                value={expression}
+                onChange={(e) => {
+                  setExpression(e.target.value);
+                  if (error) setError(null);
+                  if (apiResponse) setApiResponse(null);
+                }}
+                className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="operation-select" className="block text-md font-semibold text-foreground">
+                Select Operation:
+              </label>
+              <Select 
+                value={selectedOperation || ""} 
+                onValueChange={(value) => {
+                  setSelectedOperation(value);
+                  if (error) setError(null);
+                  if (apiResponse) setApiResponse(null);
+                }}
+              >
+                <SelectTrigger id="operation-select" className="text-lg p-3 h-auto">
+                  <SelectValue placeholder="Choose an operation..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Algebraic Operations</SelectLabel>
+                    {operations.map(op => (
+                      <SelectItem key={op.value} value={op.value}>
+                        {op.label} <span className="text-xs text-muted-foreground ml-2">({op.example})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
-            <Button 
-              onClick={() => handleProcessExpression('solve')} 
-              disabled={isLoading || !expression.trim()} 
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button
+              onClick={handleProcessExpression}
+              disabled={isLoading || !expression.trim() || !selectedOperation}
               size="lg"
-              className="flex-grow sm:flex-grow-0"
+              className="flex-grow"
             >
-              {isLoading && currentOperation === 'solve' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              Solve Equation
+              {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+              Calculate
             </Button>
-            <Button 
-              onClick={() => handleProcessExpression('simplify')} 
-              disabled={isLoading || !expression.trim()} 
+            <Button
+              onClick={handleClear}
+              variant="outline"
               size="lg"
               className="flex-grow sm:flex-grow-0"
             >
-              {isLoading && currentOperation === 'simplify' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              Simplify Expression
-            </Button>
-            <Button 
-              onClick={() => handleProcessExpression('factor')} 
-              disabled={isLoading || !expression.trim()} 
-              size="lg"
-              className="flex-grow sm:flex-grow-0"
-            >
-              {isLoading && currentOperation === 'factor' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              Factor Expression
+              <XCircle className="mr-2 h-5 w-5" />
+              Clear
             </Button>
           </div>
 
@@ -137,7 +203,7 @@ export default function BasicAlgebraPage() {
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
-                Calculating result for &quot;{expression}&quot; using {currentOperation}...
+                Calculating for &quot;{expression}&quot; using {operations.find(op => op.value === selectedOperation)?.label || selectedOperation}...
               </p>
             </div>
           )}
@@ -150,57 +216,45 @@ export default function BasicAlgebraPage() {
             </Alert>
           )}
 
-          {result && !isLoading && !error && (
+          {apiResponse && !isLoading && !error && (
             <Card className="mt-6 border-accent border-t-4 shadow-md">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
-                  Processed Result
+                  Result
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4 p-6 text-lg">
                 <div>
-                  <span className="font-semibold text-muted-foreground">Original Expression: </span> 
-                  <code className="bg-muted p-1 rounded-sm text-sm">{expression}</code>
+                  <span className="font-semibold text-muted-foreground">Operation: </span>
+                  <span className="capitalize p-1 rounded-sm">{apiResponse.operation}</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-muted-foreground">Operation Performed: </span>
-                  <span className="capitalize p-1 rounded-sm text-sm">{currentOperation}</span>
+                  <span className="font-semibold text-muted-foreground">Original Expression: </span>
+                   <span className="font-mono p-1 rounded-sm bg-muted">{`\\( ${apiResponse.expression} \\)`}</span>
                 </div>
-                <div className="p-4 border border-dashed rounded-md bg-background min-h-[70px] flex items-center justify-center">
-                  {/* TODO: Implement LaTeX rendering here (e.g., using react-katex or MathJax). For now, displaying as text. */}
-                  <p className="text-xl font-mono text-accent-foreground select-all">
-                    {result}
-                  </p>
+                <div className="border-t pt-4 mt-4">
+                  <span className="font-semibold text-muted-foreground">Computed Result: </span>
+                  <div className="p-4 border border-dashed rounded-md bg-background min-h-[70px] flex items-center justify-center text-2xl font-mono text-accent-foreground select-all">
+                    {/* MathJax will render this */}
+                    {`\\[ ${apiResponse.result} \\]`}
+                  </div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground italic">
-                  Note: Results are currently plain text. LaTeX rendering for proper mathematical notation will be added soon.
+                  Results are rendered using MathJax. If not displaying correctly, ensure your browser supports it and there are no console errors related to MathJax.
                 </p>
               </CardContent>
             </Card>
           )}
         </CardContent>
-      </Card>
-
-       <Card className="mt-8 shadow-lg rounded-lg">
-        <CardHeader>
-          <CardTitle className="text-xl text-primary">About This Tool</CardTitle>
-        </CardHeader>
-        <CardContent className="text-foreground/80 space-y-2">
-          <p>
-            This Basic Algebra tool helps you perform common algebraic operations:
-          </p>
-          <ul className="list-disc list-inside pl-4 space-y-1">
-            <li><strong>Solve:</strong> Finds the value of variables in equations. (e.g., <code className="bg-muted p-1 rounded-sm text-xs">2x + 4 = 10</code>).</li>
-            <li><strong>Simplify:</strong> Reduces expressions to their simplest form. (e.g., <code className="bg-muted p-1 rounded-sm text-xs">2x + 3x - y</code>).</li>
-            <li><strong>Factor:</strong> Breaks down expressions into their constituent factors. (e.g., <code className="bg-muted p-1 rounded-sm text-xs">x^2 - y^2</code>).</li>
-          </ul>
-          <p className="mt-3">
-            The operations are powered by a simulated API (like the Newton API) to provide quick and accurate results. Proper mathematical formatting using LaTeX will be integrated for enhanced readability.
-          </p>
-        </CardContent>
+         <CardFooter className="p-6 bg-secondary/50">
+            <p className="text-sm text-muted-foreground">
+                Newton API URL: <code className="text-xs">https://newton.vercel.app/api/v2/:operation/:expression</code>. 
+                This tool is a frontend for this public API. Note: For logarithm, use format <code className="text-xs">base:number</code> in expression field e.g., <code className="text-xs">2:8</code> for log<sub>2</sub>(8).
+                'Expand' and 'Trig Simplify' operations use the 'simplify' API endpoint.
+            </p>
+        </CardFooter>
       </Card>
     </div>
   );
 }
-    
