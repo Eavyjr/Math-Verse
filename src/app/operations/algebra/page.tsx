@@ -25,20 +25,21 @@ async function callNewtonApi(operation: string, expression: string): Promise<New
   }
 
   const encodedExpression = encodeURIComponent(expression);
-  // The Newton API uses the expression directly in the path, so no need for a separate 'expression=' query param
   const apiUrl = `https://newton.vercel.app/api/v2/${operation}/${encodedExpression}`;
 
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
     let errorData;
+    let errorMessage = `API Error (${response.status}): `;
     try {
       errorData = await response.json();
+      errorMessage += errorData.error || response.statusText || "An unknown API error occurred.";
     } catch (e) {
-      // If response is not JSON, use status text
-      errorData = { error: response.statusText || "An unknown API error occurred." };
+      // If response is not JSON or response.json() fails
+      errorMessage += response.statusText || "Failed to parse error response.";
     }
-    throw new Error(`API Error (${response.status}): ${errorData.error || response.statusText}`);
+    throw new Error(errorMessage);
   }
   return response.json();
 }
@@ -63,7 +64,12 @@ export default function BasicAlgebraCalculatorPage() {
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      window.MathJax.typesetPromise();
+      if (window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise();
+      } else if (window.MathJax.Hub && window.MathJax.Hub.Queue) {
+        // Fallback for MathJax v2 if needed, though v3 is expected
+        window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+      }
     }
   }, [apiResponse]);
 
@@ -88,10 +94,6 @@ export default function BasicAlgebraCalculatorPage() {
       apiOperation = 'simplify';
     }
     
-    // For log, the expression should be like base:number, e.g., "2:8" for log base 2 of 8
-    // The Newton API path for log is /log/base:number e.g. /log/2:8
-    // So, if selectedOperation is 'log', the expression entered by user (e.g. 2:8) is already correct for the path.
-
     try {
       const result = await callNewtonApi(apiOperation, expression);
       setApiResponse(result);
@@ -104,12 +106,9 @@ export default function BasicAlgebraCalculatorPage() {
 
   const handleClear = () => {
     setExpression('');
-    setSelectedOperation(null);
+    setSelectedOperation(null); // This will make Select show placeholder due to `value={selectedOperation || ""}`
     setApiResponse(null);
     setError(null);
-    // Force re-render of Select to show placeholder
-    const selectTrigger = document.querySelector('#operation-select button');
-    if (selectTrigger) (selectTrigger as HTMLElement).click(); // Open and close to reset display if needed (hacky, better to control Select value)
   };
 
 
@@ -127,7 +126,7 @@ export default function BasicAlgebraCalculatorPage() {
             Basic Algebra Calculator
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Enter an expression, select an operation, and see the magic! Powered by Newton API.
+            Enter an expression, select an operation, and get the result. Powered by Newton API.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
