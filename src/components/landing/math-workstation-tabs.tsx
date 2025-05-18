@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, Route, BarChartHorizontalBig, Share2 } from 'lucide-react'; // Replaced FunctionSquare with Sigma, Brain with Route
+import { Calculator, Sigma, Ratio, Route, BarChartHorizontalBig, Share2 } from 'lucide-react';
 
 const workstations = [
   {
@@ -19,7 +19,7 @@ const workstations = [
   {
     value: "integration",
     title: "Integration",
-    icon: <Sigma className="mr-2 h-5 w-5" />, // Sigma for integral symbol
+    icon: <Sigma className="mr-2 h-5 w-5" />,
     description: "Compute definite and indefinite integrals. Visualize functions and explore various integration techniques.",
     cta: "Explore Integration",
     href: "/operations/integration"
@@ -27,7 +27,7 @@ const workstations = [
   {
     value: "differentiation",
     title: "Differentiation",
-    icon: <Ratio className="mr-2 h-5 w-5" />, // Ratio for dy/dx representation
+    icon: <Ratio className="mr-2 h-5 w-5" />,
     description: "Find derivatives of functions, understand their types, and see step-by-step differentiation processes and graphs.",
     cta: "Explore Differentiation",
     href: "/operations/differentiation"
@@ -35,7 +35,7 @@ const workstations = [
   {
     value: "matrix",
     title: "Matrix Operations",
-    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />, // Using a generic grid like icon
+    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />,
     description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions. Visualize 2x2 matrices.",
     cta: "Explore Matrices",
     href: "/operations/matrix"
@@ -43,7 +43,7 @@ const workstations = [
   {
     value: "graph-theory",
     title: "Graph Theory",
-    icon: <Share2 className="mr-2 h-5 w-5" />, // Share2 or GitFork for graph connections
+    icon: <Share2 className="mr-2 h-5 w-5" />,
     description: "Interactively create, edit, and analyze graphs. Visualize algorithms like DFS, BFS, Dijkstra's, and more.",
     cta: "Explore Graph Theory",
     href: "/operations/graph-theory"
@@ -51,7 +51,7 @@ const workstations = [
   {
     value: "statistics",
     title: "Basic Statistics",
-    icon: <Route className="mr-2 h-5 w-5" />, // Using Route for statistical paths/trends
+    icon: <Route className="mr-2 h-5 w-5" />,
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
     href: "/operations/statistics"
