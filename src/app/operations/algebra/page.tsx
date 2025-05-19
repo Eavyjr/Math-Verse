@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info } from 'lucide-react';
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 
@@ -23,25 +24,28 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
+// Extend the AlgebraicOperationOutput type locally if needed, or ensure it's updated in the flow file
+interface ExtendedAlgebraicOperationOutput extends AlgebraicOperationOutput {
+  steps?: string;
+}
+
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
   const [selectedOperation, setSelectedOperation] = useState<AlgebraicOperationInput['operation'] | null>(null);
-  const [apiResponse, setApiResponse] = useState<AlgebraicOperationOutput | null>(null);
+  const [apiResponse, setApiResponse] = useState<ExtendedAlgebraicOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
       const MathJax = window.MathJax as any;
-      // Check if MathJax is already loaded and startup is complete
       if (MathJax.startup?.promise) {
         MathJax.startup.promise.then(() => {
           MathJax.typesetPromise?.();
         }).catch((err: any) => console.error('MathJax typesetPromise error after startup:', err));
       } else if (MathJax.typesetPromise) {
-         // If startup is already done, just typeset
          MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
-      } else if (MathJax.Hub?.Queue) { // Fallback for older MathJax versions (less likely with v3)
+      } else if (MathJax.Hub?.Queue) { 
          MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
       }
     }
@@ -69,7 +73,7 @@ export default function BasicAlgebraCalculatorPage() {
         setError(actionResult.error);
         setApiResponse(null);
       } else if (actionResult.data) {
-        setApiResponse(actionResult.data);
+        setApiResponse(actionResult.data as ExtendedAlgebraicOperationOutput);
       } else {
         setError('Received no data from the server. Please try again.');
         setApiResponse(null);
@@ -114,7 +118,7 @@ export default function BasicAlgebraCalculatorPage() {
             Basic Algebra Calculator
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Enter an expression, select an operation, and get the result. Powered by AI.
+            Enter an expression, select an operation, and get the result with steps (if available). Powered by AI.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -226,6 +230,28 @@ export default function BasicAlgebraCalculatorPage() {
                     {`\\( ${apiResponse.result} \\)`}
                   </span>
                 </div>
+
+                {apiResponse.steps && apiResponse.steps.trim() !== "" && (
+                  <Accordion type="single" collapsible className="w-full mt-4">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
+                        <Info className="mr-2 h-5 w-5" /> Show Steps
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div 
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                          // Potentially render markdown or sanitize HTML if steps can contain it
+                        >
+                          {apiResponse.steps}
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground italic">
+                          Steps are provided by the AI and may vary in detail or format.
+                        </p>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+                
                 <p className="mt-2 text-xs text-muted-foreground italic">
                   Results are rendered using MathJax. Ensure the AI's output is a valid mathematical expression.
                 </p>
@@ -235,7 +261,7 @@ export default function BasicAlgebraCalculatorPage() {
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50">
             <p className="text-sm text-muted-foreground">
-                This tool uses an AI model to perform algebraic operations. Results may vary in precision. 
+                This tool uses an AI model to perform algebraic operations. Results and steps may vary in precision and availability. 
                 For logarithm, use format <code className="text-xs">base:number</code> (e.g., <code className="text-xs">2:8</code> for log<sub>2</sub>(8)) or a standard expression (e.g. <code className="text-xs">ln(x)</code>, <code className="text-xs">log(100)</code> for log base 10).
             </p>
         </CardFooter>

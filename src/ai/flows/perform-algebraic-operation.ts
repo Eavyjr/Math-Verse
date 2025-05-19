@@ -38,6 +38,7 @@ const AlgebraicOperationOutputSchema = z.object({
     .describe(
       'The result of the algebraic operation. This should be purely the mathematical expression or value, suitable for LaTeX rendering.'
     ),
+  steps: z.string().describe("A step-by-step explanation of how the result was obtained. This should be formatted as readable text. Avoid complex LaTeX in steps; use simple math notation if necessary (e.g., x^2, not \\(x^2\\)).").optional(),
 });
 export type AlgebraicOperationOutput = z.infer<typeof AlgebraicOperationOutputSchema>;
 
@@ -48,8 +49,9 @@ export async function performAlgebraicOperation(
 }
 
 const systemPrompt = `You are an advanced algebraic calculator.
-Given the mathematical expression and the operation, perform the operation and return ONLY the resulting mathematical expression or value.
-Your response should be directly usable for LaTeX rendering (e.g., "x^2 + 2*x + 1" or "2 \\sin(x)"). Do not include any explanations, apologies, or conversational text.
+Given the mathematical expression and the operation, perform the operation.
+- The 'result' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'result' should be directly usable for LaTeX rendering (e.g., "x^2 + 2*x + 1" or "2 \\sin(x)"). Do not include any explanations, apologies, or conversational text in the 'result' field.
+- If possible and applicable, provide a step-by-step explanation of how you arrived at the result in the 'steps' field. Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Keep mathematical notation within the steps simple (e.g., x^2, 2*x/3). The 'steps' field is optional.
 
 Operation specific instructions:
 - simplify: Simplify the expression as much as possible.
@@ -63,7 +65,7 @@ Operation specific instructions:
   - Otherwise, assume natural logarithm (ln) of the expression.
 - trigsimplify: Simplify the trigonometric expression.
 
-Ensure the output is concise and strictly the mathematical result.
+Ensure the 'result' output is concise and strictly the mathematical result. The 'steps' output, if provided, should be a clear explanation.
 `;
 
 const performAlgebraicOperationPrompt = ai.definePrompt({
@@ -74,10 +76,8 @@ const performAlgebraicOperationPrompt = ai.definePrompt({
   prompt: `Expression: {{{expression}}}
 Operation: {{{operation}}}
 
-Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'.`,
+Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'. Also, provide steps if applicable.`,
   config: {
-    // Higher temperature might be needed for creative problem solving but could reduce accuracy for pure math.
-    // Let's start with a lower temperature for more deterministic math results.
     temperature: 0.2, 
   }
 });
@@ -93,12 +93,11 @@ const performAlgebraicOperationFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI model did not return a valid output for the algebraic operation.');
     }
-    // The prompt is designed to return the result directly in the 'result' field of the output schema.
-    // We need to ensure the 'operation' and 'expression' fields are also populated in the final output.
     return {
       operation: input.operation,
       expression: input.expression,
       result: output.result,
+      steps: output.steps, // Pass through the steps from AI output
     };
   }
 );
