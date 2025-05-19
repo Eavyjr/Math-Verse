@@ -12,11 +12,11 @@ import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle } from 
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 
-interface ApiResponse {
-  operation: string;
-  expression: string;
-  result: string;
-}
+// interface ApiResponse {
+//   operation: string;
+//   expression: string;
+//   result: string;
+// }
 
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
@@ -32,21 +32,21 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
   const [selectedOperation, setSelectedOperation] = useState<AlgebraicOperationInput['operation'] | null>(null);
-  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+  const [apiResponse, setApiResponse] = useState<AlgebraicOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      // Ensure MathJax is fully loaded and ready
-      if (window.MathJax.startup?.promise) {
-        window.MathJax.startup.promise.then(() => {
-          window.MathJax.typesetPromise?.();
-        });
-      } else if (window.MathJax.typesetPromise) {
-         window.MathJax.typesetPromise();
-      } else if (window.MathJax.Hub?.Queue) { // Fallback for older MathJax versions (less likely)
-         window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+      const MathJax = window.MathJax as any; // Cast to any to access potential properties
+      if (MathJax.startup?.promise) {
+        MathJax.startup.promise.then(() => {
+          MathJax.typesetPromise?.();
+        }).catch((err: any) => console.error('MathJax typesetPromise error:', err));
+      } else if (MathJax.typesetPromise) {
+         MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
+      } else if (MathJax.Hub?.Queue) { // Fallback for older MathJax versions
+         MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
       }
     }
   }, [apiResponse]);
@@ -79,7 +79,17 @@ export default function BasicAlgebraCalculatorPage() {
         setApiResponse(null);
       }
     } catch (e: any) {
-      setError(e.message || 'An unexpected error occurred while processing the expression.');
+      let errorMessage = 'An unexpected error occurred while processing the expression.';
+      if (e instanceof Error) {
+        if (e.message.includes('quota')) {
+            errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (e.message.includes('model did not return a valid output')) {
+            errorMessage = 'The AI model could not process this expression. Please try a different expression or operation.';
+        } else {
+            errorMessage = e.message;
+        }
+      }
+      setError(errorMessage);
       setApiResponse(null);
     } finally {
       setIsLoading(false);
@@ -216,8 +226,7 @@ export default function BasicAlgebraCalculatorPage() {
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
-                  <div className="p-4 border border-dashed rounded-md bg-background min-h-[70px] flex items-center justify-center text-2xl font-mono text-accent-foreground select-all">
-                    {/* MathJax will render this. It expects valid LaTeX or plain math expressions. */}
+                  <div className="p-4 border border-dashed rounded-md bg-background dark:bg-foreground min-h-[70px] flex items-center justify-center text-2xl font-mono text-primary dark:text-primary-foreground select-all">
                     {`\\[ ${apiResponse.result} \\]`}
                   </div>
                 </div>
