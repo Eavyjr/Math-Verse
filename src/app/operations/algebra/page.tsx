@@ -32,14 +32,16 @@ export default function BasicAlgebraCalculatorPage() {
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      const MathJax = window.MathJax as any; 
+      const MathJax = window.MathJax as any;
+      // Check if MathJax is already loaded and startup is complete
       if (MathJax.startup?.promise) {
         MathJax.startup.promise.then(() => {
           MathJax.typesetPromise?.();
-        }).catch((err: any) => console.error('MathJax typesetPromise error:', err));
+        }).catch((err: any) => console.error('MathJax typesetPromise error after startup:', err));
       } else if (MathJax.typesetPromise) {
+         // If startup is already done, just typeset
          MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
-      } else if (MathJax.Hub?.Queue) { 
+      } else if (MathJax.Hub?.Queue) { // Fallback for older MathJax versions (less likely with v3)
          MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
       }
     }
@@ -220,9 +222,9 @@ export default function BasicAlgebraCalculatorPage() {
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
-                  <div className="p-4 border border-dashed rounded-md bg-background dark:bg-foreground min-h-[70px] flex items-center justify-center text-2xl font-mono text-primary dark:text-primary-foreground select-all">
-                    {`\\[ ${apiResponse.result} \\]`}
-                  </div>
+                  <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground">
+                    {`\\( ${apiResponse.result} \\)`}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground italic">
                   Results are rendered using MathJax. Ensure the AI's output is a valid mathematical expression.
