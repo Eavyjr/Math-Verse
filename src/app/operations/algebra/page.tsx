@@ -12,12 +12,6 @@ import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle } from 
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 
-// interface ApiResponse {
-//   operation: string;
-//   expression: string;
-//   result: string;
-// }
-
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
   { value: "factor", label: "Factor", example: "e.g., x^2-1" },
@@ -38,14 +32,14 @@ export default function BasicAlgebraCalculatorPage() {
 
   useEffect(() => {
     if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      const MathJax = window.MathJax as any; // Cast to any to access potential properties
+      const MathJax = window.MathJax as any; 
       if (MathJax.startup?.promise) {
         MathJax.startup.promise.then(() => {
           MathJax.typesetPromise?.();
         }).catch((err: any) => console.error('MathJax typesetPromise error:', err));
       } else if (MathJax.typesetPromise) {
          MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
-      } else if (MathJax.Hub?.Queue) { // Fallback for older MathJax versions
+      } else if (MathJax.Hub?.Queue) { 
          MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
       }
     }
