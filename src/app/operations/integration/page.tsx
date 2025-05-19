@@ -292,8 +292,8 @@ export default function IntegrationCalculatorPage() {
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                  <div className="font-mono p-3 text-2xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto">
-                    {`\\[ ${apiResponse.integralResult} \\]`}
+                  <div className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto">
+                    {`\\( ${apiResponse.integralResult} \\)`}
                   </div>
                 </div>
 
@@ -307,10 +307,11 @@ export default function IntegrationCalculatorPage() {
                         <div 
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
                         >
+                          {/* MathJax will process any \(...\) delimiters within apiResponse.steps */}
                           {apiResponse.steps}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground italic">
-                          Steps are provided by the AI and may vary in detail or format.
+                          Steps are provided by the AI and may vary in detail or format. Mathematical expressions within steps should be rendered if correctly formatted.
                         </p>
                       </AccordionContent>
                     </AccordionItem>
@@ -351,7 +352,7 @@ export default function IntegrationCalculatorPage() {
                 )}
                 
                 <p className="mt-4 text-xs text-muted-foreground italic">
-                  Results are rendered using MathJax. Ensure the AI's output is a valid mathematical expression.
+                  Results and steps are rendered using MathJax. Ensure the AI's output is valid mathematical expressions using inline delimiters like \\(...\\) for proper rendering.
                 </p>
               </CardContent>
             </Card>
@@ -366,3 +367,4 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
+

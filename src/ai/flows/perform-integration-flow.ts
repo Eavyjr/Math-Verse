@@ -24,9 +24,9 @@ const IntegrationOutputSchema = z.object({
   integralResult: z
     .string()
     .describe(
-      'The result of the integration. This should be purely the mathematical expression or value, suitable for LaTeX rendering. For indefinite integrals, include "+ C".'
+      'The result of the integration. This should be purely the mathematical expression or value, suitable for LaTeX rendering using inline delimiters like \\(...\\). For indefinite integrals, include "+ C".'
     ),
-  steps: z.string().optional().describe("A step-by-step explanation of how the result was obtained. This should be formatted as readable text. Avoid complex LaTeX in steps; use simple math notation if necessary (e.g., x^2, not \\(x^2\\))."),
+  steps: z.string().optional().describe("A step-by-step explanation of how the result was obtained. This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
   originalQuery: IntegrationInputSchema.describe("The original input parameters for the integration."),
   plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its integral might show."),
 });
@@ -41,10 +41,10 @@ export async function performIntegration(
 const systemPrompt = `You are an expert calculus assistant specialized in performing integrations.
 Given a function, a variable of integration, and optionally bounds for a definite integral, calculate the integral.
 
-- The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'integralResult' should be directly usable for LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do not include any explanations, apologies, or conversational text in the 'integralResult' field.
-- For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the result.
+- The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'integralResult' should be directly usable for LaTeX rendering with inline delimiters (e.g., "\\(x^3/3 + C\\)" or "\\(1/2\\)"). Do not include any explanations, apologies, or conversational text in the 'integralResult' field.
+- For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the result (e.g., "\\(x^3/3 + C\\)").
 - For definite integrals (when isDefinite is true), evaluate the integral from the lowerBound to the upperBound.
-- If possible and applicable, provide a step-by-step explanation of how you arrived at the result in the 'steps' field. Format these steps clearly for readability.
+- If possible and applicable, provide a step-by-step explanation of how you arrived at the result in the 'steps' field. Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax delimiters \\(...\\).
 - Provide a brief 'plotHint' describing what a visualization of the function and its integral might look like (e.g., "A parabola and its cubic antiderivative"). This is for a textual description, not for generating an actual plot.
 
 Handle the input function and variable carefully.
@@ -65,7 +65,8 @@ Upper Bound: {{{upperBound}}}
 {{/if}}
 
 Perform the integration based on these details. Provide the result, steps (if applicable), and a plot hint.
-Ensure 'originalQuery' in your output accurately reflects these input parameters.`,
+Ensure 'originalQuery' in your output accurately reflects these input parameters.
+Ensure all mathematical expressions in 'integralResult' and 'steps' are formatted with inline MathJax delimiters \\(...\\).`,
   config: {
     temperature: 0.1, // Lower temperature for more deterministic math results
     safetySettings: [ // Adjusted safety settings for potentially complex math terms
@@ -95,3 +96,4 @@ const performIntegrationFlow = ai.defineFlow(
     };
   }
 );
+
