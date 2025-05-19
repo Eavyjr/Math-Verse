@@ -3,6 +3,7 @@
 
 import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
 import { performAlgebraicOperation, type AlgebraicOperationInput, type AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
+import { performIntegration, type IntegrationInput, type IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 
 interface ActionResult<T> {
   data: T | null;
@@ -29,7 +30,7 @@ export async function handleClassifyExpressionAction(
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this expression. Please try a different expression or operation.';
         } else {
-            errorMessage = e.message; // Or a generic message
+            errorMessage = e.message; 
         }
     }
     return { data: null, error: errorMessage };
@@ -60,9 +61,41 @@ export async function handlePerformAlgebraicOperationAction(
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this expression with this operation. Please try a different expression or operation.';
         } else {
-             // Potentially sensitive error messages should not be directly exposed.
-             // Consider logging e.message server-side and returning a generic client-facing error.
             errorMessage = `An AI processing error occurred. Please check your expression or try again. Details: ${e.message}`;
+        }
+    }
+    return { data: null, error: errorMessage };
+  }
+}
+
+export async function handlePerformIntegrationAction(
+  input: IntegrationInput
+): Promise<ActionResult<IntegrationOutput>> {
+  if (!input.functionString || input.functionString.trim() === '') {
+    return { data: null, error: 'Function to integrate cannot be empty.' };
+  }
+  if (input.isDefinite) {
+    if (!input.lowerBound || input.lowerBound.trim() === '') {
+      return { data: null, error: 'Lower bound is required for definite integrals.' };
+    }
+    if (!input.upperBound || input.upperBound.trim() === '') {
+      return { data: null, error: 'Upper bound is required for definite integrals.' };
+    }
+  }
+
+  try {
+    const result = await performIntegration(input);
+    return { data: result, error: null };
+  } catch (e) {
+    console.error('Error performing integration:', e);
+    let errorMessage = 'An error occurred while performing the integration. Please try again.';
+     if (e instanceof Error) {
+        if (e.message.includes('quota')) {
+            errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (e.message.includes('model did not return a valid output')) {
+            errorMessage = 'The AI model could not process this integration. Please try a different function or check your bounds.';
+        } else {
+            errorMessage = `An AI processing error occurred. Please check your input or try again. Details: ${e.message}`;
         }
     }
     return { data: null, error: errorMessage };

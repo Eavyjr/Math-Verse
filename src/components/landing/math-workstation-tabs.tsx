@@ -22,7 +22,7 @@ const workstations = [
     icon: <Sigma className="mr-2 h-5 w-5" />,
     description: "Compute definite and indefinite integrals. Visualize functions and explore various integration techniques.",
     cta: "Explore Integration",
-    href: "/operations/integration"
+    href: "/operations/integration" // Updated href
   },
   {
     value: "differentiation",
