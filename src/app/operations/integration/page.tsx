@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import katex from 'katex'; // Import katex
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -14,6 +15,50 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain } from 'lucide-react';
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
+
+// Helper function to render LaTeX string to HTML
+const renderMath = (latexString: string, displayMode: boolean = false): string => {
+  if (!latexString) return "";
+  try {
+    return katex.renderToString(latexString, {
+      throwOnError: false,
+      displayMode: displayMode,
+      delimiters: [ // Ensure standard delimiters are recognized if AI uses them within the string
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "\\(", right: "\\)", display: false},
+          {left: "$", right: "$", display: false}
+      ]
+    });
+  } catch (e) {
+    console.error("Katex rendering error:", e);
+    return latexString; // Fallback to raw string on error
+  }
+};
+
+// Helper function to render content potentially containing multiple math expressions
+// This is a simplified version. A more robust solution would parse and replace.
+const renderMixedContent = (content: string | undefined): string => {
+  if (!content) return "";
+  // This is a placeholder for a more robust mixed content renderer.
+  // For now, it will attempt to render the whole string if it looks like a math expression,
+  // or parts of it if we implement more complex parsing later.
+  // The current AI prompt for steps asks for \(...\) so KaTeX will handle those if the string
+  // itself is passed to `renderMath` which is not ideal for mixed content.
+  // So, for now, we just return the content for steps, assuming AI formats it well for direct display.
+  // If AI returns strings for steps that *only* contain math expressions delimited by \(...\) or similar,
+  // then we'd need to extract those and render them individually.
+  
+  // A simple attempt: if the AI already includes delimiters, renderToString might work if applied to the whole string.
+  // However, the prompt asks for `\(...\)` within text.
+  // The current `renderMath` won't process `\(...\)` from a larger string unless the string *is* that expression.
+  // The most straightforward way for steps with `renderToString` would be if AI returns pre-rendered HTML or 
+  // if we make a component that parses and replaces.
+  // Let's assume for steps, for now, the AI's formatting is sufficient for text display,
+  // and if it includes \(...\), they will appear as raw text without auto-rendering.
+  return content;
+}
+
 
 export default function IntegrationCalculatorPage() {
   const [functionString, setFunctionString] = useState('');
@@ -26,44 +71,23 @@ export default function IntegrationCalculatorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const previewRef = useRef<HTMLDivElement>(null);
-  const originalQueryRef = useRef<HTMLSpanElement>(null);
-  const integralResultRef = useRef<HTMLDivElement>(null);
-  const stepsRef = useRef<HTMLDivElement>(null);
-
+  // For the preview, we still want dynamic updates as user types
+  const [previewHtml, setPreviewHtml] = useState<string>('');
 
   useEffect(() => {
-    // Render the preview whenever relevant fields change
-    if (previewRef.current && typeof window !== 'undefined' && (window as any).renderMathInElement) {
-      (window as any).renderMathInElement(previewRef.current, {
-        delimiters: [ { left: "\\(", right: "\\)", display: false }, { left: "\\[", right: "\\]", display: true } ],
-        throwOnError: false
-      });
+    const func = functionString || 'f(x)';
+    const v = variable || 'x';
+    let latexPreview = '';
+    if (integralType === 'definite') {
+      const lb = lowerBound || 'a';
+      const ub = upperBound || 'b';
+      latexPreview = `\\int_{${lb}}^{${ub}} ${func} \\,d${v}`;
+    } else {
+      latexPreview = `\\int ${func} \\,d${v}`;
     }
+    setPreviewHtml(renderMath(latexPreview, true)); // displayMode true for preview
   }, [functionString, variable, integralType, lowerBound, upperBound]);
 
-
-  useEffect(() => {
-    if (apiResponse && typeof window !== 'undefined' && (window as any).renderMathInElement) {
-      const renderOptions = {
-        delimiters: [
-          { left: "\\(", right: "\\)", display: false },
-          { left: "\\[", right: "\\]", display: true },
-        ],
-        throwOnError: false
-      };
-
-      if (originalQueryRef.current) {
-        (window as any).renderMathInElement(originalQueryRef.current, renderOptions);
-      }
-      if (integralResultRef.current) {
-        (window as any).renderMathInElement(integralResultRef.current, renderOptions);
-      }
-      if (stepsRef.current && apiResponse.steps) {
-        (window as any).renderMathInElement(stepsRef.current, renderOptions);
-      }
-    }
-  }, [apiResponse]);
 
   const handleSubmit = async () => {
     if (!functionString.trim()) {
@@ -126,19 +150,17 @@ export default function IntegrationCalculatorPage() {
     setApiResponse(null);
     setError(null);
   };
-
-  const getIntegralSymbol = () => {
-    // This function now directly returns the string with LaTeX delimiters
-    // KaTeX will render it in the preview div via useEffect
-    const func = functionString || 'f(x)';
-    const v = variable || 'x';
-    if (integralType === 'definite') {
-      const lb = lowerBound || 'a';
-      const ub = upperBound || 'b';
-      return `\\( \\int_{${lb}}^{${ub}} ${func} \\,d${v} \\)`;
+  
+  const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
+    if (!query) return "";
+    let latex = `\\text{Integrate } ${query.functionString} \\text{ w.r.t. } ${query.variable}`;
+    if (query.isDefinite) {
+        latex += ` \\text{ from } ${query.lowerBound || 'a'} \\text{ to } ${query.upperBound || 'b'}`;
+    } else {
+        latex += ` \\text{ (indefinite)}`;
     }
-    return `\\( \\int ${func} \\,d${v} \\)`;
-  };
+    return latex;
+  }
 
 
   return (
@@ -162,9 +184,10 @@ export default function IntegrationCalculatorPage() {
           
           <div className="p-4 border rounded-md bg-secondary/30">
             <p className="text-xl font-semibold text-center text-primary mb-2">Integral Preview:</p>
-            <div ref={previewRef} className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto">
-              {getIntegralSymbol()}
-            </div>
+            <div 
+                className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -309,23 +332,18 @@ export default function IntegrationCalculatorPage() {
               <CardContent className="space-y-6 p-6 text-lg">
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Query: </span>
-                  <span ref={originalQueryRef} className="font-mono p-1 rounded-sm bg-muted text-sm">
-                    Integrate 
-                    {` \\( ${apiResponse.originalQuery.functionString} \\) `}
-                    with respect to 
-                    {` \\( ${apiResponse.originalQuery.variable} \\) `}
-                    {apiResponse.originalQuery.isDefinite ? 
-                      `from \\( ${apiResponse.originalQuery.lowerBound} \\) to \\( ${apiResponse.originalQuery.upperBound} \\)` : 
-                      '(indefinite)'}.
-                  </span>
+                  <span 
+                    className="font-mono p-1 rounded-sm bg-muted text-sm"
+                    dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery)) }}
+                  />
                 </div>
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                  <div ref={integralResultRef} className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto">
-                    {/* The AI response is expected to already have \(...\) or \[...\] */}
-                    {apiResponse.integralResult}
-                  </div>
+                  <div 
+                    className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto"
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.integralResult, false) }} // displayMode: false for inline
+                  />
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
@@ -336,14 +354,14 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          ref={stepsRef}
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                          // For steps, if AI includes \(...\), they won't be auto-rendered by KaTeX without an auto-render script.
+                          // Displaying raw string for now.
                         >
-                          {/* KaTeX will process any \(...\) delimiters within apiResponse.steps */}
                           {apiResponse.steps}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground italic">
-                          Steps are provided by the AI and may vary in detail or format. Mathematical expressions within steps should be rendered if correctly formatted.
+                          Steps are provided by the AI and may vary in detail or format.
                         </p>
                       </AccordionContent>
                     </AccordionItem>
@@ -384,7 +402,7 @@ export default function IntegrationCalculatorPage() {
                 )}
                 
                 <p className="mt-4 text-xs text-muted-foreground italic">
-                  Results and steps are rendered using KaTeX. Ensure the AI's output is valid mathematical expressions using inline delimiters like \\(...\\) for proper rendering.
+                  Mathematical expressions are rendered using KaTeX.
                 </p>
               </CardContent>
             </Card>

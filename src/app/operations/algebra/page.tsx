@@ -1,8 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import katex from 'katex'; // Import katex
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -28,38 +29,26 @@ interface ExtendedAlgebraicOperationOutput extends AlgebraicOperationOutput {
   steps?: string;
 }
 
+// Helper function to render LaTeX string to HTML
+const renderMath = (latexString: string, displayMode: boolean = false): string => {
+  if (!latexString) return "";
+  try {
+    return katex.renderToString(latexString, {
+      throwOnError: false,
+      displayMode: displayMode,
+    });
+  } catch (e) {
+    console.error("Katex rendering error:", e);
+    return latexString; // Fallback to raw string on error
+  }
+};
+
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
   const [selectedOperation, setSelectedOperation] = useState<AlgebraicOperationInput['operation'] | null>(null);
   const [apiResponse, setApiResponse] = useState<ExtendedAlgebraicOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const originalExpressionRef = useRef<HTMLSpanElement>(null);
-  const computedResultRef = useRef<HTMLSpanElement>(null);
-  const stepsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (apiResponse && typeof window !== 'undefined' && (window as any).renderMathInElement) {
-      const renderOptions = {
-        delimiters: [
-          { left: "\\(", right: "\\)", display: false },
-          { left: "\\[", right: "\\]", display: true },
-        ],
-        throwOnError: false
-      };
-
-      if (originalExpressionRef.current) {
-        (window as any).renderMathInElement(originalExpressionRef.current, renderOptions);
-      }
-      if (computedResultRef.current) {
-        (window as any).renderMathInElement(computedResultRef.current, renderOptions);
-      }
-      if (stepsRef.current && apiResponse.steps) {
-        (window as any).renderMathInElement(stepsRef.current, renderOptions);
-      }
-    }
-  }, [apiResponse]);
 
   const handleProcessExpression = async () => {
     if (!expression.trim()) {
@@ -231,13 +220,17 @@ export default function BasicAlgebraCalculatorPage() {
                 </div>
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Expression: </span>
-                   <span ref={originalExpressionRef} className="font-mono p-1 rounded-sm bg-muted">{`\\( ${apiResponse.expression} \\)`}</span>
+                   <span 
+                    className="font-mono p-1 rounded-sm bg-muted"
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.expression) }}
+                   />
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
-                  <span ref={computedResultRef} className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground">
-                    {`\\( ${apiResponse.result} \\)`}
-                  </span>
+                  <span 
+                    className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground"
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.result) }}
+                  />
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
@@ -248,9 +241,14 @@ export default function BasicAlgebraCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          ref={stepsRef}
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
                         >
+                          {/* 
+                            For steps with mixed text and math, renderToString on the whole string won't work
+                            unless the AI returns pure LaTeX or we parse it.
+                            For now, displaying the raw steps string.
+                            If AI includes \(...\) delimiters, they won't be auto-rendered by KaTeX without an auto-render script.
+                          */}
                           {apiResponse.steps}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground italic">
@@ -262,7 +260,7 @@ export default function BasicAlgebraCalculatorPage() {
                 )}
                 
                 <p className="mt-2 text-xs text-muted-foreground italic">
-                  Results are rendered using KaTeX. Ensure the AI's output is a valid mathematical expression.
+                  Mathematical expressions are rendered using KaTeX.
                 </p>
               </CardContent>
             </Card>

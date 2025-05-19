@@ -5,7 +5,8 @@ import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { Toaster } from "@/components/ui/toaster";
-import Script from 'next/script';
+// Import KaTeX CSS directly
+import "katex/dist/katex.min.css";
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -30,13 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* KaTeX CSS */}
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcIxkf4k55AIftZWx+8xNo1r7BgnzGQMviewModelAI45NLC9ttKhpZBtfwL5INSmVLPGIaC_uYV" crossOrigin="anonymous" />
-        
-        {/* KaTeX JS and auto-render extension */}
-        {/* The auto-render script makes `window.renderMathInElement` available */}
-        <Script strategy="afterInteractive" src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoBPJpTUs74ddyc4bFZSMAGaAUcwLcGtoCUoMiIHGApghrJLGqIuyP_z1a4Z6Q==" crossOrigin="anonymous" defer></Script>
-        <Script strategy="afterInteractive" src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gdt9sVRmW1vCRHR7GMDXg/b_Hh28eYwGxdVjH2+80lS3f2L4GofP1Kk2aHBE/L" crossOrigin="anonymous" defer></Script>
+        {/* KaTeX CSS is now imported via JS above */}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
