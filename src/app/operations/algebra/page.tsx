@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,6 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
-// Extend the AlgebraicOperationOutput type locally if needed, or ensure it's updated in the flow file
 interface ExtendedAlgebraicOperationOutput extends AlgebraicOperationOutput {
   steps?: string;
 }
@@ -36,17 +35,28 @@ export default function BasicAlgebraCalculatorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const originalExpressionRef = useRef<HTMLSpanElement>(null);
+  const computedResultRef = useRef<HTMLSpanElement>(null);
+  const stepsRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      const MathJax = window.MathJax as any;
-      if (MathJax.startup?.promise) {
-        MathJax.startup.promise.then(() => {
-          MathJax.typesetPromise?.();
-        }).catch((err: any) => console.error('MathJax typesetPromise error after startup:', err));
-      } else if (MathJax.typesetPromise) {
-         MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
-      } else if (MathJax.Hub?.Queue) { 
-         MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    if (apiResponse && typeof window !== 'undefined' && (window as any).renderMathInElement) {
+      const renderOptions = {
+        delimiters: [
+          { left: "\\(", right: "\\)", display: false },
+          { left: "\\[", right: "\\]", display: true },
+        ],
+        throwOnError: false
+      };
+
+      if (originalExpressionRef.current) {
+        (window as any).renderMathInElement(originalExpressionRef.current, renderOptions);
+      }
+      if (computedResultRef.current) {
+        (window as any).renderMathInElement(computedResultRef.current, renderOptions);
+      }
+      if (stepsRef.current && apiResponse.steps) {
+        (window as any).renderMathInElement(stepsRef.current, renderOptions);
       }
     }
   }, [apiResponse]);
@@ -102,7 +112,6 @@ export default function BasicAlgebraCalculatorPage() {
     setApiResponse(null);
     setError(null);
   };
-
 
   return (
     <div className="space-y-8">
@@ -222,11 +231,11 @@ export default function BasicAlgebraCalculatorPage() {
                 </div>
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Expression: </span>
-                   <span className="font-mono p-1 rounded-sm bg-muted">{`\\( ${apiResponse.expression} \\)`}</span>
+                   <span ref={originalExpressionRef} className="font-mono p-1 rounded-sm bg-muted">{`\\( ${apiResponse.expression} \\)`}</span>
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
-                  <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground">
+                  <span ref={computedResultRef} className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground">
                     {`\\( ${apiResponse.result} \\)`}
                   </span>
                 </div>
@@ -239,8 +248,8 @@ export default function BasicAlgebraCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
+                          ref={stepsRef}
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                          // Potentially render markdown or sanitize HTML if steps can contain it
                         >
                           {apiResponse.steps}
                         </div>
@@ -253,7 +262,7 @@ export default function BasicAlgebraCalculatorPage() {
                 )}
                 
                 <p className="mt-2 text-xs text-muted-foreground italic">
-                  Results are rendered using MathJax. Ensure the AI's output is a valid mathematical expression.
+                  Results are rendered using KaTeX. Ensure the AI's output is a valid mathematical expression.
                 </p>
               </CardContent>
             </Card>

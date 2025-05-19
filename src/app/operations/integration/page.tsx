@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -26,17 +26,41 @@ export default function IntegrationCalculatorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const previewRef = useRef<HTMLDivElement>(null);
+  const originalQueryRef = useRef<HTMLSpanElement>(null);
+  const integralResultRef = useRef<HTMLDivElement>(null);
+  const stepsRef = useRef<HTMLDivElement>(null);
+
+
   useEffect(() => {
-    if (apiResponse && typeof window !== 'undefined' && window.MathJax) {
-      const MathJax = window.MathJax as any;
-      if (MathJax.startup?.promise) {
-        MathJax.startup.promise.then(() => {
-          MathJax.typesetPromise?.();
-        }).catch((err: any) => console.error('MathJax typesetPromise error after startup:', err));
-      } else if (MathJax.typesetPromise) {
-         MathJax.typesetPromise().catch((err: any) => console.error('MathJax typesetPromise error:', err));
-      } else if (MathJax.Hub?.Queue) { 
-         MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    // Render the preview whenever relevant fields change
+    if (previewRef.current && typeof window !== 'undefined' && (window as any).renderMathInElement) {
+      (window as any).renderMathInElement(previewRef.current, {
+        delimiters: [ { left: "\\(", right: "\\)", display: false }, { left: "\\[", right: "\\]", display: true } ],
+        throwOnError: false
+      });
+    }
+  }, [functionString, variable, integralType, lowerBound, upperBound]);
+
+
+  useEffect(() => {
+    if (apiResponse && typeof window !== 'undefined' && (window as any).renderMathInElement) {
+      const renderOptions = {
+        delimiters: [
+          { left: "\\(", right: "\\)", display: false },
+          { left: "\\[", right: "\\]", display: true },
+        ],
+        throwOnError: false
+      };
+
+      if (originalQueryRef.current) {
+        (window as any).renderMathInElement(originalQueryRef.current, renderOptions);
+      }
+      if (integralResultRef.current) {
+        (window as any).renderMathInElement(integralResultRef.current, renderOptions);
+      }
+      if (stepsRef.current && apiResponse.steps) {
+        (window as any).renderMathInElement(stepsRef.current, renderOptions);
       }
     }
   }, [apiResponse]);
@@ -104,10 +128,16 @@ export default function IntegrationCalculatorPage() {
   };
 
   const getIntegralSymbol = () => {
+    // This function now directly returns the string with LaTeX delimiters
+    // KaTeX will render it in the preview div via useEffect
+    const func = functionString || 'f(x)';
+    const v = variable || 'x';
     if (integralType === 'definite') {
-      return `\\( \\int_{${lowerBound || 'a'}}^{${upperBound || 'b'}} ${functionString || 'f(x)'} \\,d${variable || 'x'} \\)`;
+      const lb = lowerBound || 'a';
+      const ub = upperBound || 'b';
+      return `\\( \\int_{${lb}}^{${ub}} ${func} \\,d${v} \\)`;
     }
-    return `\\( \\int ${functionString || 'f(x)'} \\,d${variable || 'x'} \\)`;
+    return `\\( \\int ${func} \\,d${v} \\)`;
   };
 
 
@@ -132,7 +162,7 @@ export default function IntegrationCalculatorPage() {
           
           <div className="p-4 border rounded-md bg-secondary/30">
             <p className="text-xl font-semibold text-center text-primary mb-2">Integral Preview:</p>
-            <div className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto">
+            <div ref={previewRef} className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto">
               {getIntegralSymbol()}
             </div>
           </div>
@@ -279,7 +309,7 @@ export default function IntegrationCalculatorPage() {
               <CardContent className="space-y-6 p-6 text-lg">
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Query: </span>
-                  <span className="font-mono p-1 rounded-sm bg-muted text-sm">
+                  <span ref={originalQueryRef} className="font-mono p-1 rounded-sm bg-muted text-sm">
                     Integrate 
                     {` \\( ${apiResponse.originalQuery.functionString} \\) `}
                     with respect to 
@@ -292,8 +322,9 @@ export default function IntegrationCalculatorPage() {
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                  <div className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto">
-                    {`\\( ${apiResponse.integralResult} \\)`}
+                  <div ref={integralResultRef} className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto">
+                    {/* The AI response is expected to already have \(...\) or \[...\] */}
+                    {apiResponse.integralResult}
                   </div>
                 </div>
 
@@ -305,9 +336,10 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
+                          ref={stepsRef}
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
                         >
-                          {/* MathJax will process any \(...\) delimiters within apiResponse.steps */}
+                          {/* KaTeX will process any \(...\) delimiters within apiResponse.steps */}
                           {apiResponse.steps}
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground italic">
@@ -352,7 +384,7 @@ export default function IntegrationCalculatorPage() {
                 )}
                 
                 <p className="mt-4 text-xs text-muted-foreground italic">
-                  Results and steps are rendered using MathJax. Ensure the AI's output is valid mathematical expressions using inline delimiters like \\(...\\) for proper rendering.
+                  Results and steps are rendered using KaTeX. Ensure the AI's output is valid mathematical expressions using inline delimiters like \\(...\\) for proper rendering.
                 </p>
               </CardContent>
             </Card>
@@ -367,4 +399,3 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
-
