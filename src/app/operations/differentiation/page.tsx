@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import katex from 'katex';
+import "katex/dist/katex.min.css"; // Import KaTeX CSS
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -13,9 +15,11 @@ import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio } from 'lucide-react'; // Using Ratio for differentiation icon
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2 } from 'lucide-react';
 import { handlePerformDifferentiationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
+import { Textarea } from '@/components/ui/textarea';
+
 
 // Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
@@ -25,18 +29,17 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
       throwOnError: false,
       displayMode: displayMode,
       output: 'html',
-      macros: { "\\dd": "\\mathrm{d}"} // Example macro for d
+      macros: { "\\dd": "\\mathrm{d}"}
     });
   } catch (e) {
     console.error("Katex rendering error:", e);
-    return latexString; // Fallback to raw string on error
+    return latexString;
   }
 };
 
 // Helper function to render content with mixed text and KaTeX
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  // Split by \(...\) or \[...\]
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
   return parts.map((part, index) => {
     try {
@@ -47,26 +50,34 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
-      // Escape HTML characters in plain text parts for safety, though AI output is generally trusted.
-      // A more robust sanitizer could be used for user-generated content.
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
       console.error("KaTeX steps rendering error:", e, "Part:", part);
-      return part; // Fallback for the specific part
+      return part;
     }
   }).join('');
 };
 
 
 export default function DifferentiationCalculatorPage() {
+  // State for Function Derivatives
   const [functionString, setFunctionString] = useState('');
   const [variable, setVariable] = useState('x');
   const [order, setOrder] = useState<number>(1);
+  const [diffApiResponse, setDiffApiResponse] = useState<DifferentiationOutput | null>(null);
+  const [isDiffLoading, setIsDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
+  const [diffPreviewHtml, setDiffPreviewHtml] = useState<string>('');
 
-  const [apiResponse, setApiResponse] = useState<DifferentiationOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  // State for Differential Equations
+  const [deString, setDeString] = useState('');
+  const [deDependentVar, setDeDependentVar] = useState('y');
+  const [deIndependentVar, setDeIndependentVar] = useState('x');
+  const [initialConditions, setInitialConditions] = useState<{ condition: string; value: string }[]>([]);
+  const [deApiResponse, setDeApiResponse] = useState<any | null>(null); // Replace 'any' with specific DE Output type later
+  const [isDeLoading, setIsDeLoading] = useState(false);
+  const [deError, setDeError] = useState<string | null>(null);
+
 
   const derivativeOrders = [
     { label: '1st Derivative', value: 1 },
@@ -76,33 +87,33 @@ export default function DifferentiationCalculatorPage() {
   ];
 
   const getDerivativeNotation = (func: string, v: string, ord: number) => {
-    if (ord === 1) return `\\frac{\\mathrm{d}}{\\mathrm{d}${v}} \\left( ${func} \\right)`;
-    return `\\frac{\\mathrm{d}^{${ord}}}{\\mathrm{d}${v}^{${ord}}} \\left( ${func} \\right)`;
+    if (!func.trim() && !v.trim()) return "";
+    const cleanFunc = func || `f(${v || 'x'})`;
+    if (ord === 1) return `\\frac{\\mathrm{d}}{\\mathrm{d}${v}} \\left( ${cleanFunc} \\right)`;
+    return `\\frac{\\mathrm{d}^{${ord}}}{\\mathrm{d}${v}^{${ord}}} \\left( ${cleanFunc} \\right)`;
   };
   
   useEffect(() => {
-    const func = functionString || 'f(x)';
-    const v = variable || 'x';
-    const latexPreview = getDerivativeNotation(func, v, order);
-    setPreviewHtml(renderMath(latexPreview, true));
+    const latexPreview = getDerivativeNotation(functionString, variable, order);
+    setDiffPreviewHtml(renderMath(latexPreview, true));
   }, [functionString, variable, order]);
 
 
-  const handleSubmit = async () => {
+  const handleDiffSubmit = async () => {
     if (!functionString.trim()) {
-      setError("Please enter a function to differentiate.");
-      setApiResponse(null);
+      setDiffError("Please enter a function to differentiate.");
+      setDiffApiResponse(null);
       return;
     }
     if (!variable.trim()) {
-      setError("Please enter a variable of differentiation.");
-      setApiResponse(null);
+      setDiffError("Please enter a variable of differentiation.");
+      setDiffApiResponse(null);
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setApiResponse(null);
+    setIsDiffLoading(true);
+    setDiffError(null);
+    setDiffApiResponse(null);
     
     const input: DifferentiationInput = {
       functionString,
@@ -113,25 +124,25 @@ export default function DifferentiationCalculatorPage() {
     try {
       const actionResult = await handlePerformDifferentiationAction(input);
       if (actionResult.error) {
-        setError(actionResult.error);
+        setDiffError(actionResult.error);
       } else if (actionResult.data) {
-        setApiResponse(actionResult.data);
+        setDiffApiResponse(actionResult.data);
       } else {
-        setError('Received no data from the server. Please try again.');
+        setDiffError('Received no data from the server. Please try again.');
       }
     } catch (e: any) {
-      setError(e.message || 'An unexpected error occurred.');
+      setDiffError(e.message || 'An unexpected error occurred.');
     } finally {
-      setIsLoading(false);
+      setIsDiffLoading(false);
     }
   };
 
-  const handleClear = () => {
+  const handleDiffClear = () => {
     setFunctionString('');
     setVariable('x');
     setOrder(1);
-    setApiResponse(null);
-    setError(null);
+    setDiffApiResponse(null);
+    setDiffError(null);
   };
   
   const getOriginalQueryAsLatex = (query: DifferentiationInput | undefined): string => {
@@ -140,6 +151,38 @@ export default function DifferentiationCalculatorPage() {
     const varStr = query.variable.replace(/\\/g, '\\\\');
     return getDerivativeNotation(funcStr, varStr, query.order);
   }
+
+  // DE Placeholder functions
+  const handleDeSubmit = async () => {
+    setIsDeLoading(true);
+    setDeError("Differential Equation solver functionality is under development.");
+    setDeApiResponse(null);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
+    setIsDeLoading(false);
+  };
+
+  const handleDeClear = () => {
+    setDeString('');
+    setDeDependentVar('y');
+    setDeIndependentVar('x');
+    setInitialConditions([]);
+    setDeApiResponse(null);
+    setDeError(null);
+  };
+
+  const addInitialCondition = () => {
+    setInitialConditions([...initialConditions, { condition: '', value: '' }]);
+  };
+
+  const updateInitialCondition = (index: number, field: 'condition' | 'value', val: string) => {
+    const newConditions = [...initialConditions];
+    newConditions[index][field] = val;
+    setInitialConditions(newConditions);
+  };
+
+  const removeInitialCondition = (index: number) => {
+    setInitialConditions(initialConditions.filter((_, i) => i !== index));
+  };
 
 
   return (
@@ -153,33 +196,38 @@ export default function DifferentiationCalculatorPage() {
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
             <Ratio className="h-8 w-8 mr-3" /> 
-            Differentiation & DEs
+            Calculus Engine: Derivatives & DEs
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Calculate derivatives and explore differential equations with AI assistance.
+            Calculate function derivatives or explore solutions to differential equations with AI assistance.
           </CardDescription>
         </CardHeader>
         
         <Tabs defaultValue="derivatives" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="derivatives">Function Derivatives</TabsTrigger>
-            <TabsTrigger value="des">Differential Equations</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b">
+            <TabsTrigger value="derivatives" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
+              <FunctionSquare className="mr-2 h-5 w-5" /> Function Derivatives
+            </TabsTrigger>
+            <TabsTrigger value="des" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
+               <Brain className="mr-2 h-5 w-5" /> Differential Equations
+            </TabsTrigger>
           </TabsList>
           
+          {/* Function Derivatives Tab Content */}
           <TabsContent value="derivatives" className="p-0">
             <CardContent className="p-6 space-y-6">
               <div className="p-4 border rounded-md bg-secondary/30">
                 <p className="text-xl font-semibold text-center text-primary mb-2">Derivative Preview:</p>
                 <div 
-                    className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto min-h-[50px] flex items-center justify-center"
+                    dangerouslySetInnerHTML={{ __html: diffPreviewHtml || renderMath("d/dx(f(x))", true) }}
                 />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="function-input" className="block text-md font-semibold text-foreground">
-                    Function to differentiate, f(v):
+                    Function, e.g., f({variable || 'x'}):
                   </Label>
                   <Input
                     id="function-input"
@@ -188,14 +236,14 @@ export default function DifferentiationCalculatorPage() {
                     value={functionString}
                     onChange={(e) => {
                       setFunctionString(e.target.value);
-                      setError(null); setApiResponse(null);
+                      setDiffError(null); setDiffApiResponse(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="variable-input" className="block text-md font-semibold text-foreground">
-                    Variable (v):
+                    Variable:
                   </Label>
                   <Input
                     id="variable-input"
@@ -203,8 +251,8 @@ export default function DifferentiationCalculatorPage() {
                     placeholder="x"
                     value={variable}
                     onChange={(e) => {
-                      setVariable(e.target.value);
-                      setError(null); setApiResponse(null);
+                      setVariable(e.target.value || 'x'); // Ensure variable is not empty
+                      setDiffError(null); setDiffApiResponse(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
@@ -219,7 +267,7 @@ export default function DifferentiationCalculatorPage() {
                   value={order.toString()} 
                   onValueChange={(value) => {
                     setOrder(parseInt(value, 10));
-                    setError(null); setApiResponse(null);
+                    setDiffError(null); setDiffApiResponse(null);
                   }}
                 >
                   <SelectTrigger id="order-select" className="text-lg p-3 h-auto">
@@ -240,16 +288,16 @@ export default function DifferentiationCalculatorPage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading || !functionString.trim() || !variable.trim()}
+                  onClick={handleDiffSubmit}
+                  disabled={isDiffLoading || !functionString.trim() || !variable.trim()}
                   size="lg"
                   className="flex-grow"
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
+                  {isDiffLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Ratio className="mr-2 h-5 w-5" />}
                   Calculate Derivative
                 </Button>
                 <Button
-                  onClick={handleClear}
+                  onClick={handleDiffClear}
                   variant="outline"
                   size="lg"
                   className="flex-grow sm:flex-grow-0"
@@ -259,7 +307,7 @@ export default function DifferentiationCalculatorPage() {
                 </Button>
               </div>
 
-              {isLoading && (
+              {isDiffLoading && (
                 <div className="flex items-center justify-center p-8 rounded-md bg-muted">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   <p className="ml-3 text-xl font-medium text-foreground">
@@ -268,15 +316,15 @@ export default function DifferentiationCalculatorPage() {
                 </div>
               )}
 
-              {error && !isLoading && (
+              {diffError && !isDiffLoading && (
                 <Alert variant="destructive" className="mt-6">
                   <AlertTriangle className="h-5 w-5" />
-                  <AlertTitle className="font-semibold">Processing Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertTitle className="font-semibold">Differentiation Error</AlertTitle>
+                  <AlertDescription>{diffError}</AlertDescription>
                 </Alert>
               )}
 
-              {apiResponse && !isLoading && !error && (
+              {diffApiResponse && !isDiffLoading && !diffError && (
                 <Card className="mt-6 border-accent border-t-4 shadow-md">
                   <CardHeader>
                     <CardTitle className="text-2xl flex items-center text-primary">
@@ -289,19 +337,19 @@ export default function DifferentiationCalculatorPage() {
                       <span className="font-semibold text-muted-foreground">Original Query: </span>
                       <span 
                         className="font-mono p-1 rounded-sm bg-muted text-sm"
-                        dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery), false) }}
+                        dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(diffApiResponse.originalQuery), true) }}
                       />
                     </div>
                     
                     <div className="border-t pt-4 mt-4">
                       <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Derivative:</h3>
-                      <span 
+                      <div 
                         className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl inline-block overflow-x-auto"
-                        dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.derivativeResult, false) }} 
+                        dangerouslySetInnerHTML={{ __html: renderMath(diffApiResponse.derivativeResult, true) }} 
                       />
                     </div>
 
-                    {apiResponse.steps && apiResponse.steps.trim() !== "" && (
+                    {diffApiResponse.steps && diffApiResponse.steps.trim() !== "" && (
                       <Accordion type="single" collapsible className="w-full mt-4">
                         <AccordionItem value="steps">
                           <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
@@ -310,7 +358,7 @@ export default function DifferentiationCalculatorPage() {
                           <AccordionContent>
                             <div 
                               className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                              dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
+                              dangerouslySetInnerHTML={{ __html: renderStepsContent(diffApiResponse.steps) }}
                             />
                             <p className="mt-2 text-xs text-muted-foreground italic">
                               Steps are provided by the AI. Math in steps is rendered by KaTeX.
@@ -320,7 +368,7 @@ export default function DifferentiationCalculatorPage() {
                       </Accordion>
                     )}
 
-                    {apiResponse.plotHint && (
+                    {diffApiResponse.plotHint && (
                       <Accordion type="single" collapsible className="w-full mt-4">
                         <AccordionItem value="plot-info">
                           <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
@@ -330,7 +378,7 @@ export default function DifferentiationCalculatorPage() {
                             <Card className="shadow-none">
                                 <CardHeader>
                                     <CardTitle className="text-lg">Visualizing the Derivative</CardTitle>
-                                    <CardDescription>{apiResponse.plotHint}</CardDescription>
+                                    <CardDescription>{diffApiResponse.plotHint}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
@@ -367,27 +415,143 @@ export default function DifferentiationCalculatorPage() {
             </CardFooter>
           </TabsContent>
 
+          {/* Differential Equations Tab Content */}
           <TabsContent value="des" className="p-0">
-            <CardContent className="p-6 space-y-6 min-h-[400px] flex flex-col items-center justify-center">
-                <Card className="w-full max-w-lg p-8 text-center">
-                    <CardTitle className="text-2xl mb-4">Differential Equation Solver</CardTitle>
-                    <CardDescription className="mb-6">
-                        Functionality to solve various types of differential equations is under development.
-                        Stay tuned for updates!
-                    </CardDescription>
-                    <Brain className="h-16 w-16 text-primary mx-auto mb-4" />
-                     <Input 
-                        type="text"
-                        placeholder="Enter differential equation, e.g., y' + y = 0"
-                        className="text-lg p-3 mb-4"
-                        disabled 
+            <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                    <Label htmlFor="de-input" className="block text-md font-semibold text-foreground">
+                        Differential Equation:
+                    </Label>
+                    <Textarea
+                        id="de-input"
+                        placeholder="e.g., y' + 2*y = x,  y'' - 3*y' + 2*y = 0, dy/dx = y/x"
+                        value={deString}
+                        onChange={(e) => {
+                            setDeString(e.target.value);
+                            setDeError(null); setDeApiResponse(null);
+                        }}
+                        className="text-lg p-3 min-h-[100px] border-2 focus:border-accent focus:ring-accent"
                     />
-                    <Button disabled size="lg">Solve DE (Coming Soon)</Button>
-                </Card>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="de-dependent-var" className="block text-md font-semibold text-foreground">
+                            Dependent Variable (e.g., y):
+                        </Label>
+                        <Input
+                            id="de-dependent-var"
+                            type="text"
+                            value={deDependentVar}
+                            onChange={(e) => setDeDependentVar(e.target.value)}
+                            className="text-lg p-3"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="de-independent-var" className="block text-md font-semibold text-foreground">
+                            Independent Variable (e.g., x):
+                        </Label>
+                        <Input
+                            id="de-independent-var"
+                            type="text"
+                            value={deIndependentVar}
+                            onChange={(e) => setDeIndependentVar(e.target.value)}
+                            className="text-lg p-3"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="block text-md font-semibold text-foreground">Initial Conditions (Optional):</Label>
+                    {initialConditions.map((ic, index) => (
+                        <div key={index} className="flex items-center gap-2 p-3 border rounded-md bg-muted/50">
+                            <Input
+                                type="text"
+                                placeholder="e.g., y(0)"
+                                value={ic.condition}
+                                onChange={(e) => updateInitialCondition(index, 'condition', e.target.value)}
+                                className="flex-grow"
+                                aria-label={`Initial condition ${index + 1} expression`}
+                            />
+                            <span className="text-lg">=</span>
+                            <Input
+                                type="text"
+                                placeholder="e.g., 1"
+                                value={ic.value}
+                                onChange={(e) => updateInitialCondition(index, 'value', e.target.value)}
+                                className="flex-grow"
+                                aria-label={`Initial condition ${index + 1} value`}
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => removeInitialCondition(index)} aria-label="Remove initial condition">
+                                <Trash2 className="h-5 w-5 text-destructive" />
+                            </Button>
+                        </div>
+                    ))}
+                    <Button variant="outline" onClick={addInitialCondition} className="w-full sm:w-auto">
+                        <PlusCircle className="mr-2 h-5 w-5" /> Add Initial Condition
+                    </Button>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                        onClick={handleDeSubmit}
+                        disabled={isDeLoading || !deString.trim()}
+                        size="lg"
+                        className="flex-grow"
+                    >
+                        {isDeLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
+                        Solve Differential Equation (Coming Soon)
+                    </Button>
+                    <Button
+                        onClick={handleDeClear}
+                        variant="outline"
+                        size="lg"
+                        className="flex-grow sm:flex-grow-0"
+                    >
+                        <XCircle className="mr-2 h-5 w-5" />
+                        Clear DE Form
+                    </Button>
+                </div>
+
+                {isDeLoading && (
+                    <div className="flex items-center justify-center p-8 rounded-md bg-muted">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <p className="ml-3 text-xl font-medium text-foreground">Processing DE...</p>
+                    </div>
+                )}
+
+                {deError && !isDeLoading && (
+                    <Alert variant="destructive" className="mt-6">
+                        <AlertTriangle className="h-5 w-5" />
+                        <AlertTitle className="font-semibold">DE Solver Status</AlertTitle>
+                        <AlertDescription>{deError}</AlertDescription>
+                    </Alert>
+                )}
+                
+                {/* Placeholder for DE results - to be built out */}
+                {deApiResponse && !isDeLoading && !deError && (
+                     <Card className="mt-6 border-accent border-t-4 shadow-md">
+                        <CardHeader>
+                            <CardTitle className="text-2xl flex items-center text-primary">
+                            <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
+                            DE Solution (Placeholder)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 text-lg">
+                            <p>DE solution display will appear here once the feature is implemented.</p>
+                            {/* Example structure:
+                            <div>Classification: {deApiResponse.classification}</div>
+                            <div>Solution Method: {deApiResponse.solutionMethod}</div>
+                            <div dangerouslySetInnerHTML={{ __html: renderMath(deApiResponse.generalSolution, true) }} />
+                            */}
+                        </CardContent>
+                    </Card>
+                )}
+
+
             </CardContent>
             <CardFooter className="p-6 bg-secondary/50 border-t">
                 <p className="text-sm text-muted-foreground">
-                    The differential equations module will support common DE types and solution methods.
+                    The Differential Equations solver is currently under development. The AI will attempt to classify, suggest methods, and provide solutions with steps.
                 </p>
             </CardFooter>
           </TabsContent>
@@ -396,3 +560,5 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
+
+    
