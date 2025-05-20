@@ -5,6 +5,7 @@ import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressi
 import { performAlgebraicOperation, type AlgebraicOperationInput, type AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { performIntegration, type IntegrationInput, type IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
+import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 
 interface ActionResult<T> {
   data: T | null;
@@ -130,6 +131,46 @@ export async function handlePerformDifferentiationAction(
         } else {
             errorMessage = `An AI processing error occurred. Please check your input or try again. Details: ${e.message}`;
         }
+    }
+    return { data: null, error: errorMessage };
+  }
+}
+
+export async function handleSolveDifferentialEquationAction(
+  input: DESolutionInput
+): Promise<ActionResult<DESolutionOutput>> {
+  if (!input.equationString || input.equationString.trim() === '') {
+    return { data: null, error: 'Differential equation cannot be empty.' };
+  }
+   if (!input.dependentVariable || input.dependentVariable.trim() === '') {
+    return { data: null, error: 'Dependent variable cannot be empty.' };
+  }
+   if (!input.independentVariable || input.independentVariable.trim() === '') {
+    return { data: null, error: 'Independent variable cannot be empty.' };
+  }
+  // Basic validation for initial conditions if provided
+  if (input.initialConditions) {
+    for (const ic of input.initialConditions) {
+      if ((!ic.condition || ic.condition.trim() === '') || (!ic.value || ic.value.trim() === '')) {
+        return { data: null, error: 'Both condition expression and value are required for all initial conditions.' };
+      }
+    }
+  }
+
+  try {
+    const result = await solveDifferentialEquation(input);
+    return { data: result, error: null };
+  } catch (e) {
+    console.error('Error solving differential equation:', e);
+    let errorMessage = 'An error occurred while solving the differential equation. Please try again.';
+    if (e instanceof Error) {
+      if (e.message.includes('quota')) {
+        errorMessage = 'API quota exceeded. Please try again later.';
+      } else if (e.message.includes('model did not return a valid output')) {
+        errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation.';
+      } else {
+        errorMessage = `An AI processing error occurred. Details: ${e.message}`;
+      }
     }
     return { data: null, error: errorMessage };
   }
