@@ -27,7 +27,7 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   name: 'solveDifferentialEquationPrompt', 
   inputSchema: DESolutionInputSchema,
   output: { 
-    schema: z.string(),
+    schema: z.string(), // Expects a string output
   },
   system: 'You are a helpful math assistant that solves differential equations. Provide the solution and steps clearly.',
   prompt: `
@@ -45,7 +45,7 @@ Solve the equation and provide the solution. If possible, include steps.
 `,
   config: {
     temperature: 0.2,
-     safetySettings: [
+     safetySettings: [ // Added safety settings
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -57,9 +57,9 @@ Solve the equation and provide the solution. If possible, include steps.
 // Exported async wrapper function to call the prompt
 export async function solveDifferentialEquation(input: DESolutionInput): Promise<DESolutionOutput> {
   const response = await solveDifferentialEquationPrompt(input);
-  const resultString = response.output;
+  const resultString = response.output; // Access the output directly as per Genkit 1.x
 
-  if (resultString === undefined || resultString === null) {
+  if (resultString === undefined || resultString === null) { // Check if the model returned null or undefined
     throw new Error('AI model did not return a valid output for the differential equation.');
   }
   return resultString;
