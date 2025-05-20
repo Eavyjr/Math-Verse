@@ -4,6 +4,7 @@
 import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
 import { performAlgebraicOperation, type AlgebraicOperationInput, type AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { performIntegration, type IntegrationInput, type IntegrationOutput } from '@/ai/flows/perform-integration-flow';
+import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 
 interface ActionResult<T> {
   data: T | null;
@@ -94,6 +95,38 @@ export async function handlePerformIntegrationAction(
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this integration. Please try a different function or check your bounds.';
+        } else {
+            errorMessage = `An AI processing error occurred. Please check your input or try again. Details: ${e.message}`;
+        }
+    }
+    return { data: null, error: errorMessage };
+  }
+}
+
+export async function handlePerformDifferentiationAction(
+  input: DifferentiationInput
+): Promise<ActionResult<DifferentiationOutput>> {
+  if (!input.functionString || input.functionString.trim() === '') {
+    return { data: null, error: 'Function to differentiate cannot be empty.' };
+  }
+  if (!input.variable || input.variable.trim() === '') {
+    return { data: null, error: 'Variable of differentiation cannot be empty.' };
+  }
+  if (input.order < 1) {
+    return { data: null, error: 'Order of derivative must be at least 1.' };
+  }
+
+  try {
+    const result = await performDifferentiation(input);
+    return { data: result, error: null };
+  } catch (e) {
+    console.error('Error performing differentiation:', e);
+    let errorMessage = 'An error occurred while performing the differentiation. Please try again.';
+     if (e instanceof Error) {
+        if (e.message.includes('quota')) {
+            errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (e.message.includes('model did not return a valid output')) {
+            errorMessage = 'The AI model could not process this differentiation. Please try a different function or order.';
         } else {
             errorMessage = `An AI processing error occurred. Please check your input or try again. Details: ${e.message}`;
         }
