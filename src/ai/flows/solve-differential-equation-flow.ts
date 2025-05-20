@@ -59,8 +59,11 @@ export async function solveDifferentialEquation(input: DESolutionInput): Promise
   const response = await solveDifferentialEquationPrompt(input);
   const resultString = response.output; // Access the output directly as per Genkit 1.x
 
-  if (resultString === undefined || resultString === null) { // Check if the model returned null or undefined
-    throw new Error('AI model did not return a valid output for the differential equation.');
+  if (resultString === undefined || resultString === null) { 
+    throw new Error('AI model did not return a valid output for the differential equation (received null or undefined).');
+  }
+  if (resultString.trim() === '') {
+    throw new Error('AI model returned an empty or whitespace-only response for the differential equation.');
   }
   return resultString;
 }
