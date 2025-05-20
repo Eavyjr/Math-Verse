@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import katex from 'katex'; // Import katex
+import katex from 'katex';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -25,11 +25,7 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
-interface ExtendedAlgebraicOperationOutput extends AlgebraicOperationOutput {
-  steps?: string;
-}
-
-// Helper function to render LaTeX string to HTML
+// Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string, displayMode: boolean = false): string => {
   if (!latexString) return "";
   try {
@@ -43,10 +39,35 @@ const renderMath = (latexString: string, displayMode: boolean = false): string =
   }
 };
 
+// Helper function to render content with mixed text and KaTeX
+const renderStepsContent = (stepsString: string | undefined): string => {
+  if (!stepsString) return "";
+  // Regex to find \(...\) or \[...\]
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
+  return parts.map(part => {
+    if (part.startsWith('\\(') && part.endsWith('\\)')) {
+      const latex = part.slice(2, -2);
+      try {
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
+      } catch (e) { console.error("KaTeX steps rendering error (inline):", e); return part; }
+    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+      const latex = part.slice(2, -2);
+      try {
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
+      } catch (e) { console.error("KaTeX steps rendering error (display):", e); return part; }
+    }
+    // Escape HTML characters in plain text parts to prevent XSS
+    // For simplicity, we are not doing full XSS protection here, assuming AI steps are generally safe.
+    // In a production app, consider a robust HTML sanitizer for user-facing AI output.
+    return part; 
+  }).join('');
+};
+
+
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
   const [selectedOperation, setSelectedOperation] = useState<AlgebraicOperationInput['operation'] | null>(null);
-  const [apiResponse, setApiResponse] = useState<ExtendedAlgebraicOperationOutput | null>(null);
+  const [apiResponse, setApiResponse] = useState<AlgebraicOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,12 +91,10 @@ export default function BasicAlgebraCalculatorPage() {
       const actionResult = await handlePerformAlgebraicOperationAction(expression, selectedOperation);
       if (actionResult.error) {
         setError(actionResult.error);
-        setApiResponse(null);
       } else if (actionResult.data) {
-        setApiResponse(actionResult.data as ExtendedAlgebraicOperationOutput);
+        setApiResponse(actionResult.data);
       } else {
         setError('Received no data from the server. Please try again.');
-        setApiResponse(null);
       }
     } catch (e: any) {
       let errorMessage = 'An unexpected error occurred while processing the expression.';
@@ -89,7 +108,6 @@ export default function BasicAlgebraCalculatorPage() {
         }
       }
       setError(errorMessage);
-      setApiResponse(null);
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +210,7 @@ export default function BasicAlgebraCalculatorPage() {
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
-                Calculating &quot;{expression}&quot; using {operations.find(op => op.value === selectedOperation)?.label || selectedOperation}...
+                Calculating {operations.find(op => op.value === selectedOperation)?.label || selectedOperation} of &quot;{expression}&quot;...
               </p>
             </div>
           )}
@@ -222,14 +240,14 @@ export default function BasicAlgebraCalculatorPage() {
                   <span className="font-semibold text-muted-foreground">Original Expression: </span>
                    <span 
                     className="font-mono p-1 rounded-sm bg-muted"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.expression) }}
+                    dangerouslySetInnerHTML={{ __html: renderMath(`\\(${apiResponse.expression}\\)`) }}
                    />
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
                   <span 
                     className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.result) }}
+                    dangerouslySetInnerHTML={{ __html: renderMath(`\\(${apiResponse.result}\\)`) }}
                   />
                 </div>
 
@@ -242,17 +260,10 @@ export default function BasicAlgebraCalculatorPage() {
                       <AccordionContent>
                         <div 
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                        >
-                          {/* 
-                            For steps with mixed text and math, renderToString on the whole string won't work
-                            unless the AI returns pure LaTeX or we parse it.
-                            For now, displaying the raw steps string.
-                            If AI includes \(...\) delimiters, they won't be auto-rendered by KaTeX without an auto-render script.
-                          */}
-                          {apiResponse.steps}
-                        </div>
+                          dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
+                        />
                         <p className="mt-2 text-xs text-muted-foreground italic">
-                          Steps are provided by the AI and may vary in detail or format.
+                          Steps are provided by the AI and may vary in detail or format. Math expressions in steps are rendered using KaTeX.
                         </p>
                       </AccordionContent>
                     </AccordionItem>

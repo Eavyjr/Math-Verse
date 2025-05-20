@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import katex from 'katex'; // Import katex
+import katex from 'katex';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -16,19 +16,13 @@ import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, 
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 
-// Helper function to render LaTeX string to HTML
+// Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string, displayMode: boolean = false): string => {
   if (!latexString) return "";
   try {
     return katex.renderToString(latexString, {
       throwOnError: false,
       displayMode: displayMode,
-      delimiters: [ // Ensure standard delimiters are recognized if AI uses them within the string
-          {left: "$$", right: "$$", display: true},
-          {left: "\\[", right: "\\]", display: true},
-          {left: "\\(", right: "\\)", display: false},
-          {left: "$", right: "$", display: false}
-      ]
     });
   } catch (e) {
     console.error("Katex rendering error:", e);
@@ -36,28 +30,29 @@ const renderMath = (latexString: string, displayMode: boolean = false): string =
   }
 };
 
-// Helper function to render content potentially containing multiple math expressions
-// This is a simplified version. A more robust solution would parse and replace.
-const renderMixedContent = (content: string | undefined): string => {
-  if (!content) return "";
-  // This is a placeholder for a more robust mixed content renderer.
-  // For now, it will attempt to render the whole string if it looks like a math expression,
-  // or parts of it if we implement more complex parsing later.
-  // The current AI prompt for steps asks for \(...\) so KaTeX will handle those if the string
-  // itself is passed to `renderMath` which is not ideal for mixed content.
-  // So, for now, we just return the content for steps, assuming AI formats it well for direct display.
-  // If AI returns strings for steps that *only* contain math expressions delimited by \(...\) or similar,
-  // then we'd need to extract those and render them individually.
-  
-  // A simple attempt: if the AI already includes delimiters, renderToString might work if applied to the whole string.
-  // However, the prompt asks for `\(...\)` within text.
-  // The current `renderMath` won't process `\(...\)` from a larger string unless the string *is* that expression.
-  // The most straightforward way for steps with `renderToString` would be if AI returns pre-rendered HTML or 
-  // if we make a component that parses and replaces.
-  // Let's assume for steps, for now, the AI's formatting is sufficient for text display,
-  // and if it includes \(...\), they will appear as raw text without auto-rendering.
-  return content;
-}
+// Helper function to render content with mixed text and KaTeX
+const renderStepsContent = (stepsString: string | undefined): string => {
+  if (!stepsString) return "";
+  // Regex to find \(...\) or \[...\]
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
+  return parts.map(part => {
+    if (part.startsWith('\\(') && part.endsWith('\\)')) {
+      const latex = part.slice(2, -2);
+      try {
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
+      } catch (e) { console.error("KaTeX steps rendering error (inline):", e); return part; }
+    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+      const latex = part.slice(2, -2);
+      try {
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
+      } catch (e) { console.error("KaTeX steps rendering error (display):", e); return part; }
+    }
+    // For plain text parts, you might want to escape HTML entities if the content is user-generated
+    // or untrusted. For AI-generated steps, this is often less critical but good practice.
+    // For simplicity here, we return the part directly.
+    return part;
+  }).join('');
+};
 
 
 export default function IntegrationCalculatorPage() {
@@ -71,7 +66,6 @@ export default function IntegrationCalculatorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // For the preview, we still want dynamic updates as user types
   const [previewHtml, setPreviewHtml] = useState<string>('');
 
   useEffect(() => {
@@ -85,7 +79,7 @@ export default function IntegrationCalculatorPage() {
     } else {
       latexPreview = `\\int ${func} \\,d${v}`;
     }
-    setPreviewHtml(renderMath(latexPreview, true)); // displayMode true for preview
+    setPreviewHtml(renderMath(latexPreview, true));
   }, [functionString, variable, integralType, lowerBound, upperBound]);
 
 
@@ -153,11 +147,17 @@ export default function IntegrationCalculatorPage() {
   
   const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
     if (!query) return "";
-    let latex = `\\text{Integrate } ${query.functionString} \\text{ w.r.t. } ${query.variable}`;
+    // Ensure the function string itself is not treated as a command by KaTeX prematurely
+    const funcStr = query.functionString.replace(/\\/g, '\\\\');
+    const varStr = query.variable.replace(/\\/g, '\\\\');
+    
+    let latex = `\\int`;
     if (query.isDefinite) {
-        latex += ` \\text{ from } ${query.lowerBound || 'a'} \\text{ to } ${query.upperBound || 'b'}`;
+        const lb = query.lowerBound || 'a';
+        const ub = query.upperBound || 'b';
+        latex += `_{${lb}}^{${ub}} ${funcStr} \\,d${varStr}`;
     } else {
-        latex += ` \\text{ (indefinite)}`;
+        latex += ` ${funcStr} \\,d${varStr}`;
     }
     return latex;
   }
@@ -340,9 +340,9 @@ export default function IntegrationCalculatorPage() {
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                  <div 
-                    className="font-mono p-3 text-xl rounded-md bg-muted text-primary dark:text-primary-foreground overflow-x-auto"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.integralResult, false) }} // displayMode: false for inline
+                  <span 
+                    className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl inline-block overflow-x-auto"
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.integralResult, false) }} 
                   />
                 </div>
 
@@ -355,13 +355,10 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent>
                         <div 
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                          // For steps, if AI includes \(...\), they won't be auto-rendered by KaTeX without an auto-render script.
-                          // Displaying raw string for now.
-                        >
-                          {apiResponse.steps}
-                        </div>
+                          dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
+                        />
                         <p className="mt-2 text-xs text-muted-foreground italic">
-                          Steps are provided by the AI and may vary in detail or format.
+                          Steps are provided by the AI and may vary in detail or format. Math expressions in steps are rendered using KaTeX.
                         </p>
                       </AccordionContent>
                     </AccordionItem>
