@@ -24,7 +24,7 @@ const DifferentiationOutputSchema = z.object({
     .describe(
       'The result of the differentiation. This should be purely the mathematical expression or value, suitable for LaTeX rendering using inline delimiters like \\(...\\).'
     ),
-  steps: z.string().optional().describe("A step-by-step explanation of how the result was obtained. This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
+  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule\", \"Product Rule\", \"Chain Rule\"). This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
   originalQuery: DifferentiationInputSchema.describe("The original input parameters for the differentiation."),
   plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its derivative(s) might show."),
 });
@@ -40,7 +40,7 @@ const systemPrompt = `You are an expert calculus assistant specialized in perfor
 Given a function, a variable of differentiation, and the order of the derivative, calculate the derivative.
 
 - The 'derivativeResult' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'derivativeResult' should be directly usable for LaTeX rendering with inline delimiters (e.g., "\\(3x^2\\)" or "\\(cos(x) - sin(x)\\)"). Do not include any explanations, apologies, or conversational text in the 'derivativeResult' field.
-- If possible and applicable, provide a step-by-step explanation of how you arrived at the result in the 'steps' field. Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).
+- If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule", "Product Rule", "Chain Rule", "Constant Multiple Rule"). Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).
 - Provide a brief 'plotHint' describing what a visualization of the function and its derivative(s) might look like.
 - The 'originalQuery' field in the output should be an echo of the input you received.
 `;
@@ -55,7 +55,7 @@ Variable of Differentiation: {{{variable}}}
 Order of Derivative: {{{order}}}
 
 Perform the differentiation of order {{{order}}} for the function '{{{functionString}}}' with respect to '{{{variable}}}'.
-Provide the result, steps (if applicable), and a plot hint.
+Provide the result, detailed steps (if applicable, stating the rule for each step), and a plot hint.
 Ensure 'originalQuery' in your output accurately reflects these input parameters.
 Ensure all mathematical expressions in 'derivativeResult' and 'steps' are formatted with inline MathJax/KaTeX delimiters \\(...\\).`,
   config: {
@@ -83,3 +83,4 @@ const performDifferentiationFlow = ai.defineFlow(
     };
   }
 );
+

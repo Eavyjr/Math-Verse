@@ -38,7 +38,7 @@ const AlgebraicOperationOutputSchema = z.object({
     .describe(
       'The result of the algebraic operation. This should be purely the mathematical expression or value, suitable for LaTeX rendering.'
     ),
-  steps: z.string().describe("A step-by-step explanation of how the result was obtained. This should be formatted as readable text. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).").optional(),
+  steps: z.string().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Distributive Property\", \"Combine like terms\"). This should be formatted as readable text. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).").optional(),
 });
 export type AlgebraicOperationOutput = z.infer<typeof AlgebraicOperationOutputSchema>;
 
@@ -51,7 +51,7 @@ export async function performAlgebraicOperation(
 const systemPrompt = `You are an advanced algebraic calculator.
 Given the mathematical expression and the operation, perform the operation.
 - The 'result' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'result' should be directly usable for LaTeX rendering (e.g., "x^2 + 2*x + 1" or "2 \\sin(x)"). Do not include any explanations, apologies, or conversational text in the 'result' field.
-- If possible and applicable, provide a step-by-step explanation of how you arrived at the result in the 'steps' field. Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\). The 'steps' field is optional.
+- If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Distributive Property", "Combining like terms", "Factoring by grouping"). Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\). The 'steps' field is optional.
 
 Operation specific instructions:
 - simplify: Simplify the expression as much as possible.
@@ -65,7 +65,7 @@ Operation specific instructions:
   - Otherwise, assume natural logarithm (ln) of the expression.
 - trigsimplify: Simplify the trigonometric expression.
 
-Ensure the 'result' output is concise and strictly the mathematical result. The 'steps' output, if provided, should be a clear explanation where math is delimited by \\(...\\).
+Ensure the 'result' output is concise and strictly the mathematical result. The 'steps' output, if provided, should be a clear explanation where math is delimited by \\(...\\) and each step clearly states the rule applied.
 `;
 
 const performAlgebraicOperationPrompt = ai.definePrompt({
@@ -76,7 +76,7 @@ const performAlgebraicOperationPrompt = ai.definePrompt({
   prompt: `Expression: {{{expression}}}
 Operation: {{{operation}}}
 
-Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'. Also, provide steps if applicable, ensuring mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
+Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'. Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
   config: {
     temperature: 0.2,
   }
