@@ -5,7 +5,7 @@ import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressi
 import { performAlgebraicOperation, type AlgebraicOperationInput, type AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { performIntegration, type IntegrationInput, type IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
-import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
+import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; // Updated import
 
 interface ActionResult<T> {
   data: T | null;
@@ -137,8 +137,8 @@ export async function handlePerformDifferentiationAction(
 }
 
 export async function handleSolveDifferentialEquationAction(
-  input: DESolutionInput
-): Promise<ActionResult<DESolutionOutput>> {
+  input: DESolutionInput 
+): Promise<ActionResult<DESolutionOutput>> { // DESolutionOutput is now string
   if (!input.equationString || input.equationString.trim() === '') {
     return { data: null, error: 'Differential equation cannot be empty.' };
   }
@@ -151,14 +151,14 @@ export async function handleSolveDifferentialEquationAction(
   // Basic validation for initial conditions if provided
   if (input.initialConditions) {
     for (const ic of input.initialConditions) {
-      if ((!ic.condition || ic.condition.trim() === '') || (!ic.value || ic.value.trim() === '')) {
-        return { data: null, error: 'Both condition expression and value are required for all initial conditions.' };
+      if (!ic || ic.trim() === '') { // Simpler validation for array of strings
+        return { data: null, error: 'Initial condition cannot be empty if provided.' };
       }
     }
   }
 
   try {
-    const result = await solveDifferentialEquation(input);
+    const result = await solveDifferentialEquation(input); // This now returns a string
     return { data: result, error: null };
   } catch (e) {
     console.error('Error solving differential equation:', e);

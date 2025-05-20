@@ -18,17 +18,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma } from 'lucide-react';
 import { handlePerformDifferentiationAction, handleSolveDifferentialEquationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
-import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
+import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; // DESolutionOutput is now string
 import { Textarea } from '@/components/ui/textarea';
 
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (!latexString) return "";
+  if (latexString === undefined || latexString === null) return "";
   try {
     return katex.renderToString(latexString, {
       throwOnError: false,
       displayMode: displayMode,
       output: 'html',
-      macros: { "\\dd": "\\mathrm{d}"} // Example custom macro
+      macros: { "\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
     console.error("Katex rendering error:", e);
@@ -70,8 +70,9 @@ export default function DifferentiationCalculatorPage() {
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
   const [deIndependentVar, setDeIndependentVar] = useState('x');
-  const [initialConditions, setInitialConditions] = useState<{ condition: string; value: string }[]>([]);
-  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null);
+  const [initialConditions, setInitialConditions] = useState<string[]>([]); // Changed to string[]
+  const [currentIcInput, setCurrentIcInput] = useState(''); // For the single IC input field
+  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null); // Now expects a string
   const [isDeLoading, setIsDeLoading] = useState(false);
   const [deError, setDeError] = useState<string | null>(null);
   const [dePreviewHtml, setDePreviewHtml] = useState<string>('');
@@ -85,7 +86,7 @@ export default function DifferentiationCalculatorPage() {
   ];
 
   const getDerivativeNotation = (func: string, v: string, ord: number) => {
-    if (!func.trim() && !v.trim()) return renderMath("d/dx(f(x))", true); // Default preview
+    if (!func.trim() && !v.trim()) return renderMath("d/dx(f(x))", true); 
     const cleanFunc = func || `f(${v || 'x'})`;
     if (ord === 1) return `\\frac{\\mathrm{d}}{\\mathrm{d}${v}} \\left( ${cleanFunc} \\right)`;
     return `\\frac{\\mathrm{d}^{${ord}}}{\\mathrm{d}${v}^{${ord}}} \\left( ${cleanFunc} \\right)`;
@@ -97,14 +98,16 @@ export default function DifferentiationCalculatorPage() {
   }, [functionString, variable, order]);
 
   useEffect(() => {
-    // For DE preview, we'll just render the input string.
-    // A more sophisticated preview would parse it or try to format it nicely.
     if (deString.trim()) {
-        setDePreviewHtml(renderMath(deString, true));
+        let preview = deString;
+        if(initialConditions.length > 0){
+            preview += `, \\quad ` + initialConditions.join(",\\ ");
+        }
+        setDePreviewHtml(renderMath(preview, true));
     } else {
-        setDePreviewHtml(renderMath("y' + P(x)y = Q(x)", true)); // Default placeholder
+        setDePreviewHtml(renderMath("y' + P(x)y = Q(x)", true)); 
     }
-  }, [deString]);
+  }, [deString, initialConditions]);
 
 
   const handleDiffSubmit = async () => {
@@ -155,7 +158,7 @@ export default function DifferentiationCalculatorPage() {
   
   const getOriginalQueryAsLatex = (query: DifferentiationInput | undefined): string => {
     if (!query) return "";
-    const funcStr = query.functionString.replace(/\\/g, '\\\\'); // Basic escape for TeX commands in input
+    const funcStr = query.functionString.replace(/\\/g, '\\\\'); 
     const varStr = query.variable.replace(/\\/g, '\\\\');
     return getDerivativeNotation(funcStr, varStr, query.order);
   }
@@ -174,7 +177,7 @@ export default function DifferentiationCalculatorPage() {
         equationString: deString,
         dependentVariable: deDependentVar,
         independentVariable: deIndependentVar,
-        initialConditions: initialConditions.filter(ic => ic.condition.trim() && ic.value.trim()), // Send only non-empty ICs
+        initialConditions: initialConditions.filter(ic => ic.trim()), 
     };
 
     try {
@@ -182,7 +185,7 @@ export default function DifferentiationCalculatorPage() {
         if (actionResult.error) {
             setDeError(actionResult.error);
         } else if (actionResult.data) {
-            setDeApiResponse(actionResult.data);
+            setDeApiResponse(actionResult.data); // Data is now a string
         } else {
             setDeError('Received no data from the DE solver. Please try again.');
         }
@@ -198,18 +201,16 @@ export default function DifferentiationCalculatorPage() {
     setDeDependentVar('y');
     setDeIndependentVar('x');
     setInitialConditions([]);
+    setCurrentIcInput('');
     setDeApiResponse(null);
     setDeError(null);
   };
 
   const addInitialCondition = () => {
-    setInitialConditions([...initialConditions, { condition: '', value: '' }]);
-  };
-
-  const updateInitialCondition = (index: number, field: 'condition' | 'value', val: string) => {
-    const newConditions = [...initialConditions];
-    newConditions[index][field] = val;
-    setInitialConditions(newConditions);
+    if (currentIcInput.trim()) {
+      setInitialConditions([...initialConditions, currentIcInput.trim()]);
+      setCurrentIcInput(''); // Clear the input field after adding
+    }
   };
 
   const removeInitialCondition = (index: number) => {
@@ -220,7 +221,7 @@ export default function DifferentiationCalculatorPage() {
     if (!query || !query.equationString) return "DE Query Error";
     let latex = query.equationString;
     if (query.initialConditions && query.initialConditions.length > 0) {
-        latex += ",\\quad " + query.initialConditions.map(ic => `${ic.condition} = ${ic.value}`).join(',\\ ');
+        latex += ",\\quad " + query.initialConditions.map(ic => ic.replace(/=/g, " = ")).join(',\\ ');
     }
     return latex;
   };
@@ -510,34 +511,28 @@ export default function DifferentiationCalculatorPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="block text-md font-semibold text-foreground">Initial Conditions (Optional):</Label>
+                    <Label className="block text-md font-semibold text-foreground">Initial Conditions (Optional - one per line):</Label>
                     {initialConditions.map((ic, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded-md bg-muted/50">
-                            <Input
-                                type="text"
-                                placeholder="e.g., y(0)"
-                                value={ic.condition}
-                                onChange={(e) => updateInitialCondition(index, 'condition', e.target.value)}
-                                className="flex-grow"
-                                aria-label={`Initial condition ${index + 1} expression`}
-                            />
-                            <span className="text-lg">=</span>
-                            <Input
-                                type="text"
-                                placeholder="e.g., 1"
-                                value={ic.value}
-                                onChange={(e) => updateInitialCondition(index, 'value', e.target.value)}
-                                className="flex-grow"
-                                aria-label={`Initial condition ${index + 1} value`}
-                            />
+                        <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50 text-sm">
+                           <span className="font-mono flex-grow p-1 bg-background rounded" dangerouslySetInnerHTML={{__html: renderMath(ic) }} />
                             <Button variant="ghost" size="icon" onClick={() => removeInitialCondition(index)} aria-label="Remove initial condition">
-                                <Trash2 className="h-5 w-5 text-destructive" />
+                                <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </div>
                     ))}
-                    <Button variant="outline" onClick={addInitialCondition} className="w-full sm:w-auto">
-                        <PlusCircle className="mr-2 h-5 w-5" /> Add Initial Condition
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="text"
+                            placeholder="e.g., y(0)=1"
+                            value={currentIcInput}
+                            onChange={(e) => setCurrentIcInput(e.target.value)}
+                            className="flex-grow"
+                            aria-label="New initial condition"
+                        />
+                        <Button variant="outline" onClick={addInitialCondition} className="shrink-0">
+                            <PlusCircle className="mr-2 h-5 w-5" /> Add
+                        </Button>
+                    </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -581,98 +576,31 @@ export default function DifferentiationCalculatorPage() {
                         <CardHeader>
                             <CardTitle className="text-2xl flex items-center text-primary">
                                 <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
-                                DE Solution
+                                DE Solution from AI
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-6 p-6 text-lg">
-                             <div>
-                                <span className="font-semibold text-muted-foreground">Original Query: </span>
-                                <span 
-                                    className="font-mono p-1 rounded-sm bg-muted text-sm block overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderMath(getDEOriginalQueryAsLatex(deApiResponse.originalQuery), true) }}
+                        <CardContent className="space-y-4 p-6 text-lg">
+                            <div>
+                                <h3 className="font-semibold text-muted-foreground mb-1">Original Query: </h3>
+                                <div 
+                                    className="font-mono p-2 rounded-md bg-muted text-sm overflow-x-auto"
+                                    dangerouslySetInnerHTML={{ __html: renderMath(getDEOriginalQueryAsLatex({
+                                        equationString: deString,
+                                        dependentVariable: deDependentVar,
+                                        independentVariable: deIndependentVar,
+                                        initialConditions: initialConditions
+                                    } as DESolutionInput), true) }}
                                 />
                             </div>
-                            <div>
-                                <span className="font-semibold text-muted-foreground">Classification: </span>
-                                <span className="p-1 rounded-sm bg-secondary">{deApiResponse.classification}</span>
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-xl font-semibold text-muted-foreground mb-2">AI Response:</h3>
+                                <div 
+                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse) }} 
+                                />
                             </div>
-                             <div>
-                                <span className="font-semibold text-muted-foreground">Solution Method: </span>
-                                <span className="p-1 rounded-sm bg-secondary">{deApiResponse.solutionMethod}</span>
-                            </div>
-
-                            {deApiResponse.generalSolution && (
-                                <div className="border-t pt-4 mt-4">
-                                    <h3 className="text-xl font-semibold text-muted-foreground mb-2">General Solution:</h3>
-                                    <div 
-                                        className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                                        dangerouslySetInnerHTML={{ __html: renderMath(deApiResponse.generalSolution, true) }} 
-                                    />
-                                </div>
-                            )}
-                            {deApiResponse.particularSolution && (
-                                <div className="border-t pt-4 mt-4">
-                                    <h3 className="text-xl font-semibold text-muted-foreground mb-2">Particular Solution:</h3>
-                                    <div 
-                                        className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                                        dangerouslySetInnerHTML={{ __html: renderMath(deApiResponse.particularSolution, true) }} 
-                                    />
-                                </div>
-                            )}
-                            
-                            {deApiResponse.steps && deApiResponse.steps.trim() !== "" && (
-                                <Accordion type="single" collapsible className="w-full mt-4">
-                                    <AccordionItem value="de-steps">
-                                    <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                        <Info className="mr-2 h-5 w-5" /> Show Steps
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div 
-                                        className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                                        dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse.steps) }}
-                                        />
-                                        <p className="mt-2 text-xs text-muted-foreground italic">
-                                        Steps are provided by the AI. Math in steps is rendered by KaTeX.
-                                        </p>
-                                    </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            )}
-
-                            {deApiResponse.plotHint && (
-                                <Accordion type="single" collapsible className="w-full mt-4">
-                                    <AccordionItem value="de-plot-info">
-                                    <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                        <Info className="mr-2 h-5 w-5" /> Plot Information
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <Card className="shadow-none">
-                                            <CardHeader>
-                                                <CardTitle className="text-lg">Visualizing the Solution</CardTitle>
-                                                <CardDescription>{deApiResponse.plotHint}</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                                                    <Image 
-                                                        src="https://placehold.co/400x200.png" 
-                                                        alt="DE solution plot placeholder" 
-                                                        data-ai-hint="calculus graph solution"
-                                                        width={400} 
-                                                        height={200}
-                                                        className="opacity-75 mb-2 rounded"
-                                                    />
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Interactive plot generation coming soon.
-                                                    </p>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            )}
                              <p className="mt-4 text-xs text-muted-foreground italic">
-                                Mathematical expressions are rendered using KaTeX. Solution quality depends on AI interpretation.
+                                Mathematical expressions in the AI response are rendered using KaTeX if formatted with delimiters like \\(...\\). Solution quality depends on AI interpretation.
                             </p>
                         </CardContent>
                     </Card>
