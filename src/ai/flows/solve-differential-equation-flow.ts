@@ -30,7 +30,7 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
     schema: z.string().nullable(), // Allow null output from the model
   },
   model: 'googleai/gemini-1.5-pro-latest', // Specify the new model here
-  system: 'You are a helpful math assistant that solves differential equations. Provide the solution and steps clearly.',
+  // system: 'You are a helpful math assistant that solves differential equations. Provide the solution and steps clearly.', // Removed this line
   prompt: `
 Differential Equation: {{{equationString}}}
 Dependent Variable: {{{dependentVariable}}}
