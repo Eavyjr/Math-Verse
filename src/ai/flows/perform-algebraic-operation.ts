@@ -79,6 +79,12 @@ Operation: {{{operation}}}
 Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'. Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
   config: {
     temperature: 0.2,
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
   }
 });
 
