@@ -25,7 +25,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
+// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, applyNodeChanges, applyEdgeChanges, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
+
 
 // Data structures for graph
 interface Node {
@@ -42,8 +43,8 @@ interface Edge {
 
 // const initialRfNodes: RFNode[] = [];
 // const initialRfEdges: RFEdge[] = [];
-const initialRfNodes: any[] = []; // Using any for now
-const initialRfEdges: any[] = []; // Using any for now
+const initialRfNodes: any[] = []; // Temporary type
+const initialRfEdges: any[] = []; // Temporary type
 
 
 export default function GraphTheoryPage() {
@@ -63,10 +64,10 @@ export default function GraphTheoryPage() {
 
   // const [rfNodes, setRfNodes, onNodesChange] = useNodesState(initialRfNodes);
   // const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialRfEdges);
-  const [rfNodes, setRfNodes] = useState(initialRfNodes); // Simplified state
-  const [rfEdges, setRfEdges] = useState(initialRfEdges); // Simplified state
-  const onNodesChange = useCallback((changes: any) => setRfNodes((nds) => (window as any).applyNodeChanges(changes, nds)), [setRfNodes]);
-  const onEdgesChange = useCallback((changes: any) => setRfEdges((eds) => (window as any).applyEdgeChanges(changes, eds)), [setRfEdges]);
+  const [rfNodes, setRfNodes] = useState(initialRfNodes); // Temporary state
+  const [rfEdges, setRfEdges] = useState(initialRfEdges); // Temporary state
+  const onNodesChange = (window as any).onNodesChange; // Temporary stub
+  const onEdgesChange = (window as any).onEdgesChange; // Temporary stub
 
 
   // Effect to derive internal 'nodes' state from 'edges'
@@ -82,37 +83,36 @@ export default function GraphTheoryPage() {
 
   // Effect to transform internal 'nodes' and 'edges' to React Flow format
   useEffect(() => {
-    const newRfNodes = nodes.map((node, index) => ({
-      id: node.id,
-      data: { label: node.label },
-      position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, // Basic layout
-      type: 'default', // or 'input', 'output'
-      style: { 
-        background: 'hsl(var(--primary-foreground))', 
-        color: 'hsl(var(--primary))', 
-        border: '2px solid hsl(var(--primary))',
-        borderRadius: '0.375rem', // rounded-md
-        padding: '0.5rem 1rem', // p-2 px-4
-      },
-    }));
+    // const newRfNodes = nodes.map((node, index) => ({
+    //   id: node.id,
+    //   data: { label: node.label },
+    //   position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, // Basic layout
+    //   type: 'default', 
+    //   style: { 
+    //     background: 'hsl(var(--primary-foreground))', 
+    //     color: 'hsl(var(--primary))', 
+    //     border: '2px solid hsl(var(--primary))',
+    //     borderRadius: '0.375rem', 
+    //     padding: '0.5rem 1rem', 
+    //   },
+    // }));
 
-    const newRfEdges = edges.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
-      animated: isDirected,
-      // markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
-      markerEnd: isDirected ? { type: 'arrowclosed', color: 'hsl(var(--primary))' } : undefined, // Adjusted for potential type issue
-      style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
-      labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
-      labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
-      labelBgPadding: [4, 2],
-      labelBgBorderRadius: 2,
-    }));
-
-    setRfNodes(newRfNodes);
-    setRfEdges(newRfEdges);
+    // const newRfEdges = edges.map(edge => ({
+    //   id: edge.id,
+    //   source: edge.source,
+    //   target: edge.target,
+    //   label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
+    //   animated: isDirected,
+    //   markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
+    //   style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+    //   labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
+    //   labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
+    //   labelBgPadding: [4, 2] as [number, number],
+    //   labelBgBorderRadius: 2,
+    // }));
+    
+    // setRfNodes(newRfNodes);
+    // setRfEdges(newRfEdges);
   }, [nodes, edges, isDirected, isWeighted, setRfNodes, setRfEdges]);
 
 
@@ -161,7 +161,7 @@ export default function GraphTheoryPage() {
         if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = -weightValue;
         } else { 
-           matrix[sourceIdx][edgeIdx] = weightValue;
+           matrix[sourceIdx][edgeIdx] = weightValue; // Loop on directed graph
         }
       } else { 
         matrix[sourceIdx][edgeIdx] = weightValue;
@@ -292,7 +292,8 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
-        <CardDescription>Live view of your graph. Edges: {rfEdges.length}, Nodes: {rfNodes.length}</CardDescription>
+        {/* <CardDescription>Live view of your graph. Edges: {rfEdges.length}, Nodes: {rfNodes.length}</CardDescription> */}
+        <CardDescription>Graph visualization (using @xyflow/react) is temporarily disabled.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow relative">
         {/* <ReactFlow
@@ -308,9 +309,9 @@ export default function GraphTheoryPage() {
           <MiniMap nodeStrokeWidth={3} zoomable pannable />
           <Background gap={16} color="hsl(var(--border))" />
         </ReactFlow> */}
-        <div className="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed rounded-md bg-background">
-          <p>Graph visualization (using @xyflow/react) is temporarily disabled.</p>
-          <p>Please resolve npm install issues to re-enable.</p>
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          <Projector className="h-12 w-12 mx-auto mb-2 opacity-30" />
+          <p>Graph visualization is disabled. Please resolve npm install issues to re-enable.</p>
         </div>
       </CardContent>
     </Card>
