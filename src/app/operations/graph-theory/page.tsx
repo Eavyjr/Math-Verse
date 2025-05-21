@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -49,7 +49,10 @@ export default function GraphTheoryPage() {
 
   const [newEdgeSource, setNewEdgeSource] = useState('');
   const [newEdgeTarget, setNewEdgeTarget] = useState('');
-  const [newEdgeWeight, setNewEdgeWeight] = useState<string>(''); // Store as string for input, parse to number
+  const [newEdgeWeight, setNewEdgeWeight] = useState<string>('');
+
+  const [adjacencyMatrix, setAdjacencyMatrix] = useState<number[][]>([]);
+  const [incidenceMatrix, setIncidenceMatrix] = useState<number[][]>([]);
 
   // Effect to derive nodes from edges
   useEffect(() => {
@@ -59,8 +62,67 @@ export default function GraphTheoryPage() {
       uniqueNodeIds.add(edge.target);
     });
     const derivedNodes: Node[] = Array.from(uniqueNodeIds).map(id => ({ id, label: id }));
-    setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id))); // Keep nodes sorted for consistent matrix display
+    setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
   }, [edges]);
+
+  // Effect to compute Adjacency Matrix
+  useEffect(() => {
+    if (nodes.length === 0) {
+      setAdjacencyMatrix([]);
+      return;
+    }
+    const nodeIndexMap = new Map(nodes.map((node, i) => [node.id, i]));
+    const size = nodes.length;
+    const matrix = Array(size).fill(null).map(() => Array(size).fill(0));
+
+    edges.forEach(edge => {
+      const sourceIdx = nodeIndexMap.get(edge.source);
+      const targetIdx = nodeIndexMap.get(edge.target);
+      if (sourceIdx === undefined || targetIdx === undefined) return;
+
+      const value = isWeighted ? (edge.weight ?? 1) : 1;
+      matrix[sourceIdx][targetIdx] = value;
+      if (!isDirected && sourceIdx !== targetIdx) { // For undirected, non-loop edges
+        matrix[targetIdx][sourceIdx] = value;
+      }
+    });
+    setAdjacencyMatrix(matrix);
+  }, [nodes, edges, isDirected, isWeighted]);
+
+  // Effect to compute Incidence Matrix
+  useEffect(() => {
+    if (nodes.length === 0 || edges.length === 0) {
+      setIncidenceMatrix([]);
+      return;
+    }
+    const nodeIndexMap = new Map(nodes.map((node, i) => [node.id, i]));
+    const matrix = Array(nodes.length).fill(null).map(() => Array(edges.length).fill(0));
+
+    edges.forEach((edge, edgeIdx) => {
+      const sourceIdx = nodeIndexMap.get(edge.source);
+      const targetIdx = nodeIndexMap.get(edge.target);
+      if (sourceIdx === undefined || targetIdx === undefined) return;
+
+      const weightValue = isWeighted ? (edge.weight ?? 1) : 1;
+
+      if (isDirected) {
+        matrix[sourceIdx][edgeIdx] = weightValue;
+        if (sourceIdx !== targetIdx) { // Avoid double-counting for loops in directed
+          matrix[targetIdx][edgeIdx] = -weightValue;
+        } else { // loop in directed graph, typically +1 at source, or specific notation
+           matrix[sourceIdx][edgeIdx] = weightValue; // Or some other convention for directed loops
+        }
+      } else { // Undirected
+        matrix[sourceIdx][edgeIdx] = weightValue;
+        if (sourceIdx !== targetIdx) { // If not a loop, also mark target
+          matrix[targetIdx][edgeIdx] = weightValue;
+        }
+        // For undirected loop, it's incident once with its weight
+      }
+    });
+    setIncidenceMatrix(matrix);
+  }, [nodes, edges, isDirected, isWeighted]);
+
 
   const handleAddEdge = () => {
     if (!newEdgeSource.trim() || !newEdgeTarget.trim()) {
@@ -83,7 +145,7 @@ export default function GraphTheoryPage() {
     }
 
     const newEdge: Edge = {
-      id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // More unique ID
+      id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       source: newEdgeSource.trim().toUpperCase(),
       target: newEdgeTarget.trim().toUpperCase(),
       ...(isWeighted && { weight: weightValue }),
@@ -192,34 +254,78 @@ export default function GraphTheoryPage() {
     </Card>
   );
 
-  const renderAdjacencyMatrixPlaceholder = () => (
+  const renderAdjacencyMatrix = () => (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Adjacency Matrix</CardTitle>
-        <CardDescription>Matrix representation of node connections.</CardDescription>
+        <CardDescription>Matrix representation of node connections. Rows/Cols: {nodes.map(n => n.label).join(', ')}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow flex items-center justify-center border-2 border-dashed border-border rounded-md bg-muted/30">
-        <div className="text-center text-muted-foreground">
-          <TableIcon className="h-16 w-16 mx-auto mb-2 opacity-50" />
-          <p>Adjacency matrix will be displayed here.</p>
-           <p className="text-xs">Nodes: {nodes.map(n => n.label).join(', ') || 'N/A'}</p>
-        </div>
+      <CardContent className="flex-grow overflow-auto">
+        {nodes.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <TableIcon className="h-12 w-12 mx-auto mb-2 opacity-30" />
+            <p>No nodes to build matrix.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[40px] sticky left-0 bg-card z-10"></TableHead>
+                {nodes.map(node => <TableHead key={node.id} className="text-center min-w-[40px]">{node.label}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {nodes.map((rowNode, rowIndex) => (
+                <TableRow key={rowNode.id}>
+                  <TableHead className="font-semibold sticky left-0 bg-card z-10 min-w-[40px]">{rowNode.label}</TableHead>
+                  {nodes.map((colNode, colIndex) => (
+                    <TableCell key={colNode.id} className="text-center min-w-[40px]">
+                      {adjacencyMatrix[rowIndex]?.[colIndex] ?? 0}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
 
-  const renderIncidenceMatrixPlaceholder = () => (
+  const renderIncidenceMatrix = () => (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Incidence Matrix</CardTitle>
-        <CardDescription>Matrix relating nodes to edges.</CardDescription>
+        <CardDescription>Rows: Nodes ({nodes.map(n => n.label).join(', ')}), Cols: Edges (e1, e2,...)</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow flex items-center justify-center border-2 border-dashed border-border rounded-md bg-muted/30">
-        <div className="text-center text-muted-foreground">
-          <Sigma className="h-16 w-16 mx-auto mb-2 opacity-50" />
-          <p>Incidence matrix will be displayed here.</p>
-          <p className="text-xs">Nodes: {nodes.map(n => n.label).join(', ') || 'N/A'}, Edges: {edges.length}</p>
-        </div>
+      <CardContent className="flex-grow overflow-auto">
+        {nodes.length === 0 || edges.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+             <Sigma className="h-12 w-12 mx-auto mb-2 opacity-30" />
+            <p>Not enough nodes or edges to build matrix.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[40px] sticky left-0 bg-card z-10"></TableHead>
+                {edges.map((edge, idx) => <TableHead key={edge.id} className="text-center min-w-[60px]">e{idx + 1}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {nodes.map((node, rowIndex) => (
+                <TableRow key={node.id}>
+                  <TableHead className="font-semibold sticky left-0 bg-card z-10 min-w-[40px]">{node.label}</TableHead>
+                  {edges.map((edge, colIndex) => (
+                    <TableCell key={edge.id} className="text-center min-w-[60px]">
+                      {incidenceMatrix[rowIndex]?.[colIndex] ?? 0}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
@@ -259,7 +365,7 @@ export default function GraphTheoryPage() {
               <Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label>
               <Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => {
                 setIsWeighted(val === "weighted");
-                if (val === "unweighted") setNewEdgeWeight(''); // Clear weight if switching to unweighted
+                if (val === "unweighted") setNewEdgeWeight('');
               }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select edge weight type" />
@@ -289,18 +395,18 @@ export default function GraphTheoryPage() {
             </TabsList>
 
             <TabsContent value="grid-editor" className="mt-4 min-h-[600px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"> {/* Adjust min-height */}
-                <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0"> {/* Ensure children can grow */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]">
+                <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">
                   {renderEdgeInputTable()}
                 </div>
                 <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
                   {renderGraphVisualizationPlaceholder()}
                 </div>
                 <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
-                  {renderAdjacencyMatrixPlaceholder()}
+                  {renderAdjacencyMatrix()}
                 </div>
                 <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
-                  {renderIncidenceMatrixPlaceholder()}
+                  {renderIncidenceMatrix()}
                 </div>
               </div>
             </TabsContent>
@@ -333,9 +439,9 @@ export default function GraphTheoryPage() {
                         <Image 
                             src="https://placehold.co/300x150.png" 
                             alt="Algorithm placeholder" 
+                            data-ai-hint="algorithm flowchart"
                             width={300} 
                             height={150}
-                            data-ai-hint="algorithm flowchart"
                             className="opacity-50 mb-2 rounded"
                         />
                         <p className="text-sm text-muted-foreground">Algorithm controls and animation.</p>
@@ -356,9 +462,9 @@ export default function GraphTheoryPage() {
                         <Image 
                             src="https://placehold.co/300x150.png" 
                             alt="Properties placeholder" 
+                            data-ai-hint="data chart"
                             width={300} 
                             height={150}
-                            data-ai-hint="data chart"
                             className="opacity-50 mb-2 rounded"
                         />
                         <p className="text-sm text-muted-foreground">Display of graph metrics.</p>
