@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, applyNodeChanges, applyEdgeChanges, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
+// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
 
 
 // Data structures for graph
@@ -51,8 +51,8 @@ interface GraphProperties {
 
 // const initialRfNodes: RFNode[] = [];
 // const initialRfEdges: RFEdge[] = [];
-const initialRfNodes: any[] = []; // Temporary type
-const initialRfEdges: any[] = []; // Temporary type
+const initialRfNodes: any[] = []; // Temporary any type
+const initialRfEdges: any[] = []; // Temporary any type
 
 
 export default function GraphTheoryPage() {
@@ -95,12 +95,12 @@ export default function GraphTheoryPage() {
     setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
   }, [edges]);
 
-  // Effect to transform internal 'nodes' and 'edges' to React Flow format (currently disabled)
+  // Effect to transform internal 'nodes' and 'edges' to React Flow format
   useEffect(() => {
     // const newRfNodes = nodes.map((node, index) => ({
     //   id: node.id,
     //   data: { label: node.label },
-    //   position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, // Basic layout
+    //   position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, 
     //   type: 'default', 
     //   style: { 
     //     background: 'hsl(var(--primary-foreground))', 
@@ -125,8 +125,8 @@ export default function GraphTheoryPage() {
     //   labelBgBorderRadius: 2,
     // }));
     
-    // setRfNodes(newRfNodes);
-    // setRfEdges(newRfEdges);
+    // setRfNodes(newRfNodes as any); // Cast to any if useNodesState is not used
+    // setRfEdges(newRfEdges as any); // Cast to any if useEdgesState is not used
   }, [nodes, edges, isDirected, isWeighted, setRfNodes, setRfEdges]);
 
 
@@ -175,17 +175,13 @@ export default function GraphTheoryPage() {
         if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = -weightValue; // To target
         } else { 
-           // For a directed loop, some conventions use +weight, some +2*weight, some split.
-           // Sticking to +weight to indicate an outgoing loop edge.
            matrix[sourceIdx][edgeIdx] = weightValue;
         }
       } else { 
         matrix[sourceIdx][edgeIdx] = weightValue;
         if (sourceIdx !== targetIdx) { 
-          matrix[targetIdx][edgeIdx] = weightValue; // Undirected, incident for both
+          matrix[targetIdx][edgeIdx] = weightValue; 
         }
-        // For an undirected loop, it contributes to the degree of the node.
-        // If sourceIdx === targetIdx, matrix[sourceIdx][edgeIdx] is already weightValue.
       }
     });
     setIncidenceMatrix(matrix);
@@ -214,11 +210,11 @@ export default function GraphTheoryPage() {
       }
 
       if (isDirected) {
-        newProperties.degrees[edge.source].outDegree!++;
-        newProperties.degrees[edge.target].inDegree!++;
+        if(newProperties.degrees[edge.source]) newProperties.degrees[edge.source].outDegree!++;
+        if(newProperties.degrees[edge.target]) newProperties.degrees[edge.target].inDegree!++;
       } else {
-        newProperties.degrees[edge.source].degree!++;
-        if (edge.source !== edge.target) { // Avoid double counting loops for degree
+        if(newProperties.degrees[edge.source]) newProperties.degrees[edge.source].degree!++;
+        if (edge.source !== edge.target && newProperties.degrees[edge.target]) { 
           newProperties.degrees[edge.target].degree!++;
         }
       }
@@ -345,10 +341,18 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
-        {/* <CardDescription>Live view of your graph. Edges: {rfEdges.length}, Nodes: {rfNodes.length}</CardDescription> */}
-        <CardDescription>Graph visualization (using @xyflow/react) is temporarily disabled.</CardDescription>
+        <CardDescription>
+            Graph visualization (using @xyflow/react) is temporarily disabled.
+            <br />
+            Please resolve npm install issues to re-enable.
+            {/* Edges: {rfEdges.length}, Nodes: {rfNodes.length} */}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow relative">
+      <CardContent className="flex-grow relative flex items-center justify-center bg-muted/30 rounded-md">
+        <div className="text-center text-muted-foreground">
+            <Projector className="h-16 w-16 mx-auto mb-2 opacity-30" />
+            <p>Visualization Disabled</p>
+        </div>
         {/* 
         <ReactFlow
           nodes={rfNodes}
@@ -364,10 +368,6 @@ export default function GraphTheoryPage() {
           <Background gap={16} color="hsl(var(--border))" />
         </ReactFlow> 
         */}
-        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-          <Projector className="h-12 w-12 mx-auto mb-2 opacity-30" />
-          <p className="text-center">Graph visualization is disabled.<br />Please resolve npm install issues to re-enable.</p>
-        </div>
       </CardContent>
     </Card>
   );
@@ -661,5 +661,3 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
-
-    
