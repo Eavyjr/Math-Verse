@@ -15,133 +15,163 @@ import {
   Download,
   Settings2,
   HelpCircle,
+  PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from "@/hooks/use-toast";
 
-// Placeholder types for graph data (will be expanded)
+// Data structures for graph
+interface Node {
+  id: string;
+  label: string; // For display, can be same as id initially
+}
+
 interface Edge {
   id: string;
-  source: string;
-  target: string;
+  source: string; // Node ID
+  target: string; // Node ID
   weight?: number;
 }
 
-interface Node {
-  id: string;
-  label: string;
-}
-
-const initialEdges: Edge[] = [
-  { id: 'e1', source: 'A', target: 'B', weight: 1 },
-  { id: 'e2', source: 'B', target: 'C', weight: 2 },
-];
-
 export default function GraphTheoryPage() {
+  const { toast } = useToast();
   const [isDirected, setIsDirected] = useState(false);
   const [isWeighted, setIsWeighted] = useState(false);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [nodes, setNodes] = useState<Node[]>([]); // Will be derived or manually added
+  
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes] = useState<Node[]>([]);
 
   const [newEdgeSource, setNewEdgeSource] = useState('');
   const [newEdgeTarget, setNewEdgeTarget] = useState('');
-  const [newEdgeWeight, setNewEdgeWeight] = useState<number | undefined>(undefined);
+  const [newEdgeWeight, setNewEdgeWeight] = useState<string>(''); // Store as string for input, parse to number
 
+  // Effect to derive nodes from edges
   useEffect(() => {
-    // Derive nodes from edges for simplicity initially
-    const derivedNodes = new Set<string>();
+    const uniqueNodeIds = new Set<string>();
     edges.forEach(edge => {
-      derivedNodes.add(edge.source);
-      derivedNodes.add(edge.target);
+      uniqueNodeIds.add(edge.source);
+      uniqueNodeIds.add(edge.target);
     });
-    setNodes(Array.from(derivedNodes).map(id => ({ id, label: id })));
+    const derivedNodes: Node[] = Array.from(uniqueNodeIds).map(id => ({ id, label: id }));
+    setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id))); // Keep nodes sorted for consistent matrix display
   }, [edges]);
 
   const handleAddEdge = () => {
-    if (!newEdgeSource || !newEdgeTarget) {
-      // Add toast notification here later
-      console.error("Source and Target are required for an edge.");
+    if (!newEdgeSource.trim() || !newEdgeTarget.trim()) {
+      toast({
+        title: "Error Adding Edge",
+        description: "Source and Target node IDs cannot be empty.",
+        variant: "destructive",
+      });
       return;
     }
+
+    const weightValue = isWeighted ? parseFloat(newEdgeWeight) : undefined;
+    if (isWeighted && (isNaN(weightValue!) || newEdgeWeight.trim() === '')) {
+       toast({
+        title: "Error Adding Edge",
+        description: "Please enter a valid weight for weighted graphs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newEdge: Edge = {
-      id: `e${Date.now()}`, // Simple ID generation
-      source: newEdgeSource,
-      target: newEdgeTarget,
-      ...(isWeighted && newEdgeWeight !== undefined && { weight: newEdgeWeight }),
+      id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // More unique ID
+      source: newEdgeSource.trim().toUpperCase(),
+      target: newEdgeTarget.trim().toUpperCase(),
+      ...(isWeighted && { weight: weightValue }),
     };
-    setEdges([...edges, newEdge]);
+    setEdges(prevEdges => [...prevEdges, newEdge]);
     setNewEdgeSource('');
     setNewEdgeTarget('');
-    setNewEdgeWeight(undefined);
+    setNewEdgeWeight('');
+    toast({
+      title: "Edge Added",
+      description: `Edge from ${newEdge.source} to ${newEdge.target} ${isWeighted ? `(Weight: ${newEdge.weight})` : ''} added.`,
+    });
   };
 
   const handleDeleteEdge = (edgeId: string) => {
-    setEdges(edges.filter(edge => edge.id !== edgeId));
+    setEdges(prevEdges => prevEdges.filter(edge => edge.id !== edgeId));
+    toast({
+      title: "Edge Deleted",
+      description: "The selected edge has been removed.",
+      variant: "destructive"
+    });
   };
 
   const renderEdgeInputTable = () => (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Edge List Editor</CardTitle>
-        <CardDescription>Define graph edges and their properties.</CardDescription>
+        <CardDescription>Define graph edges. Nodes are derived automatically. Use ALL CAPS for Node IDs for consistency.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow overflow-auto">
-        <div className="space-y-2 mb-4">
-            <div className="grid grid-cols-3 gap-2 items-end">
+      <CardContent className="flex-grow overflow-auto space-y-4">
+        <div className="space-y-2">
+            <div className={`grid ${isWeighted ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}>
                 <div>
-                    <Label htmlFor="new-edge-source">Source</Label>
-                    <Input id="new-edge-source" placeholder="Node ID (e.g., A)" value={newEdgeSource} onChange={e => setNewEdgeSource(e.target.value.toUpperCase())} />
+                    <Label htmlFor="new-edge-source">Source Node</Label>
+                    <Input id="new-edge-source" placeholder="e.g., A" value={newEdgeSource} onChange={e => setNewEdgeSource(e.target.value)} className="uppercase"/>
                 </div>
                 <div>
-                    <Label htmlFor="new-edge-target">Target</Label>
-                    <Input id="new-edge-target" placeholder="Node ID (e.g., B)" value={newEdgeTarget} onChange={e => setNewEdgeTarget(e.target.value.toUpperCase())} />
+                    <Label htmlFor="new-edge-target">Target Node</Label>
+                    <Input id="new-edge-target" placeholder="e.g., B" value={newEdgeTarget} onChange={e => setNewEdgeTarget(e.target.value)} className="uppercase"/>
                 </div>
                 {isWeighted && (
                     <div>
                         <Label htmlFor="new-edge-weight">Weight</Label>
-                        <Input id="new-edge-weight" type="number" placeholder="e.g., 5" value={newEdgeWeight ?? ''} onChange={e => setNewEdgeWeight(parseFloat(e.target.value) || undefined)} />
+                        <Input id="new-edge-weight" type="number" placeholder="e.g., 5" value={newEdgeWeight} onChange={e => setNewEdgeWeight(e.target.value)} />
                     </div>
                 )}
             </div>
-            <Button onClick={handleAddEdge} size="sm" className="w-full">Add Edge</Button>
+            <Button onClick={handleAddEdge} size="sm" className="w-full">
+              <PlusCircle className="mr-2 h-4 w-4"/> Add Edge
+            </Button>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Source</TableHead>
-              <TableHead>Target</TableHead>
-              {isWeighted && <TableHead>Weight</TableHead>}
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {edges.map((edge) => (
-              <TableRow key={edge.id}>
-                <TableCell>{edge.source}</TableCell>
-                <TableCell>{edge.target}</TableCell>
-                {isWeighted && <TableCell>{edge.weight ?? 'N/A'}</TableCell>}
-                <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteEdge(edge.id)} aria-label="Delete edge">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </TableCell>
+        <div className="border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[30%]">Source</TableHead>
+                <TableHead className="w-[30%]">Target</TableHead>
+                {isWeighted && <TableHead className="w-[20%]">Weight</TableHead>}
+                <TableHead className="w-[20%] text-right">Action</TableHead>
               </TableRow>
-            ))}
-             {edges.length === 0 && (
-                <TableRow>
-                    <TableCell colSpan={isWeighted ? 4 : 3} className="text-center text-muted-foreground">
-                        No edges defined yet. Add edges using the form above.
-                    </TableCell>
+            </TableHeader>
+            <TableBody>
+              {edges.length === 0 && (
+                  <TableRow>
+                      <TableCell colSpan={isWeighted ? 4 : 3} className="text-center text-muted-foreground h-24">
+                          No edges defined yet. Add edges using the form above.
+                      </TableCell>
+                  </TableRow>
+              )}
+              {edges.map((edge) => (
+                <TableRow key={edge.id}>
+                  <TableCell>{edge.source}</TableCell>
+                  <TableCell>{edge.target}</TableCell>
+                  {isWeighted && <TableCell>{edge.weight ?? 'N/A'}</TableCell>}
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteEdge(edge.id)} aria-label="Delete edge">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+         <div className="mt-4 text-sm">
+          <p><span className="font-semibold">Nodes:</span> {nodes.map(n => n.label).join(', ') || 'None'}</p>
+          <p><span className="font-semibold">Edge Count:</span> {edges.length}</p>
+        </div>
       </CardContent>
     </Card>
   );
@@ -150,7 +180,7 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
-        <CardDescription>Live interactive view of your graph.</CardDescription>
+        <CardDescription>Live interactive view of your graph. Edges: {edges.length}, Nodes: {nodes.length}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex items-center justify-center border-2 border-dashed border-border rounded-md bg-muted/30">
         <div className="text-center text-muted-foreground">
@@ -172,6 +202,7 @@ export default function GraphTheoryPage() {
         <div className="text-center text-muted-foreground">
           <TableIcon className="h-16 w-16 mx-auto mb-2 opacity-50" />
           <p>Adjacency matrix will be displayed here.</p>
+           <p className="text-xs">Nodes: {nodes.map(n => n.label).join(', ') || 'N/A'}</p>
         </div>
       </CardContent>
     </Card>
@@ -187,6 +218,7 @@ export default function GraphTheoryPage() {
         <div className="text-center text-muted-foreground">
           <Sigma className="h-16 w-16 mx-auto mb-2 opacity-50" />
           <p>Incidence matrix will be displayed here.</p>
+          <p className="text-xs">Nodes: {nodes.map(n => n.label).join(', ') || 'N/A'}, Edges: {edges.length}</p>
         </div>
       </CardContent>
     </Card>
@@ -225,7 +257,10 @@ export default function GraphTheoryPage() {
             </div>
             <div>
               <Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label>
-              <Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => setIsWeighted(val === "weighted")}>
+              <Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => {
+                setIsWeighted(val === "weighted");
+                if (val === "unweighted") setNewEdgeWeight(''); // Clear weight if switching to unweighted
+              }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select edge weight type" />
                 </SelectTrigger>
@@ -237,9 +272,9 @@ export default function GraphTheoryPage() {
             </div>
           </div>
 
-          <Tabs defaultValue="table-editor" className="w-full">
+          <Tabs defaultValue="grid-editor" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b">
-              <TabsTrigger value="table-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
+              <TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
                 <TableIcon className="mr-2 h-5 w-5" /> Grid Editor
               </TabsTrigger>
               <TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
@@ -253,9 +288,9 @@ export default function GraphTheoryPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="table-editor" className="mt-4 min-h-[600px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[70vh]">
-                <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
+            <TabsContent value="grid-editor" className="mt-4 min-h-[600px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"> {/* Adjust min-height */}
+                <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0"> {/* Ensure children can grow */}
                   {renderEdgeInputTable()}
                 </div>
                 <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
