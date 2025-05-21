@@ -46,7 +46,7 @@ const workstations = [
     icon: <Share2 className="mr-2 h-5 w-5" />,
     description: "Interactively create, edit, and analyze graphs. Visualize algorithms like DFS, BFS, Dijkstra's, and more.",
     cta: "Explore Graph Theory",
-    href: "/operations/graph-theory"
+    href: "/operations/graph-theory" // Updated href
   },
   {
     value: "statistics",
@@ -54,7 +54,7 @@ const workstations = [
     icon: <Route className="mr-2 h-5 w-5" />,
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
-    href: "/operations/statistics"
+    href: "/operations/statistics" // This will be a future page
   },
 ];
 
@@ -101,3 +101,5 @@ export default function MathWorkstationTabs() {
     </div>
   );
 }
+
+    
