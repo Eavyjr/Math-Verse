@@ -5,17 +5,24 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import katex from 'katex';
+import "katex/dist/katex.min.css";
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { handlePerformMatrixOperationAction } from '@/app/actions';
+import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
+
 
 // Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null) return "";
+  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   try {
     return katex.renderToString(latexString, {
       throwOnError: false,
@@ -27,24 +34,69 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   }
 };
 
+// Helper function to render content with mixed text and KaTeX (for steps)
+const renderStepsContent = (stepsString: string | undefined): string => {
+  if (!stepsString) return "";
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
+  return parts.map((part, index) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+      console.error("KaTeX steps rendering error:", e, "Part:", part);
+      return part;
+    }
+  }).join('');
+};
+
 const initialMatrix = () => [[0, 0], [0, 0]];
+
+// Tries to parse a string like "[[1,2],[3,4]]" or "5" or "Error message"
+const parseAIResult = (resultString: string): number[][] | number | string => {
+    if (!resultString) return resultString;
+    try {
+        // Try to parse as JSON (for matrices like "[[1,2],[3,4]]")
+        const parsed = JSON.parse(resultString);
+        if (Array.isArray(parsed) && parsed.every(row => Array.isArray(row) && row.every(el => typeof el === 'number'))) {
+            return parsed as number[][];
+        }
+    } catch (e) {
+        // Not a valid JSON, or not a matrix format
+    }
+    // Try to parse as a number
+    const num = parseFloat(resultString);
+    if (!isNaN(num) && isFinite(num) && num.toString() === resultString.trim()) {
+        return num;
+    }
+    // Otherwise, return as string (could be an error message or descriptive text)
+    return resultString;
+};
+
 
 export default function MatrixOperationsPage() {
   const { toast } = useToast();
   const [matrixA, setMatrixA] = useState<number[][]>(initialMatrix());
   const [matrixB, setMatrixB] = useState<number[][]>(initialMatrix());
-  const [selectedOperation, setSelectedOperation] = useState<string | null>(null);
-  const [result, setResult] = useState<number[][] | number | string | null>(null);
+  const [scalarValue, setScalarValue] = useState<number>(1);
+  const [selectedOperation, setSelectedOperation] = useState<MatrixOperationInput['operation'] | null>(null);
+  
+  const [apiResponse, setApiResponse] = useState<MatrixOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const operations = [
+  const operations: { label: string; options: { value: MatrixOperationInput['operation']; label: string }[] }[] = [
     {
       label: "Basic Operations",
       options: [
         { value: "add", label: "Addition (A + B)" },
         { value: "subtract", label: "Subtraction (A - B)" },
-        { value: "scalarMultiply", label: "Scalar Multiplication (k * A)" }, // Will need scalar input
+        { value: "scalarMultiply", label: "Scalar Multiplication (k * A)" },
         { value: "multiply", label: "Matrix Multiplication (A * B)" },
         { value: "transposeA", label: "Transpose (A)" },
         { value: "determinantA", label: "Determinant (A)" },
@@ -74,15 +126,15 @@ export default function MatrixOperationsPage() {
     const numValue = parseFloat(value);
     matrixSetter(prevMatrix => {
       const newMatrix = prevMatrix.map(row => [...row]);
-      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue;
+      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue; // Keep as number
       return newMatrix;
     });
     setError(null);
-    setResult(null);
+    setApiResponse(null);
   };
 
   const addRow = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>, matrix: number[][]) => {
-    const numCols = matrix.length > 0 ? matrix[0].length : 1; // Default to 1 column if matrix is empty
+    const numCols = matrix.length > 0 && matrix[0] ? matrix[0].length : 1;
     matrixSetter(prev => [...prev, Array(numCols).fill(0)]);
   };
 
@@ -99,7 +151,7 @@ export default function MatrixOperationsPage() {
   };
 
   const removeCol = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>, matrix: number[][]) => {
-    if (matrix.length > 0 && matrix[0].length > 1) {
+    if (matrix.length > 0 && matrix[0] && matrix[0].length > 1) {
       matrixSetter(prev => prev.map(row => row.slice(0, -1)));
     } else {
        toast({ title: "Cannot remove last column", variant: "destructive", description: "A matrix must have at least one column." });
@@ -116,7 +168,7 @@ export default function MatrixOperationsPage() {
               <Input
                 key={colIndex}
                 type="number"
-                value={cell}
+                value={cell} // Directly use number
                 onChange={(e) => handleMatrixChange(setMatrix, rowIndex, colIndex, e.target.value)}
                 className="w-20 min-w-[5rem] text-center border-2 focus:border-accent focus:ring-accent"
                 aria-label={`${label} row ${rowIndex + 1} col ${colIndex + 1}`}
@@ -127,77 +179,62 @@ export default function MatrixOperationsPage() {
       </div>
       <div className="flex flex-wrap gap-2 mt-4">
         <Button variant="outline" size="sm" onClick={() => addRow(setMatrix, matrix)}><PlusCircle className="mr-1 h-4 w-4" /> Row</Button>
-        <Button variant="destructiveOutline" size="sm" onClick={() => removeRow(setMatrix, matrix)} disabled={matrix.length <=1}><Trash2 className="mr-1 h-4 w-4" /> Row</Button>
+        <Button variant="destructive" size="sm" onClick={() => removeRow(setMatrix, matrix)} disabled={matrix.length <=1}><Trash2 className="mr-1 h-4 w-4" /> Row</Button>
         <Button variant="outline" size="sm" onClick={() => addCol(setMatrix)}><PlusCircle className="mr-1 h-4 w-4" /> Col</Button>
-        <Button variant="destructiveOutline" size="sm" onClick={() => removeCol(setMatrix, matrix)} disabled={matrix.length > 0 && matrix[0].length <=1}><Trash2 className="mr-1 h-4 w-4" /> Col</Button>
+        <Button variant="destructive" size="sm" onClick={() => removeCol(setMatrix, matrix)} disabled={matrix.length > 0 && matrix[0] && matrix[0].length <=1}><Trash2 className="mr-1 h-4 w-4" /> Col</Button>
       </div>
     </Card>
   );
   
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     if (!selectedOperation) {
       setError("Please select an operation.");
       return;
     }
     setIsLoading(true);
     setError(null);
-    setResult(null);
+    setApiResponse(null);
 
-    // TODO: Implement actual matrix calculations using a library or Genkit AI flow
-    setTimeout(() => {
-      try {
-        toast({ title: "Calculation (Placeholder)", description: `Performing ${selectedOperation}...` });
-        if (selectedOperation === "add") {
-          if (matrixA.length !== matrixB.length || (matrixA.length > 0 && matrixA[0].length !== matrixB[0].length)) {
-            throw new Error("Matrices must have the same dimensions for addition.");
-          }
-          const res = matrixA.map((row, rIndex) => 
-            row.map((cell, cIndex) => cell + matrixB[rIndex][cIndex])
-          );
-          setResult(res);
-        } else if (selectedOperation === "determinantA") {
-           // Basic placeholder for 2x2 determinant
-          if (matrixA.length === 2 && matrixA[0].length === 2) {
-            setResult(matrixA[0][0] * matrixA[1][1] - matrixA[0][1] * matrixA[1][0]);
-          } else {
-            throw new Error("Determinant placeholder only supports 2x2 matrices.");
-          }
-        } else if (selectedOperation === "transposeA") {
-            if (matrixA.length === 0) {
-                setResult([[]]);
-                return;
-            }
-            const rows = matrixA.length;
-            const cols = matrixA[0].length;
-            const transposed = Array.from({ length: cols }, () => Array(rows).fill(0));
-            for (let i = 0; i < rows; i++) {
-                for (let j = 0; j < cols; j++) {
-                    transposed[j][i] = matrixA[i][j];
-                }
-            }
-            setResult(transposed);
-        } else {
-          setResult(`Result for ${selectedOperation} will appear here (placeholder).`);
-        }
-      } catch (e: any) {
-        setError(e.message);
-        setResult(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 1000);
+    let requiresMatrixB = ['add', 'subtract', 'multiply'].includes(selectedOperation);
+    let matrixBToSend = requiresMatrixB ? matrixB : undefined;
+    let scalarToSend = selectedOperation === 'scalarMultiply' ? scalarValue : undefined;
+
+    if (selectedOperation === 'scalarMultiply' && (scalarValue === undefined || isNaN(scalarValue))) {
+      setError("Please enter a valid scalar value for scalar multiplication.");
+      setIsLoading(false);
+      return;
+    }
+
+    const actionResult = await handlePerformMatrixOperationAction(
+      matrixA,
+      selectedOperation,
+      matrixBToSend,
+      scalarToSend
+    );
+
+    if (actionResult.error) {
+      setError(actionResult.error);
+    } else if (actionResult.data) {
+      setApiResponse(actionResult.data);
+    } else {
+      setError("Received no data from the server.");
+    }
+    setIsLoading(false);
   };
 
   const handleClear = () => {
     setMatrixA(initialMatrix());
     setMatrixB(initialMatrix());
+    setScalarValue(1);
     setSelectedOperation(null);
-    setResult(null);
+    setApiResponse(null);
     setError(null);
   };
 
-  const formatMatrixForDisplay = (matrix: number[][]): string => {
-    return matrix.map(row => `[ ${row.map(cell => cell.toFixed(2)).join(',\t')} ]`).join('\n');
+  const formatMatrixForKaTeX = (matrix: number[][]): string => {
+    if (!matrix || matrix.length === 0) return "";
+    const rows = matrix.map(row => row.join(' & '));
+    return `\\begin{bmatrix} ${rows.join(' \\\\ ')} \\end{bmatrix}`;
   };
 
   return (
@@ -214,14 +251,30 @@ export default function MatrixOperationsPage() {
             Matrix Operations
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Perform various matrix operations. Adjust rows/columns and see results.
+            Perform various matrix operations. Adjust rows/columns and see results. Powered by AI.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {renderMatrixInput(matrixA, setMatrixA, "Matrix A")}
-            {renderMatrixInput(matrixB, setMatrixB, "Matrix B (for binary operations)")}
+            {renderMatrixInput(matrixB, setMatrixB, "Matrix B (for binary operations like A+B, A*B)")}
           </div>
+
+          {selectedOperation === 'scalarMultiply' && (
+            <div className="space-y-2">
+                <Label htmlFor="scalar-input" className="block text-md font-semibold text-foreground">
+                    Scalar Value (k):
+                </Label>
+                <Input
+                    id="scalar-input"
+                    type="number"
+                    value={scalarValue}
+                    onChange={(e) => setScalarValue(parseFloat(e.target.value))}
+                    placeholder="Enter scalar value"
+                    className="text-lg p-3 border-2 focus:border-accent focus:ring-accent w-full md:w-1/3"
+                />
+            </div>
+          )}
 
           <div className="space-y-2">
             <label htmlFor="operation-select" className="block text-md font-semibold text-foreground">
@@ -229,10 +282,10 @@ export default function MatrixOperationsPage() {
             </label>
             <Select
               value={selectedOperation || ""}
-              onValueChange={(value) => {
+              onValueChange={(value: MatrixOperationInput['operation']) => {
                 setSelectedOperation(value);
                 setError(null);
-                setResult(null);
+                setApiResponse(null);
               }}
             >
               <SelectTrigger id="operation-select" className="text-lg p-3 h-auto">
@@ -260,7 +313,7 @@ export default function MatrixOperationsPage() {
               size="lg"
               className="flex-grow"
             >
-              {isLoading ? <Sigma className="mr-2 h-5 w-5 animate-spin" /> : <Calculator className="mr-2 h-5 w-5" />}
+              {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Calculator className="mr-2 h-5 w-5" />}
               Calculate
             </Button>
             <Button
@@ -276,7 +329,7 @@ export default function MatrixOperationsPage() {
 
           {isLoading && (
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
-              <Sigma className="h-10 w-10 animate-spin text-primary" />
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
                 Calculating...
               </p>
@@ -291,7 +344,7 @@ export default function MatrixOperationsPage() {
             </Alert>
           )}
 
-          {result !== null && !isLoading && !error && (
+          {apiResponse && !isLoading && !error && (
             <Card className="mt-6 border-accent border-t-4 shadow-md">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
@@ -299,18 +352,46 @@ export default function MatrixOperationsPage() {
                   Result
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 text-lg">
-                {typeof result === 'string' ? (
-                  <div dangerouslySetInnerHTML={{ __html: renderMath(result, true) }} />
-                ) : Array.isArray(result) ? (
-                  <pre className="p-3 bg-muted rounded-md overflow-x-auto text-sm">
-                    <code>{formatMatrixForDisplay(result)}</code>
-                  </pre>
-                ) : typeof result === 'number' ? (
-                   <div dangerouslySetInnerHTML={{ __html: renderMath(result.toString(), true) }} />
-                ) : <p className="text-muted-foreground">Result format not recognized.</p>}
+              <CardContent className="p-6 text-lg space-y-4">
+                 <div>
+                  <span className="font-semibold text-muted-foreground">Operation: </span>
+                  <span className="capitalize p-1 rounded-sm">{apiResponse.originalQuery.operation}</span>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-muted-foreground mb-1">Computed Result:</h4>
+                    <div
+                        className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
+                        dangerouslySetInnerHTML={{ __html: renderMath(
+                            (() => {
+                                const parsed = parseAIResult(apiResponse.result);
+                                if (typeof parsed === 'number') return parsed.toString();
+                                if (Array.isArray(parsed)) return formatMatrixForKaTeX(parsed);
+                                return parsed; // string (error or descriptive text)
+                            })()
+                        , true) }} // Display mode for matrices
+                    />
+                </div>
+
+                {apiResponse.steps && apiResponse.steps.trim() !== "" && (
+                  <Accordion type="single" collapsible className="w-full mt-4">
+                    <AccordionItem value="steps">
+                      <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
+                        <Info className="mr-2 h-5 w-5" /> Show Steps
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div 
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground italic">
+                          Steps are provided by the AI. KaTeX renders math expressions.
+                        </p>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
                  <p className="mt-4 text-xs text-muted-foreground italic">
-                  Results are displayed here. KaTeX rendering for matrices may be simplified.
+                  Mathematical expressions are rendered using KaTeX.
                 </p>
               </CardContent>
             </Card>
@@ -349,7 +430,7 @@ export default function MatrixOperationsPage() {
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground">
-                Enter matrix values, select an operation, and view the results. More operations and features (like CSV upload, live validation, and detailed properties) coming soon.
+                This tool uses an AI model to perform matrix operations. Results for complex operations or large matrices may vary in precision.
             </p>
         </CardFooter>
       </Card>
