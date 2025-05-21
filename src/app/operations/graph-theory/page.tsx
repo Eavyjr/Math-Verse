@@ -16,6 +16,7 @@ import {
   Settings2,
   HelpCircle,
   PlusCircle,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -41,6 +42,13 @@ interface Edge {
   weight?: number;
 }
 
+interface GraphProperties {
+  vertexCount: number;
+  edgeCount: number;
+  degrees: Record<string, { degree?: number; inDegree?: number; outDegree?: number }>;
+  loops: Edge[];
+}
+
 // const initialRfNodes: RFNode[] = [];
 // const initialRfEdges: RFEdge[] = [];
 const initialRfNodes: any[] = []; // Temporary type
@@ -61,6 +69,12 @@ export default function GraphTheoryPage() {
 
   const [adjacencyMatrix, setAdjacencyMatrix] = useState<number[][]>([]);
   const [incidenceMatrix, setIncidenceMatrix] = useState<number[][]>([]);
+  const [graphProperties, setGraphProperties] = useState<GraphProperties>({
+    vertexCount: 0,
+    edgeCount: 0,
+    degrees: {},
+    loops: [],
+  });
 
   // const [rfNodes, setRfNodes, onNodesChange] = useNodesState(initialRfNodes);
   // const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialRfEdges);
@@ -81,7 +95,7 @@ export default function GraphTheoryPage() {
     setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
   }, [edges]);
 
-  // Effect to transform internal 'nodes' and 'edges' to React Flow format
+  // Effect to transform internal 'nodes' and 'edges' to React Flow format (currently disabled)
   useEffect(() => {
     // const newRfNodes = nodes.map((node, index) => ({
     //   id: node.id,
@@ -131,7 +145,7 @@ export default function GraphTheoryPage() {
       const targetIdx = nodeIndexMap.get(edge.target);
       if (sourceIdx === undefined || targetIdx === undefined) return;
 
-      const value = isWeighted ? (edge.weight ?? 1) : 1;
+      const value = isWeighted && edge.weight !== undefined ? edge.weight : 1;
       matrix[sourceIdx][targetIdx] = value;
       if (!isDirected && sourceIdx !== targetIdx) {
         matrix[targetIdx][sourceIdx] = value;
@@ -154,24 +168,63 @@ export default function GraphTheoryPage() {
       const targetIdx = nodeIndexMap.get(edge.target);
       if (sourceIdx === undefined || targetIdx === undefined) return;
 
-      const weightValue = isWeighted ? (edge.weight ?? 1) : 1;
+      const weightValue = isWeighted && edge.weight !== undefined ? edge.weight : 1;
 
       if (isDirected) {
-        matrix[sourceIdx][edgeIdx] = weightValue;
+        matrix[sourceIdx][edgeIdx] = weightValue; // From source
         if (sourceIdx !== targetIdx) { 
-          matrix[targetIdx][edgeIdx] = -weightValue;
+          matrix[targetIdx][edgeIdx] = -weightValue; // To target
         } else { 
-           matrix[sourceIdx][edgeIdx] = weightValue; // Loop on directed graph
+           // For a directed loop, some conventions use +weight, some +2*weight, some split.
+           // Sticking to +weight to indicate an outgoing loop edge.
+           matrix[sourceIdx][edgeIdx] = weightValue;
         }
       } else { 
         matrix[sourceIdx][edgeIdx] = weightValue;
         if (sourceIdx !== targetIdx) { 
-          matrix[targetIdx][edgeIdx] = weightValue;
+          matrix[targetIdx][edgeIdx] = weightValue; // Undirected, incident for both
         }
+        // For an undirected loop, it contributes to the degree of the node.
+        // If sourceIdx === targetIdx, matrix[sourceIdx][edgeIdx] is already weightValue.
       }
     });
     setIncidenceMatrix(matrix);
   }, [nodes, edges, isDirected, isWeighted]);
+
+  // Effect to compute Graph Properties
+  useEffect(() => {
+    const newProperties: GraphProperties = {
+      vertexCount: nodes.length,
+      edgeCount: edges.length,
+      degrees: {},
+      loops: [],
+    };
+
+    nodes.forEach(node => {
+      if (isDirected) {
+        newProperties.degrees[node.id] = { inDegree: 0, outDegree: 0 };
+      } else {
+        newProperties.degrees[node.id] = { degree: 0 };
+      }
+    });
+
+    edges.forEach(edge => {
+      if (edge.source === edge.target) {
+        newProperties.loops.push(edge);
+      }
+
+      if (isDirected) {
+        newProperties.degrees[edge.source].outDegree!++;
+        newProperties.degrees[edge.target].inDegree!++;
+      } else {
+        newProperties.degrees[edge.source].degree!++;
+        if (edge.source !== edge.target) { // Avoid double counting loops for degree
+          newProperties.degrees[edge.target].degree!++;
+        }
+      }
+    });
+    setGraphProperties(newProperties);
+  }, [nodes, edges, isDirected]);
 
 
   const handleAddEdge = () => {
@@ -206,7 +259,7 @@ export default function GraphTheoryPage() {
     setNewEdgeWeight('');
     toast({
       title: "Edge Added",
-      description: `Edge from ${newEdge.source} to ${newEdge.target} ${isWeighted ? `(Weight: ${newEdge.weight})` : ''} added.`,
+      description: `Edge from ${newEdge.source} to ${newEdge.target} ${isWeighted && newEdge.weight !== undefined ? `(Weight: ${newEdge.weight})` : ''} added.`,
     });
   };
 
@@ -296,7 +349,8 @@ export default function GraphTheoryPage() {
         <CardDescription>Graph visualization (using @xyflow/react) is temporarily disabled.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow relative">
-        {/* <ReactFlow
+        {/* 
+        <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
@@ -308,10 +362,11 @@ export default function GraphTheoryPage() {
           <Controls />
           <MiniMap nodeStrokeWidth={3} zoomable pannable />
           <Background gap={16} color="hsl(var(--border))" />
-        </ReactFlow> */}
-        <div className="flex items-center justify-center h-full text-muted-foreground">
+        </ReactFlow> 
+        */}
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
           <Projector className="h-12 w-12 mx-auto mb-2 opacity-30" />
-          <p>Graph visualization is disabled. Please resolve npm install issues to re-enable.</p>
+          <p className="text-center">Graph visualization is disabled.<br />Please resolve npm install issues to re-enable.</p>
         </div>
       </CardContent>
     </Card>
@@ -325,7 +380,7 @@ export default function GraphTheoryPage() {
       </CardHeader>
       <CardContent className="flex-grow overflow-auto">
         {nodes.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <TableIcon className="h-12 w-12 mx-auto mb-2 opacity-30" />
             <p>No nodes to build matrix.</p>
           </div>
@@ -363,7 +418,7 @@ export default function GraphTheoryPage() {
       </CardHeader>
       <CardContent className="flex-grow overflow-auto">
         {nodes.length === 0 || edges.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
              <Sigma className="h-12 w-12 mx-auto mb-2 opacity-30" />
             <p>Not enough nodes or edges to build matrix.</p>
           </div>
@@ -392,6 +447,55 @@ export default function GraphTheoryPage() {
       </CardContent>
     </Card>
   );
+
+  const renderGraphProperties = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center">
+          <Activity className="mr-2 h-5 w-5" />
+          Graph Properties
+        </CardTitle>
+        <CardDescription>Calculated properties of the current graph.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p><span className="font-semibold">Graph Type:</span> {isDirected ? 'Directed' : 'Undirected'}, {isWeighted ? 'Weighted' : 'Unweighted'}</p>
+        <p><span className="font-semibold">Number of Vertices (Nodes):</span> {graphProperties.vertexCount}</p>
+        <p><span className="font-semibold">Number of Edges:</span> {graphProperties.edgeCount}</p>
+        
+        <div>
+          <h4 className="font-semibold mb-1">Node Degrees:</h4>
+          {nodes.length > 0 ? (
+            <ul className="list-disc list-inside pl-4 space-y-1 text-xs">
+              {nodes.map(node => (
+                <li key={node.id}>
+                  <span className="font-mono">{node.label}:</span> 
+                  {isDirected ? 
+                    ` In-degree: ${graphProperties.degrees[node.id]?.inDegree ?? 0}, Out-degree: ${graphProperties.degrees[node.id]?.outDegree ?? 0}` :
+                    ` Degree: ${graphProperties.degrees[node.id]?.degree ?? 0}`
+                  }
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-muted-foreground text-xs">No nodes defined.</p>}
+        </div>
+
+        <div>
+          <h4 className="font-semibold mb-1">Loops:</h4>
+          {graphProperties.loops.length > 0 ? (
+            <ul className="list-disc list-inside pl-4 space-y-1 text-xs">
+              {graphProperties.loops.map(loop => (
+                <li key={loop.id}>
+                  <span className="font-mono">{loop.source} &rarr; {loop.target}</span>
+                  {isWeighted && loop.weight !== undefined ? ` (Weight: ${loop.weight})` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-muted-foreground text-xs">No loops detected.</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
 
   return (
     <div className="space-y-8">
@@ -457,7 +561,7 @@ export default function GraphTheoryPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="grid-editor" className="mt-4 min-h-[600px]">
+            <TabsContent value="grid-editor" className="mt-4 min-h-[600px] space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]">
                 <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">
                   {renderEdgeInputTable()}
@@ -472,6 +576,7 @@ export default function GraphTheoryPage() {
                   {renderIncidenceMatrix()}
                 </div>
               </div>
+              {renderGraphProperties()}
             </TabsContent>
 
             <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]">
@@ -556,3 +661,5 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
+
+    
