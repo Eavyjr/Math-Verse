@@ -27,7 +27,7 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   name: 'solveDifferentialEquationPrompt', 
   inputSchema: DESolutionInputSchema,
   output: { 
-    schema: z.string(), // Expects a string output
+    schema: z.string().nullable(), // Allow null output from the model
   },
   system: 'You are a helpful math assistant that solves differential equations. Provide the solution and steps clearly.',
   prompt: `
@@ -45,7 +45,7 @@ Solve the equation and provide the solution. If possible, include steps.
 `,
   config: {
     temperature: 0.2,
-     safetySettings: [ // Added safety settings
+     safetySettings: [ 
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -57,13 +57,13 @@ Solve the equation and provide the solution. If possible, include steps.
 // Exported async wrapper function to call the prompt
 export async function solveDifferentialEquation(input: DESolutionInput): Promise<DESolutionOutput> {
   const response = await solveDifferentialEquationPrompt(input);
-  const resultString = response.output; // Access the output directly as per Genkit 1.x
+  const resultString = response.output; 
 
-  if (resultString === undefined || resultString === null) { 
-    throw new Error('AI model did not return a valid output for the differential equation (received null or undefined).');
+  if (resultString === null || resultString === undefined) { 
+    throw new Error('AI model did not return a valid solution (received null or undefined). This could be due to the complexity or phrasing of the equation, or safety filters. Please try rephrasing, simplifying the equation, or checking if the content might be restricted.');
   }
   if (resultString.trim() === '') {
-    throw new Error('AI model returned an empty or whitespace-only response for the differential equation.');
+    throw new Error('AI model returned an empty or whitespace-only response. Please check your equation or try rephrasing.');
   }
   return resultString;
 }
