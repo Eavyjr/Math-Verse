@@ -2,79 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import React Flow styles */
+/* @import '@xyflow/react/dist/style.css'; */
+
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 60 100% 99%; /* #FFFFFA Off-White */
-    --foreground: 253 96% 10%; /* #100131 Deep Indigo */
-    --card: 60 100% 99%; /* Off-White */
+    --background: 253 96% 97%; /* #F5F5FF - Very Light Indigo (Off-White like) */
+    --foreground: 253 96% 10%; /* #100131 - Deep Indigo */
+    --card: 253 96% 99%; /* #FCFCFF - Lighter than background, more towards white */
     --card-foreground: 253 96% 10%; /* Deep Indigo text on card */
-    --popover: 60 100% 99%;
+    --popover: 253 96% 99%;
     --popover-foreground: 253 96% 10%;
-    --primary: 253 96% 10%; /* #100131 Deep Indigo */
-    --primary-foreground: 60 100% 99%; /* #FFFFFA Off-White */
-    --secondary: 0 0% 95%; /* Light grey */
+    --primary: 253 96% 10%; /* #100131 - Deep Indigo */
+    --primary-foreground:  60 100% 98%; /* #FFFFFA - Off-White (for text on primary) */
+    --secondary: 253 80% 90%; /* #D9D9FF - Lighter Indigo */
     --secondary-foreground: 253 96% 15%; /* Darker Deep Indigo for secondary text */
-    --muted: 0 0% 90%; /* Grey for muted elements */
-    --muted-foreground: 0 0% 40%; /* Lighter grey text for muted */
-    --accent: 253 96% 10%; /* #100131 Deep Indigo (same as primary) */
-    --accent-foreground: 60 100% 99%; /* #FFFFFA Off-White (same as primary-foreground) */
+    --muted: 253 70% 93%; /* #E2E2FF - Even Lighter Indigo */
+    --muted-foreground: 253 60% 40%; /* #4C4C8A - Muted Indigo Text */
+    --accent: 275 80% 55%; /* #7C42D7 - Electric Purple (Using a placeholder, adjust if needed) */
+    --accent-foreground: 60 100% 98%; /* Off-White text on accent */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 85%; /* Border color, light grey */
-    --input: 0 0% 85%; /* Input border, light grey */
-    --ring: 253 96% 10%; /* Ring color - primary (Deep Indigo) */
+    --border: 253 70% 85%; /* #C6C6F2 - Light Indigo Border */
+    --input: 253 70% 88%; /* #D1D1F5 - Slightly Lighter Indigo for Input Border */
+    --ring: 275 80% 55%; /* Electric Purple for Ring */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 60 80% 97%; /* Lighter Off-White variant */
-    --sidebar-foreground: 253 96% 20%; /* Deep Indigo variant */
+    --sidebar-background: 253 96% 95%; /* #EDEDFF - Very Light Indigo variant for sidebar */
+    --sidebar-foreground: 253 96% 20%; /* #200262 - Deep Indigo variant for sidebar text */
     --sidebar-primary: 253 96% 10%; /* Main primary */
-    --sidebar-primary-foreground: 60 100% 99%; /* Main primary-foreground */
-    --sidebar-accent: 60 50% 95%; /* Light accent for sidebar */
+    --sidebar-primary-foreground: 60 100% 98%; /* Main primary-foreground */
+    --sidebar-accent: 253 80% 90%; /* Light accent for sidebar */
     --sidebar-accent-foreground: 253 96% 10%; /* Dark text on light accent */
-    --sidebar-border: 0 0% 90%; /* Sidebar border */
-    --sidebar-ring: 253 96% 10%; /* Main primary for ring */
+    --sidebar-border: 253 70% 85%; /* Sidebar border */
+    --sidebar-ring: 275 80% 55%; /* Main accent for ring */
   }
   .dark {
-    --background: 253 96% 10%; /* #100131 Deep Indigo */
-    --foreground: 60 100% 99%; /* #FFFFFA Off-White */
-    --card: 253 96% 10%; /* Deep Indigo */
-    --card-foreground: 60 100% 99%; /* Off-White text on card */
-    --popover: 253 96% 10%;
-    --popover-foreground: 60 100% 99%;
-    --primary: 253 80% 60%; /* Lighter, accessible Deep Indigo */
-    --primary-foreground: 253 96% 10%; /* Dark Indigo text for contrast */
-    --secondary: 253 90% 15%; /* Darker indigo-ish */
-    --secondary-foreground: 60 100% 95%; /* Lighter Off-White */
-    --muted: 253 80% 20%; /* Muted indigo */
-    --muted-foreground: 60 80% 70%; /* Muted off-white/grey */
-    --accent: 253 80% 60%; /* Lighter, accessible Deep Indigo (same as primary) */
-    --accent-foreground: 253 96% 10%; /* Dark Indigo text (same as primary-foreground) */
-    --destructive: 0 70% 50%;
+    --background: 253 96% 10%; /* #100131 - Deep Indigo */
+    --foreground: 253 96% 97%; /* #F5F5FF - Very Light Indigo (Off-White like) */
+    --card: 253 96% 12%; /* #13013A - Slightly Lighter Deep Indigo */
+    --card-foreground: 253 96% 97%; /* Very Light Indigo text on card */
+    --popover: 253 96% 8%; /* #0D0127 - Darkest Deep Indigo */
+    --popover-foreground: 253 96% 97%;
+    --primary: 253 80% 70%; /* #9B9BFF - Lighter, accessible Deep Indigo */
+    --primary-foreground: 253 96% 10%; /* #100131 - Dark Indigo text for contrast */
+    --secondary: 253 90% 20%; /* #1A034D - Darker indigo-ish */
+    --secondary-foreground: 253 80% 85%; /* #C6C6FF - Lighter Off-White/Indigo */
+    --muted: 253 80% 25%; /* #260473 - Muted indigo */
+    --muted-foreground: 253 70% 70%; /* #9797D4 - Muted off-white/grey/indigo */
+    --accent: 275 90% 65%; /* #A370F0 - Lighter Electric Purple */
+    --accent-foreground: 253 96% 10%; /* Dark Indigo text on accent */
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 253 80% 25%; /* Indigo-ish border */
-    --input: 253 80% 25%; /* Indigo-ish input border */
-    --ring: 253 80% 60%; /* Ring color - primary (Lighter Indigo) */
+    --border: 253 80% 30%; /* #330599 - Indigo-ish border */
+    --input: 253 80% 30%; /* Indigo-ish input border */
+    --ring: 275 90% 65%; /* Ring color - accent (Lighter Purple) */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     --sidebar-background: 253 96% 8%; /* Slightly darker indigo */
-    --sidebar-foreground: 60 100% 97%; /* Very light off-white */
-    --sidebar-primary: 253 80% 60%; /* Main dark primary */
+    --sidebar-foreground: 253 96% 95%; /* Very light off-white */
+    --sidebar-primary: 253 80% 70%; /* Main dark primary */
     --sidebar-primary-foreground: 253 96% 10%; /* Dark text on sidebar primary */
     --sidebar-accent: 253 90% 20%; /* Dark indigo accent for sidebar */
-    --sidebar-accent-foreground: 60 100% 97%; /* Light text on dark accent */
+    --sidebar-accent-foreground: 253 96% 95%; /* Light text on dark accent */
     --sidebar-border: 253 90% 15%; /* Sidebar border for dark mode */
-    --sidebar-ring: 253 80% 60%; /* Main dark primary for ring */
+    --sidebar-ring: 275 90% 65%; /* Main dark accent for ring */
   }
 }
 

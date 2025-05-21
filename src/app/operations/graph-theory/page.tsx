@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -25,19 +25,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
+// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
 
 // Data structures for graph
 interface Node {
   id: string;
-  label: string; // For display, can be same as id initially
+  label: string;
 }
 
 interface Edge {
   id: string;
-  source: string; // Node ID
-  target: string; // Node ID
+  source: string;
+  target: string;
   weight?: number;
 }
+
+// const initialRfNodes: RFNode[] = [];
+// const initialRfEdges: RFEdge[] = [];
+const initialRfNodes: any[] = []; // Using any for now
+const initialRfEdges: any[] = []; // Using any for now
+
 
 export default function GraphTheoryPage() {
   const { toast } = useToast();
@@ -45,7 +52,7 @@ export default function GraphTheoryPage() {
   const [isWeighted, setIsWeighted] = useState(false);
   
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodes, setNodes] = useState<Node[]>([]); // Derived nodes {id, label}
 
   const [newEdgeSource, setNewEdgeSource] = useState('');
   const [newEdgeTarget, setNewEdgeTarget] = useState('');
@@ -54,7 +61,15 @@ export default function GraphTheoryPage() {
   const [adjacencyMatrix, setAdjacencyMatrix] = useState<number[][]>([]);
   const [incidenceMatrix, setIncidenceMatrix] = useState<number[][]>([]);
 
-  // Effect to derive nodes from edges
+  // const [rfNodes, setRfNodes, onNodesChange] = useNodesState(initialRfNodes);
+  // const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialRfEdges);
+  const [rfNodes, setRfNodes] = useState(initialRfNodes); // Simplified state
+  const [rfEdges, setRfEdges] = useState(initialRfEdges); // Simplified state
+  const onNodesChange = useCallback((changes: any) => setRfNodes((nds) => (window as any).applyNodeChanges(changes, nds)), [setRfNodes]);
+  const onEdgesChange = useCallback((changes: any) => setRfEdges((eds) => (window as any).applyEdgeChanges(changes, eds)), [setRfEdges]);
+
+
+  // Effect to derive internal 'nodes' state from 'edges'
   useEffect(() => {
     const uniqueNodeIds = new Set<string>();
     edges.forEach(edge => {
@@ -64,6 +79,42 @@ export default function GraphTheoryPage() {
     const derivedNodes: Node[] = Array.from(uniqueNodeIds).map(id => ({ id, label: id }));
     setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
   }, [edges]);
+
+  // Effect to transform internal 'nodes' and 'edges' to React Flow format
+  useEffect(() => {
+    const newRfNodes = nodes.map((node, index) => ({
+      id: node.id,
+      data: { label: node.label },
+      position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, // Basic layout
+      type: 'default', // or 'input', 'output'
+      style: { 
+        background: 'hsl(var(--primary-foreground))', 
+        color: 'hsl(var(--primary))', 
+        border: '2px solid hsl(var(--primary))',
+        borderRadius: '0.375rem', // rounded-md
+        padding: '0.5rem 1rem', // p-2 px-4
+      },
+    }));
+
+    const newRfEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
+      animated: isDirected,
+      // markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
+      markerEnd: isDirected ? { type: 'arrowclosed', color: 'hsl(var(--primary))' } : undefined, // Adjusted for potential type issue
+      style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+      labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
+      labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
+      labelBgPadding: [4, 2],
+      labelBgBorderRadius: 2,
+    }));
+
+    setRfNodes(newRfNodes);
+    setRfEdges(newRfEdges);
+  }, [nodes, edges, isDirected, isWeighted, setRfNodes, setRfEdges]);
+
 
   // Effect to compute Adjacency Matrix
   useEffect(() => {
@@ -82,7 +133,7 @@ export default function GraphTheoryPage() {
 
       const value = isWeighted ? (edge.weight ?? 1) : 1;
       matrix[sourceIdx][targetIdx] = value;
-      if (!isDirected && sourceIdx !== targetIdx) { // For undirected, non-loop edges
+      if (!isDirected && sourceIdx !== targetIdx) {
         matrix[targetIdx][sourceIdx] = value;
       }
     });
@@ -107,17 +158,16 @@ export default function GraphTheoryPage() {
 
       if (isDirected) {
         matrix[sourceIdx][edgeIdx] = weightValue;
-        if (sourceIdx !== targetIdx) { // Avoid double-counting for loops in directed
+        if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = -weightValue;
-        } else { // loop in directed graph, typically +1 at source, or specific notation
-           matrix[sourceIdx][edgeIdx] = weightValue; // Or some other convention for directed loops
+        } else { 
+           matrix[sourceIdx][edgeIdx] = weightValue;
         }
-      } else { // Undirected
+      } else { 
         matrix[sourceIdx][edgeIdx] = weightValue;
-        if (sourceIdx !== targetIdx) { // If not a loop, also mark target
+        if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = weightValue;
         }
-        // For undirected loop, it's incident once with its weight
       }
     });
     setIncidenceMatrix(matrix);
@@ -173,7 +223,7 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Edge List Editor</CardTitle>
-        <CardDescription>Define graph edges. Nodes are derived automatically. Use ALL CAPS for Node IDs for consistency.</CardDescription>
+        <CardDescription>Define graph edges. Nodes are derived automatically. Use ALL CAPS for Node IDs.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow overflow-auto space-y-4">
         <div className="space-y-2">
@@ -238,17 +288,29 @@ export default function GraphTheoryPage() {
     </Card>
   );
 
-  const renderGraphVisualizationPlaceholder = () => (
+  const renderGraphVisualization = () => (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
-        <CardDescription>Live interactive view of your graph. Edges: {edges.length}, Nodes: {nodes.length}</CardDescription>
+        <CardDescription>Live view of your graph. Edges: {rfEdges.length}, Nodes: {rfNodes.length}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow flex items-center justify-center border-2 border-dashed border-border rounded-md bg-muted/30">
-        <div className="text-center text-muted-foreground">
-          <Network className="h-16 w-16 mx-auto mb-2 opacity-50" />
-          <p>Graph visualization will appear here.</p>
-          <p className="text-xs">(Integrating library like React Flow or Cytoscape.js)</p>
+      <CardContent className="flex-grow relative">
+        {/* <ReactFlow
+          nodes={rfNodes}
+          edges={rfEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+          attributionPosition="bottom-right"
+          className="bg-muted/30 rounded-md"
+        >
+          <Controls />
+          <MiniMap nodeStrokeWidth={3} zoomable pannable />
+          <Background gap={16} color="hsl(var(--border))" />
+        </ReactFlow> */}
+        <div className="flex items-center justify-center h-full text-muted-foreground border-2 border-dashed rounded-md bg-background">
+          <p>Graph visualization (using @xyflow/react) is temporarily disabled.</p>
+          <p>Please resolve npm install issues to re-enable.</p>
         </div>
       </CardContent>
     </Card>
@@ -258,7 +320,7 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Adjacency Matrix</CardTitle>
-        <CardDescription>Matrix representation of node connections. Rows/Cols: {nodes.map(n => n.label).join(', ')}</CardDescription>
+        <CardDescription>Rows/Cols: {nodes.map(n => n.label).join(', ')}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow overflow-auto">
         {nodes.length === 0 ? (
@@ -344,7 +406,7 @@ export default function GraphTheoryPage() {
             Graph Theory Explorer
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Interactively build graphs, visualize algorithms, and explore graph properties.
+            Interactively build graphs, visualize them, and explore their properties through matrices.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -399,8 +461,8 @@ export default function GraphTheoryPage() {
                 <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">
                   {renderEdgeInputTable()}
                 </div>
-                <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
-                  {renderGraphVisualizationPlaceholder()}
+                <div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">
+                  {renderGraphVisualization()}
                 </div>
                 <div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">
                   {renderAdjacencyMatrix()}
@@ -493,5 +555,3 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
-
-    
