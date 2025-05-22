@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info } from 'lucide-react';
+import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, ListNumbers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ interface DescriptiveStats {
   stdDevSample: number | null;
   variancePopulation: number | null;
   stdDevPopulation: number | null;
+  frequencyTable: { value: number; count: number }[] | null;
   skewness: string | null; // Placeholder
   kurtosis: string | null; // Placeholder
 }
@@ -55,25 +56,29 @@ export default function BasicStatisticsPage() {
     return sortedData.length % 2 !== 0 ? sortedData[mid] : (sortedData[mid - 1] + sortedData[mid]) / 2;
   };
 
-  const calculateMode = (data: number[]): string | null => {
-    if (data.length === 0) return null;
+  const getFrequencyMap = (data: number[]): Record<number, number> => {
     const frequency: Record<number, number> = {};
     data.forEach(val => { frequency[val] = (frequency[val] || 0) + 1; });
+    return frequency;
+  };
+
+  const calculateMode = (data: number[], frequencyMap: Record<number, number>): string | null => {
+    if (data.length === 0) return null;
     
     let maxFreq = 0;
-    for (const key in frequency) {
-      if (frequency[key] > maxFreq) {
-        maxFreq = frequency[key];
+    for (const key in frequencyMap) {
+      if (frequencyMap[key] > maxFreq) {
+        maxFreq = frequencyMap[key];
       }
     }
     
-    if (maxFreq === 1 && data.length > 1 && new Set(data).size === data.length) return "No mode"; // All values unique
+    if (maxFreq === 1 && data.length > 1 && new Set(data).size === data.length) return "No mode (all values unique)";
 
-    const modes = Object.keys(frequency)
-      .filter(key => frequency[Number(key)] === maxFreq)
+    const modes = Object.keys(frequencyMap)
+      .filter(key => frequencyMap[Number(key)] === maxFreq)
       .map(Number);
     
-    return modes.length > 0 ? modes.join(', ') : "No mode";
+    return modes.length > 0 ? modes.sort((a,b) => a-b).join(', ') : "No mode";
   };
 
   const calculateRange = (data: number[]): { range: number | null, min: number | null, max: number | null } => {
@@ -84,7 +89,7 @@ export default function BasicStatisticsPage() {
   };
 
   const calculateQuartiles = (data: number[]): { q1: number | null, q3: number | null } => {
-    if (data.length < 1) return { q1: null, q3: null }; // Need at least 1 for percentile calc
+    if (data.length < 1) return { q1: null, q3: null };
     const sortedData = [...data].sort((a, b) => a - b);
     
     const getPercentile = (p: number): number => {
@@ -105,7 +110,7 @@ export default function BasicStatisticsPage() {
   
   const calculateVariance = (data: number[], meanVal: number | null, isSample: boolean): number | null => {
     if (data.length === 0 || meanVal === null) return null;
-    if (isSample && data.length < 2) return null; // Sample variance undefined for n < 2
+    if (isSample && data.length < 2) return null; 
     const squaredDifferences = data.map(val => Math.pow(val - meanVal, 2));
     const sumSquaredDiff = squaredDifferences.reduce((acc, val) => acc + val, 0);
     return isSample ? sumSquaredDiff / (data.length - 1) : sumSquaredDiff / data.length;
@@ -114,6 +119,13 @@ export default function BasicStatisticsPage() {
   const calculateStdDev = (varianceVal: number | null): number | null => {
     if (varianceVal === null || varianceVal < 0) return null;
     return Math.sqrt(varianceVal);
+  };
+
+  const calculateFrequencyTable = (frequencyMap: Record<number, number>): { value: number; count: number }[] | null => {
+    if (Object.keys(frequencyMap).length === 0) return null;
+    return Object.entries(frequencyMap)
+      .map(([value, count]) => ({ value: Number(value), count }))
+      .sort((a, b) => a.value - b.value);
   };
 
   const handleProcessData = () => {
@@ -129,7 +141,7 @@ export default function BasicStatisticsPage() {
     }
 
     const numbers = rawData
-      .split(/[\s,;\n\t]+/) // Added semicolon and tab as delimiters
+      .split(/[\s,;\n\t]+/) 
       .map(val => val.trim())
       .filter(val => val !== '')
       .map(val => parseFloat(val));
@@ -148,10 +160,10 @@ export default function BasicStatisticsPage() {
     
     setParsedData(numbers);
 
-    // Calculate statistics
+    const frequencyMap = getFrequencyMap(numbers);
     const meanVal = calculateMean(numbers);
     const medianVal = calculateMedian(numbers);
-    const modeVal = calculateMode(numbers);
+    const modeVal = calculateMode(numbers, frequencyMap);
     const { range: rangeVal, min: minVal, max: maxVal } = calculateRange(numbers);
     const { q1, q3 } = calculateQuartiles(numbers);
     const iqrVal = (q1 !== null && q3 !== null) ? q3 - q1 : null;
@@ -160,6 +172,7 @@ export default function BasicStatisticsPage() {
     const stdDevSampleVal = calculateStdDev(varianceSampleVal);
     const variancePopulationVal = calculateVariance(numbers, meanVal, false);
     const stdDevPopulationVal = calculateStdDev(variancePopulationVal);
+    const frequencyTableVal = calculateFrequencyTable(frequencyMap);
 
     setStats({
       count: numbers.length,
@@ -176,8 +189,9 @@ export default function BasicStatisticsPage() {
       stdDevSample: stdDevSampleVal,
       variancePopulation: variancePopulationVal,
       stdDevPopulation: stdDevPopulationVal,
-      skewness: "Calculation coming soon", // Placeholder
-      kurtosis: "Calculation coming soon", // Placeholder
+      frequencyTable: frequencyTableVal,
+      skewness: "Calculation coming soon", 
+      kurtosis: "Calculation coming soon", 
     });
 
     toast({
@@ -262,7 +276,7 @@ export default function BasicStatisticsPage() {
               </div>
               {error && (
                 <Alert variant="destructive" className="mt-4">
-                  <AlertTriangle className="h-5 w-5" />
+                  <Info className="h-5 w-5" />
                   <AlertTitle>Input Error</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
@@ -366,6 +380,33 @@ export default function BasicStatisticsPage() {
                         </TableRow>
                       </TableBody>
                     </Table>
+
+                    {stats.frequencyTable && stats.frequencyTable.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold mb-2 flex items-center">
+                          <ListNumbers className="mr-2 h-5 w-5 text-primary" />
+                          Frequency Table
+                        </h3>
+                        <Card className="max-h-60 overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Value</TableHead>
+                                <TableHead className="text-right">Frequency</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {stats.frequencyTable.map((item) => (
+                                <TableRow key={item.value}>
+                                  <TableCell>{item.value}</TableCell>
+                                  <TableCell className="text-right">{item.count}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Card>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -377,16 +418,16 @@ export default function BasicStatisticsPage() {
                      <CardDescription>Visual representations of your data will appear here. (Coming Soon)</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Card className="bg-muted/30">
                             <CardHeader><CardTitle className="text-lg">Histogram</CardTitle></CardHeader>
                             <CardContent className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4">
                                 <Image 
                                     src="https://placehold.co/300x150.png" 
                                     alt="Histogram placeholder" 
-                                    data-ai-hint="histogram chart"
                                     width={300} 
                                     height={150}
+                                    data-ai-hint="histogram chart"
                                     className="opacity-50 mb-2 rounded"
                                 />
                                 <p className="text-sm text-muted-foreground">Histogram display coming soon.</p>
@@ -398,9 +439,9 @@ export default function BasicStatisticsPage() {
                                 <Image 
                                     src="https://placehold.co/300x150.png" 
                                     alt="Box plot placeholder" 
-                                    data-ai-hint="box plot"
                                     width={300} 
                                     height={150}
+                                    data-ai-hint="box plot"
                                     className="opacity-50 mb-2 rounded"
                                 />
                                 <p className="text-sm text-muted-foreground">Box plot display coming soon.</p>
@@ -422,9 +463,9 @@ export default function BasicStatisticsPage() {
                         <Image 
                             src="https://placehold.co/400x200.png" 
                             alt="Regression placeholder" 
-                            data-ai-hint="scatter plot"
                             width={400} 
                             height={200}
+                            data-ai-hint="scatter plot"
                             className="opacity-50 mb-2 rounded"
                         />
                         <p className="text-sm text-muted-foreground">Regression tools coming soon.</p>
@@ -461,3 +502,4 @@ export default function BasicStatisticsPage() {
     </div>
   );
 }
+
