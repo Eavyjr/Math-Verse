@@ -42,6 +42,7 @@ interface RegressionResults {
   slope: number | null;
   intercept: number | null;
   rSquared: number | null;
+  adjustedRSquared: number | null;
   equation: string | null;
   correlationCoefficient: number | null; // Pearson's r
 }
@@ -250,7 +251,7 @@ export default function BasicStatisticsPage() {
 
     const slopeNumerator = n * sumXY - sumX * sumY;
     const slopeDenominator = n * sumX2 - sumX * sumX;
-    if (slopeDenominator === 0) return { slope: null, intercept: null, rSquared: null, equation: "Cannot calculate (denominator for slope is zero)", correlationCoefficient: null };
+    if (slopeDenominator === 0) return { slope: null, intercept: null, rSquared: null, adjustedRSquared: null, equation: "Cannot calculate (denominator for slope is zero)", correlationCoefficient: null };
 
     const slope = slopeNumerator / slopeDenominator;
     const intercept = (sumY - slope * sumX) / n;
@@ -260,18 +261,17 @@ export default function BasicStatisticsPage() {
     let correlationCoefficient: number | null = null;
     if (rDenominator !== 0) {
       correlationCoefficient = rNumerator / rDenominator;
-    } else {
-      // Handle case where denominator is zero (e.g., all X or Y values are the same)
-      // If one variable is constant, correlation is undefined or 0 depending on convention.
-      // If both are constant, it's also problematic.
-      // Let's return null, and the R² will also be null.
     }
     
     const rSquared = correlationCoefficient !== null ? correlationCoefficient * correlationCoefficient : null;
+    let adjustedRSquared: number | null = null;
+    if (rSquared !== null && n > 2) { // p=1 for simple linear regression
+        adjustedRSquared = 1 - ((1 - rSquared) * (n - 1)) / (n - 1 - 1);
+    }
     
     const equation = (slope !== null && intercept !== null) ? `ŷ = ${formatNumber(intercept)} ${slope >= 0 ? '+' : '-'} ${formatNumber(Math.abs(slope))}X` : "N/A";
 
-    return { slope, intercept, rSquared, equation, correlationCoefficient };
+    return { slope, intercept, rSquared, adjustedRSquared, equation, correlationCoefficient };
   };
 
   const parseInputData = (rawData: string): number[] => {
@@ -303,12 +303,12 @@ export default function BasicStatisticsPage() {
       return;
     }
 
-    if (numbersX.length === 0 && !rawDataY.trim()) { // Only X is empty, and Y is also empty or not intended for processing alone
+    if (numbersX.length === 0 && !rawDataY.trim()) { 
         setError("Please enter data for Dataset X.");
         setIsLoading(false);
         return;
     }
-     if (numbersX.length === 0 && rawDataY.trim() && numbersY.length === 0) { // X is empty, Y has input but it's invalid
+     if (numbersX.length === 0 && rawDataY.trim() && numbersY.length === 0) { 
         setError("Please enter valid data for Dataset Y, or provide data for Dataset X.");
         setIsLoading(false);
         return;
@@ -333,17 +333,13 @@ export default function BasicStatisticsPage() {
         const currentStatsY = calculateDescriptiveStats(numbersY);
         setStatsY(currentStatsY);
         processedY = true;
-    } else if (rawDataY.trim() && numbersY.length === 0) {
-        // Y input was provided but parsed to empty (e.g. only whitespace)
-        // This case is fine if only X is being analyzed.
     }
 
 
-    if (processedX && rawDataY.trim() && processedY) { // Both X and Y have valid data
+    if (processedX && rawDataY.trim() && processedY) { 
         if (numbersX.length !== numbersY.length) {
             setError("For regression analysis, Data Set X and Data Set Y must have the same number of data points. Descriptive stats for each dataset are shown below.");
-            // Regression will not be calculated, but descriptive stats for X and Y (if valid) will be set.
-        } else if (numbersX.length >= 2) { // Need at least 2 points for regression
+        } else if (numbersX.length >= 2) { 
             const regResults = calculateSimpleLinearRegression(numbersX, numbersY);
             setRegressionResults(regResults);
             const scatterData = numbersX.map((xVal, i) => ({ x: xVal, y: numbersY[i] }));
@@ -426,7 +422,7 @@ export default function BasicStatisticsPage() {
 
   const chartConfig = {
     count: { label: "Frequency", color: "hsl(var(--chart-1))" },
-    datasetX: { label: "Dataset X", color: "hsl(var(--chart-2))" }, // Changed from 'dataset' to 'datasetX'
+    datasetX: { label: "Dataset X", color: "hsl(var(--chart-2))" }, 
     datasetY: { label: "Dataset Y", color: "hsl(var(--chart-3))" },
     regressionLine: { label: "Regression Line", color: "hsl(var(--destructive))" },
   } satisfies Record<string, any>;
@@ -682,14 +678,13 @@ export default function BasicStatisticsPage() {
                                 {parsedDataX.length > 0 && regressionResults.slope !== null && regressionResults.intercept !== null &&
                                     <RechartsLine
                                         type="monotone"
-                                        dataKey="y" // This is a bit of a hack for RechartsLine in ScatterChart to draw based on calculated points
+                                        dataKey="y" 
                                         stroke={chartConfig.regressionLine.color}
                                         dot={false}
                                         activeDot={false}
                                         strokeWidth={2}
                                         name="Regression Line"
                                         legendType="none"
-                                        // Calculate points for the line based on min/max of X
                                         data={[
                                             { x: Math.min(...parsedDataX), y: regressionResults.intercept + regressionResults.slope * Math.min(...parsedDataX) },
                                             { x: Math.max(...parsedDataX), y: regressionResults.intercept + regressionResults.slope * Math.max(...parsedDataX) }
@@ -725,6 +720,7 @@ export default function BasicStatisticsPage() {
                           <TableRow><TableCell className="font-medium">Intercept (a)</TableCell><TableCell>{formatNumber(regressionResults.intercept)}</TableCell></TableRow>
                           <TableRow><TableCell className="font-medium">Slope (b)</TableCell><TableCell>{formatNumber(regressionResults.slope, 4)}</TableCell></TableRow>
                           <TableRow><TableCell className="font-medium">Coefficient of Determination (R²)</TableCell><TableCell>{formatNumber(regressionResults.rSquared, 4)}</TableCell></TableRow>
+                          <TableRow><TableCell className="font-medium">Adjusted R-squared (Adjusted R²)</TableCell><TableCell>{formatNumber(regressionResults.adjustedRSquared, 4)}</TableCell></TableRow>
                           <TableRow><TableCell className="font-medium">Pearson Correlation Coefficient (r)</TableCell><TableCell>{formatNumber(regressionResults.correlationCoefficient, 4)}</TableCell></TableRow>
                         </TableBody>
                       </Table>
