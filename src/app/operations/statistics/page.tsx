@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, ListNumbers } from 'lucide-react';
+import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, List } from 'lucide-react'; // Changed ListNumbers to List
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -384,7 +384,7 @@ export default function BasicStatisticsPage() {
                     {stats.frequencyTable && stats.frequencyTable.length > 0 && (
                       <div className="mt-6">
                         <h3 className="text-lg font-semibold mb-2 flex items-center">
-                          <ListNumbers className="mr-2 h-5 w-5 text-primary" />
+                          <List className="mr-2 h-5 w-5 text-primary" /> {/* Changed ListNumbers to List */}
                           Frequency Table
                         </h3>
                         <Card className="max-h-60 overflow-y-auto">
@@ -502,4 +502,3 @@ export default function BasicStatisticsPage() {
     </div>
   );
 }
-
