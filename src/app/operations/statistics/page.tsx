@@ -43,12 +43,27 @@ interface HistogramData {
   count: number;
 }
 
-interface BoxPlotData {
+interface BoxPlotChartDataItem {
   name: string; // e.g., "Dataset"
-  box: [number, number]; // [Q1, Q3]
-  whiskers: [number, number]; // [min, max] (or 1.5*IQR beyond Q1/Q3)
-  median: number;
+  min: number | null;
+  q1: number | null;
+  median: number | null;
+  q3: number | null;
+  max: number | null;
+  // These are for Recharts Bar dataKey access, not direct props to <Bar>
+  box: [number, number] | null; // Represents [Q1, Q3] for the main bar
 }
+
+
+// Custom shape component for the whiskers in the box plot
+const WhiskerBarShape = (props: any) => {
+  // Extract only the props that <rect> understands or that you want to use for drawing
+  // Recharts passes x, y, width, height, fill, stroke, etc.
+  // The 'width' prop passed by Recharts here would be for the full bar slot if not for barSize.
+  // We want a fixed width for our whisker line representation.
+  const { x, y, height, fill } = props;
+  return <rect x={x} y={y} width={2} height={height} fill={fill} />;
+};
 
 
 export default function BasicStatisticsPage() {
@@ -59,7 +74,7 @@ export default function BasicStatisticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<DescriptiveStats | null>(null);
   const [histogramData, setHistogramData] = useState<HistogramData[]>([]);
-  const [boxPlotChartData, setBoxPlotChartData] = useState<any[]>([]);
+  const [boxPlotChartData, setBoxPlotChartData] = useState<BoxPlotChartDataItem[]>([]);
 
 
   const calculateMean = (data: number[]): number | null => {
@@ -90,7 +105,7 @@ export default function BasicStatisticsPage() {
       }
     }
     
-    if (maxFreq === 0) return "N/A";
+    if (maxFreq === 0) return "N/A"; // Should not happen if data is not empty
     if (maxFreq === 1 && data.length > 1 && new Set(data).size === data.length) return "No mode (all values unique)";
 
     const modes = Object.keys(frequencyMap)
@@ -108,18 +123,20 @@ export default function BasicStatisticsPage() {
   };
 
   const calculateQuartiles = (data: number[]): { q1: number | null, q3: number | null } => {
-    if (data.length < 1) return { q1: null, q3: null };
+    if (data.length < 1) return { q1: null, q3: null }; // Needs at least 1 for simple percentile, more for robust
     const sortedData = [...data].sort((a, b) => a - b);
     
+    // Using a common method for quartiles (inclusive median for halves)
+    // This is one of many methods; results can vary slightly.
     const getPercentile = (p: number): number | null => {
         if (sortedData.length === 0) return null;
-        const pos = (sortedData.length -1) * p;
+        const pos = (sortedData.length -1) * p; // (n-1)p for 0-indexed
         const base = Math.floor(pos);
         const rest = pos - base;
         if (sortedData[base + 1] !== undefined) {
             return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
         } else {
-            return sortedData[base];
+            return sortedData[base]; // Last element if pos is n-1
         }
     };
     const q1 = getPercentile(0.25);
@@ -154,84 +171,87 @@ export default function BasicStatisticsPage() {
 
   const calculateSkewness = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
     if (data.length < 3 || mean === null || stdDevSample === null || stdDevSample === 0) {
-      return null;
+      return null; // Skewness is typically undefined for n < 3 or if stdDev is 0
     }
     const n = data.length;
     const sumOfCubedStdScores = data.reduce((acc, val) => {
       return acc + Math.pow((val - mean) / stdDevSample, 3);
     }, 0);
-    // Using G1 estimator for sample skewness (adjusts for bias)
-    // return (n / ((n - 1) * (n - 2))) * sumOfCubedStdScores;
-    // Simpler estimator (less biased for larger n, or as a basic measure):
+    // Adjusted Fisher-Pearson standardized moment coefficient (G1)
+    // return (n / ((n - 1) * (n - 2))) * sumOfCubedStdScores; 
+    // Simpler version (biased for small n, but common):
      return sumOfCubedStdScores / n;
   };
 
   const calculateKurtosis = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
     if (data.length < 4 || mean === null || stdDevSample === null || stdDevSample === 0) {
-      return null;
+      return null; // Kurtosis is typically undefined for n < 4 or if stdDev is 0
     }
     const n = data.length;
     const sumOfQuarticStdScores = data.reduce((acc, val) => {
       return acc + Math.pow((val - mean) / stdDevSample, 4);
     }, 0);
-    // Using g2 estimator for sample excess kurtosis
+    // Sample excess kurtosis (g2)
     // const term1 = (n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3));
     // const term2 = sumOfQuarticStdScores;
     // const term3 = (3 * Math.pow(n - 1, 2)) / ((n - 2) * (n - 3));
     // return term1 * term2 - term3;
-    // Simpler estimator for excess kurtosis:
+    // Simpler version of excess kurtosis:
     return (sumOfQuarticStdScores / n) - 3;
   };
 
-  const prepareHistogramData = (data: number[], minVal: number, maxVal: number): HistogramData[] => {
+  const prepareHistogramData = (data: number[], minVal: number | null, maxVal: number | null): HistogramData[] => {
     if (data.length === 0 || minVal === null || maxVal === null) return [];
     const n = data.length;
-    const numBins = Math.max(1, Math.ceil(Math.sqrt(n))); // Ensure at least 1 bin
-    const binWidth = (maxVal - minVal) / numBins || 1; // Avoid division by zero if max=min
+    // Sturges' formula or square-root choice are common. Let's use sqrt for simplicity.
+    const numBins = Math.max(1, Math.ceil(Math.sqrt(n))); 
+    const binWidth = (maxVal - minVal) / numBins || 1; // Avoid division by zero if max=min, default to binWidth=1
 
     const bins: HistogramData[] = [];
     for (let i = 0; i < numBins; i++) {
       const binStart = minVal + i * binWidth;
       const binEnd = minVal + (i + 1) * binWidth;
-      bins.push({ name: `${formatNumber(binStart,1)}-${formatNumber(binEnd,1)}`, count: 0 });
+      // Make sure last bin includes the max value if it falls on the edge
+      bins.push({ name: `${formatNumber(binStart,1)}-${formatNumber(i === numBins -1 ? maxVal : binEnd,1)}`, count: 0 });
     }
-    // Ensure the last bin captures the max value
-    if (bins.length > 0) {
-        const lastBinParts = bins[bins.length - 1].name.split('-');
-        bins[bins.length - 1].name = `${lastBinParts[0]}-${formatNumber(maxVal,1)}`;
+    
+    if (bins.length === 0 && n > 0 && minVal === maxVal) { // Handle case where all data points are the same
+        bins.push({ name: `${formatNumber(minVal,1)}-${formatNumber(maxVal,1)}`, count: n });
     }
 
 
     data.forEach(val => {
+      if (binWidth === 0 && val === minVal && bins.length > 0) { // All values are the same
+           bins[0].count++;
+           return;
+      }
       let binIndex = Math.floor((val - minVal) / binWidth);
-      if (val === maxVal) { // Ensure maxVal goes into the last bin
+      // Ensure the maximum value falls into the last bin
+      if (val === maxVal) {
         binIndex = numBins - 1;
       }
       if (binIndex >= 0 && binIndex < numBins) {
         bins[binIndex].count++;
+      } else if (binIndex === -1 && val === minVal) { // Handle floating point precision for min value
+        bins[0].count++;
       }
     });
     return bins;
   };
   
-  const prepareBoxPlotData = (s: DescriptiveStats | null): any[] => {
+  const prepareBoxPlotData = (s: DescriptiveStats | null): BoxPlotChartDataItem[] => {
     if (!s || s.min === null || s.q1 === null || s.median === null || s.q3 === null || s.max === null) {
       return [];
     }
-    // Recharts needs an array for BarChart. We'll represent one "dataset".
     return [
       {
         name: "Dataset",
-        // value: [s.min, s.q1, s.median, s.q3, s.max] // This is a common way to pass data for box plots
-        // For our bar-based construction:
-        lowerWhisker: [s.min, s.q1],
-        box: [s.q1, s.q3],
-        upperWhisker: [s.q3, s.max],
-        median: s.median,
         min: s.min,
         q1: s.q1,
+        median: s.median,
         q3: s.q3,
         max: s.max,
+        box: [s.q1, s.q3] // Used by the main box Bar
       }
     ];
   };
@@ -287,7 +307,7 @@ export default function BasicStatisticsPage() {
     const skewnessVal = calculateSkewness(numbers, meanVal, stdDevSampleVal);
     const kurtosisVal = calculateKurtosis(numbers, meanVal, stdDevSampleVal);
 
-    const currentStats = {
+    const currentStats: DescriptiveStats = {
       count: numbers.length,
       mean: meanVal,
       median: medianVal,
@@ -438,7 +458,7 @@ export default function BasicStatisticsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[300px]">Measure</TableHead>
+                          <TableHead className="w-[350px]">Measure</TableHead>
                           <TableHead>Value</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -578,7 +598,7 @@ export default function BasicStatisticsPage() {
                       </Alert>
                     )}
 
-                    {boxPlotChartData.length > 0 && stats ? (
+                    {boxPlotChartData.length > 0 && stats && stats.min !== null && stats.q1 !== null && stats.median !== null && stats.q3 !== null && stats.max !== null ? (
                        <Card className="bg-card">
                           <CardHeader>
                             <CardTitle className="text-lg">Box Plot</CardTitle>
@@ -595,14 +615,15 @@ export default function BasicStatisticsPage() {
                                        cursor={{fill: 'transparent'}}
                                        content={({ payload }) => {
                                         if (payload && payload.length) {
-                                            const data = payload[0].payload;
+                                            const dataItem = payload[0].payload as BoxPlotChartDataItem;
+                                            if (!dataItem) return null;
                                             return (
                                                 <div className="bg-popover text-popover-foreground p-2 shadow-md rounded-md border text-xs">
-                                                    <p>Min: {formatNumber(data.min)}</p>
-                                                    <p>Q1: {formatNumber(data.q1)}</p>
-                                                    <p>Median: {formatNumber(data.median)}</p>
-                                                    <p>Q3: {formatNumber(data.q3)}</p>
-                                                    <p>Max: {formatNumber(data.max)}</p>
+                                                    <p>Min: {formatNumber(dataItem.min)}</p>
+                                                    <p>Q1: {formatNumber(dataItem.q1)}</p>
+                                                    <p>Median: {formatNumber(dataItem.median)}</p>
+                                                    <p>Q3: {formatNumber(dataItem.q3)}</p>
+                                                    <p>Max: {formatNumber(dataItem.max)}</p>
                                                 </div>
                                             );
                                         }
@@ -611,17 +632,15 @@ export default function BasicStatisticsPage() {
                                     />
                                     {/* Main box from Q1 to Q3 */}
                                     <Bar dataKey="box" fill="hsl(var(--chart-1))" barSize={30} stackId="a"/>
-                                    {/* Lower whisker: space from min to Q1 (rendered before Q1) */}
-                                    <Bar dataKey={(d) => [d.min, d.q1]} fill="hsl(var(--foreground))" barSize={2} stackId="a" shape={<rect width={2}/>} />
-                                    {/* Upper whisker: space from Q3 to max (rendered after Q3) */}
-                                    <Bar dataKey={(d) => [d.q3, d.max]} fill="hsl(var(--foreground))" barSize={2} stackId="a" shape={<rect width={2}/>} />
+                                    
+                                    {/* Lower whisker: invisible bar for positioning, use ReferenceLine for actual whisker line */}
+                                    <Bar dataKey={(d: BoxPlotChartDataItem) => [d.min, d.q1]} stackId="a" fill="transparent" shape={<WhiskerBarShape fill="hsl(var(--foreground))" />} />
+
+                                    {/* Upper whisker: invisible bar for positioning, use ReferenceLine for actual whisker line */}
+                                    <Bar dataKey={(d: BoxPlotChartDataItem) => [d.q3, d.max]} stackId="a" fill="transparent" shape={<WhiskerBarShape fill="hsl(var(--foreground))" />} />
                                    
-                                    {/* This approach with stacked bars for whiskers is very tricky and might not look standard.
-                                        A "real" box plot in Recharts often involves custom shapes or more complex layering.
-                                        The below is a simplified representation of the box part.
-                                    */}
-                                     {/* Median Line */}
-                                    <ReferenceLine x={stats.median!} stroke="hsl(var(--destructive))" strokeWidth={2} />
+                                    {/* Median Line */}
+                                    {stats.median !== null && <ReferenceLine x={stats.median} stroke="hsl(var(--destructive))" strokeWidth={2} />}
                                 </BarChart>
                                 </ResponsiveContainer>
                             </ChartContainer>
@@ -632,7 +651,7 @@ export default function BasicStatisticsPage() {
                        <Alert>
                         <Info className="h-4 w-4"/>
                         <AlertTitle>Box Plot</AlertTitle>
-                        <AlertDescription>Not enough data to display box plot.</AlertDescription>
+                        <AlertDescription>Not enough data or calculated statistics to display box plot.</AlertDescription>
                       </Alert>
                     )}
                   </CardContent>
@@ -649,10 +668,10 @@ export default function BasicStatisticsPage() {
                      <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4 mt-4 bg-muted/30">
                         <Image 
                             src="https://placehold.co/400x200.png" 
+                            data-ai-hint="scatter plot"
                             alt="Regression placeholder" 
                             width={400} 
                             height={200}
-                            data-ai-hint="scatter plot"
                             className="opacity-50 mb-2 rounded"
                         />
                         <p className="text-sm text-muted-foreground">Regression tools coming soon.</p>
@@ -690,3 +709,4 @@ export default function BasicStatisticsPage() {
   );
 }
 
+    
