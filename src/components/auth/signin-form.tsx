@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Import for redirection
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInFormData } from '@/lib/schemas';
@@ -12,10 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { signInWithEmailAndPassword } from 'firebase/auth';
+// IMPORTANT: Create this file if it doesn't exist.
+// It should initialize Firebase and export the 'auth' object.
+// Example: export const auth = getAuth(initializeApp(firebaseConfig));
+import { auth } from '@/lib/firebase'; // Assuming firebase.ts is in src/lib
 
 export default function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
@@ -27,27 +34,42 @@ export default function SignInForm() {
 
   const onSubmit: SubmitHandler<SignInFormData> = async (data) => {
     setIsLoading(true);
-    // TODO: Implement Firebase Sign In logic
-    console.log('Sign In Data:', data);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-    
-    // Simulate success/failure
-    const simulatedSuccess = Math.random() > 0.3; // 70% chance of success for demo
-    if (simulatedSuccess) {
-        toast({
-            title: "Sign In (Simulated)",
-            description: "Successfully signed in. Check console for data.",
-        });
-        // TODO: Redirect to Dashboard on actual success
-        // router.push('/dashboard');
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Sign In Failed (Simulated)",
-            description: "Invalid credentials.",
-        });
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      console.log('Firebase Sign In Success:', userCredential.user);
+      toast({
+        title: "Sign In Successful!",
+        description: "Welcome back! Redirecting to dashboard...",
+      });
+      router.push('/dashboard'); // Redirect to dashboard on success
+    } catch (error: any) {
+      console.error('Firebase Sign In Error:', error);
+      let errorMessage = "Invalid credentials or user not found. Please try again.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/invalid-email':
+            errorMessage = 'The email address is not valid.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'This user account has been disabled.';
+            break;
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential': // Catches common invalid login attempts
+            errorMessage = 'Invalid email or password.';
+            break;
+          default:
+            errorMessage = 'An unexpected error occurred. Please try again.';
+        }
+      }
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
