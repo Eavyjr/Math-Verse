@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, List } from 'lucide-react'; // Changed ListNumbers to List
+import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ interface DescriptiveStats {
   count: number | null;
   mean: number | null;
   median: number | null;
-  mode: string | null; // Can be multiple values or 'No mode'
+  mode: string | null;
   range: number | null;
   min: number | null;
   max: number | null;
@@ -32,8 +32,8 @@ interface DescriptiveStats {
   variancePopulation: number | null;
   stdDevPopulation: number | null;
   frequencyTable: { value: number; count: number }[] | null;
-  skewness: string | null; // Placeholder
-  kurtosis: string | null; // Placeholder
+  skewness: number | null; 
+  kurtosis: number | null; 
 }
 
 export default function BasicStatisticsPage() {
@@ -72,6 +72,7 @@ export default function BasicStatisticsPage() {
       }
     }
     
+    if (maxFreq === 0) return "N/A"; // Should not happen if data is not empty
     if (maxFreq === 1 && data.length > 1 && new Set(data).size === data.length) return "No mode (all values unique)";
 
     const modes = Object.keys(frequencyMap)
@@ -89,21 +90,22 @@ export default function BasicStatisticsPage() {
   };
 
   const calculateQuartiles = (data: number[]): { q1: number | null, q3: number | null } => {
-    if (data.length < 1) return { q1: null, q3: null };
+    if (data.length < 1) return { q1: null, q3: null }; // Needs at least 1 for simple cases, more for reliable percentile
     const sortedData = [...data].sort((a, b) => a - b);
     
-    const getPercentile = (p: number): number => {
+    const getPercentile = (p: number): number | null => {
+        if (sortedData.length === 0) return null;
         const pos = (sortedData.length -1) * p;
         const base = Math.floor(pos);
         const rest = pos - base;
         if (sortedData[base + 1] !== undefined) {
             return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
         } else {
-            return sortedData[base];
+            return sortedData[base]; // Only one element or at the end
         }
     };
-    const q1 = data.length > 0 ? getPercentile(0.25) : null;
-    const q3 = data.length > 0 ? getPercentile(0.75) : null;
+    const q1 = getPercentile(0.25);
+    const q3 = getPercentile(0.75);
 
     return { q1, q3 };
   };
@@ -111,9 +113,16 @@ export default function BasicStatisticsPage() {
   const calculateVariance = (data: number[], meanVal: number | null, isSample: boolean): number | null => {
     if (data.length === 0 || meanVal === null) return null;
     if (isSample && data.length < 2) return null; 
+    if (!isSample && data.length < 1) return null;
+
     const squaredDifferences = data.map(val => Math.pow(val - meanVal, 2));
     const sumSquaredDiff = squaredDifferences.reduce((acc, val) => acc + val, 0);
-    return isSample ? sumSquaredDiff / (data.length - 1) : sumSquaredDiff / data.length;
+    
+    if (isSample) {
+      return sumSquaredDiff / (data.length - 1);
+    } else {
+      return sumSquaredDiff / data.length;
+    }
   };
 
   const calculateStdDev = (varianceVal: number | null): number | null => {
@@ -127,6 +136,30 @@ export default function BasicStatisticsPage() {
       .map(([value, count]) => ({ value: Number(value), count }))
       .sort((a, b) => a.value - b.value);
   };
+
+  const calculateSkewness = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
+    if (data.length < 3 || mean === null || stdDevSample === null || stdDevSample === 0) {
+      return null; // Skewness is undefined or unreliable for n < 3 or if std dev is 0
+    }
+    const n = data.length;
+    const sumOfCubedStdScores = data.reduce((acc, val) => {
+      return acc + Math.pow((val - mean) / stdDevSample, 3);
+    }, 0);
+    return sumOfCubedStdScores / n;
+  };
+
+  const calculateKurtosis = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
+    // Calculates sample excess kurtosis
+    if (data.length < 4 || mean === null || stdDevSample === null || stdDevSample === 0) {
+      return null; // Kurtosis is undefined or unreliable for n < 4 or if std dev is 0
+    }
+    const n = data.length;
+    const sumOfQuarticStdScores = data.reduce((acc, val) => {
+      return acc + Math.pow((val - mean) / stdDevSample, 4);
+    }, 0);
+    return (sumOfQuarticStdScores / n) - 3;
+  };
+
 
   const handleProcessData = () => {
     setIsLoading(true);
@@ -173,6 +206,8 @@ export default function BasicStatisticsPage() {
     const variancePopulationVal = calculateVariance(numbers, meanVal, false);
     const stdDevPopulationVal = calculateStdDev(variancePopulationVal);
     const frequencyTableVal = calculateFrequencyTable(frequencyMap);
+    const skewnessVal = calculateSkewness(numbers, meanVal, stdDevSampleVal);
+    const kurtosisVal = calculateKurtosis(numbers, meanVal, stdDevSampleVal);
 
     setStats({
       count: numbers.length,
@@ -190,8 +225,8 @@ export default function BasicStatisticsPage() {
       variancePopulation: variancePopulationVal,
       stdDevPopulation: stdDevPopulationVal,
       frequencyTable: frequencyTableVal,
-      skewness: "Calculation coming soon", 
-      kurtosis: "Calculation coming soon", 
+      skewness: skewnessVal, 
+      kurtosis: kurtosisVal, 
     });
 
     toast({
@@ -214,6 +249,7 @@ export default function BasicStatisticsPage() {
 
   const formatNumber = (num: number | null | undefined, decimalPlaces: number = 2): string => {
     if (num === null || num === undefined) return 'N/A';
+    if (isNaN(num)) return 'N/A'; // Handle cases where calculation might result in NaN
     return num.toFixed(decimalPlaces);
   };
 
@@ -303,13 +339,13 @@ export default function BasicStatisticsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Descriptive Statistics Results</CardTitle>
-                    <CardDescription>Summary of your dataset ({stats.count} data points).</CardDescription>
+                    <CardDescription>Summary of your dataset ({stats.count} data points). Sample estimators are used for Skewness and Kurtosis.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[200px]">Measure</TableHead>
+                          <TableHead className="w-[250px]">Measure</TableHead>
                           <TableHead>Value</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -355,28 +391,28 @@ export default function BasicStatisticsPage() {
                           <TableCell>{formatNumber(stats.iqr)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Variance (Sample)</TableCell>
+                          <TableCell className="font-medium">Variance (Sample, s²)</TableCell>
                           <TableCell>{formatNumber(stats.varianceSample, 4)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Standard Deviation (Sample)</TableCell>
+                          <TableCell className="font-medium">Standard Deviation (Sample, s)</TableCell>
                           <TableCell>{formatNumber(stats.stdDevSample, 4)}</TableCell>
                         </TableRow>
                          <TableRow>
-                          <TableCell className="font-medium">Variance (Population)</TableCell>
+                          <TableCell className="font-medium">Variance (Population, σ²)</TableCell>
                           <TableCell>{formatNumber(stats.variancePopulation, 4)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Standard Deviation (Population)</TableCell>
+                          <TableCell className="font-medium">Standard Deviation (Population, σ)</TableCell>
                           <TableCell>{formatNumber(stats.stdDevPopulation, 4)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Skewness</TableCell>
-                          <TableCell>{stats.skewness}</TableCell>
+                          <TableCell className="font-medium">Skewness (Sample)</TableCell>
+                          <TableCell>{formatNumber(stats.skewness, 4)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Kurtosis</TableCell>
-                          <TableCell>{stats.kurtosis}</TableCell>
+                          <TableCell className="font-medium">Excess Kurtosis (Sample)</TableCell>
+                          <TableCell>{formatNumber(stats.kurtosis, 4)}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -384,7 +420,7 @@ export default function BasicStatisticsPage() {
                     {stats.frequencyTable && stats.frequencyTable.length > 0 && (
                       <div className="mt-6">
                         <h3 className="text-lg font-semibold mb-2 flex items-center">
-                          <List className="mr-2 h-5 w-5 text-primary" /> {/* Changed ListNumbers to List */}
+                          <List className="mr-2 h-5 w-5 text-primary" /> 
                           Frequency Table
                         </h3>
                         <Card className="max-h-60 overflow-y-auto">
