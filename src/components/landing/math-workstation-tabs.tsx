@@ -26,10 +26,10 @@ const workstations = [
   },
   {
     value: "differentiation",
-    title: "Differentiation",
+    title: "Differentiation & DEs",
     icon: <Ratio className="mr-2 h-5 w-5" />,
-    description: "Find derivatives of functions, understand their types, and see step-by-step differentiation processes and graphs.",
-    cta: "Explore Differentiation",
+    description: "Find derivatives, solve differential equations, understand their types, and see step-by-step solutions.",
+    cta: "Explore Calculus",
     href: "/operations/differentiation"
   },
   {
@@ -46,15 +46,15 @@ const workstations = [
     icon: <Share2 className="mr-2 h-5 w-5" />,
     description: "Interactively create, edit, and analyze graphs. Visualize algorithms like DFS, BFS, Dijkstra's, and more.",
     cta: "Explore Graph Theory",
-    href: "/operations/graph-theory" // Updated href
+    href: "/operations/graph-theory"
   },
   {
     value: "statistics",
     title: "Basic Statistics",
-    icon: <Route className="mr-2 h-5 w-5" />,
+    icon: <Route className="mr-2 h-5 w-5" />, // Using Route icon as a placeholder for stats
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
-    href: "/operations/statistics" // This will be a future page
+    href: "/operations/statistics"
   },
 ];
 
@@ -65,12 +65,12 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        <TabsList className="flex w-full overflow-x-auto items-center space-x-2 bg-transparent p-1 border-b">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:flex md:overflow-x-auto md:items-center md:space-x-1 bg-transparent p-1 border-b">
           {workstations.map((ws) => (
             <TabsTrigger
               key={ws.value}
               value={ws.value}
-              className="py-3 px-3 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm"
+              className="py-3 px-3 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm md:flex-grow-0 md:flex-shrink-0" // Ensure triggers don't shrink too much
             >
               {ws.icon} {ws.title}
             </TabsTrigger>
