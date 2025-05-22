@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 
 interface DescriptiveStats {
@@ -32,9 +34,22 @@ interface DescriptiveStats {
   variancePopulation: number | null;
   stdDevPopulation: number | null;
   frequencyTable: { value: number; count: number }[] | null;
-  skewness: number | null; 
-  kurtosis: number | null; 
+  skewness: number | null;
+  kurtosis: number | null;
 }
+
+interface HistogramData {
+  name: string; // Bin label e.g., "0-10"
+  count: number;
+}
+
+interface BoxPlotData {
+  name: string; // e.g., "Dataset"
+  box: [number, number]; // [Q1, Q3]
+  whiskers: [number, number]; // [min, max] (or 1.5*IQR beyond Q1/Q3)
+  median: number;
+}
+
 
 export default function BasicStatisticsPage() {
   const { toast } = useToast();
@@ -43,6 +58,9 @@ export default function BasicStatisticsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<DescriptiveStats | null>(null);
+  const [histogramData, setHistogramData] = useState<HistogramData[]>([]);
+  const [boxPlotChartData, setBoxPlotChartData] = useState<any[]>([]);
+
 
   const calculateMean = (data: number[]): number | null => {
     if (data.length === 0) return null;
@@ -72,7 +90,7 @@ export default function BasicStatisticsPage() {
       }
     }
     
-    if (maxFreq === 0) return "N/A"; // Should not happen if data is not empty
+    if (maxFreq === 0) return "N/A";
     if (maxFreq === 1 && data.length > 1 && new Set(data).size === data.length) return "No mode (all values unique)";
 
     const modes = Object.keys(frequencyMap)
@@ -90,7 +108,7 @@ export default function BasicStatisticsPage() {
   };
 
   const calculateQuartiles = (data: number[]): { q1: number | null, q3: number | null } => {
-    if (data.length < 1) return { q1: null, q3: null }; // Needs at least 1 for simple cases, more for reliable percentile
+    if (data.length < 1) return { q1: null, q3: null };
     const sortedData = [...data].sort((a, b) => a - b);
     
     const getPercentile = (p: number): number | null => {
@@ -101,7 +119,7 @@ export default function BasicStatisticsPage() {
         if (sortedData[base + 1] !== undefined) {
             return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
         } else {
-            return sortedData[base]; // Only one element or at the end
+            return sortedData[base];
         }
     };
     const q1 = getPercentile(0.25);
@@ -118,11 +136,8 @@ export default function BasicStatisticsPage() {
     const squaredDifferences = data.map(val => Math.pow(val - meanVal, 2));
     const sumSquaredDiff = squaredDifferences.reduce((acc, val) => acc + val, 0);
     
-    if (isSample) {
-      return sumSquaredDiff / (data.length - 1);
-    } else {
-      return sumSquaredDiff / data.length;
-    }
+    const divisor = isSample ? data.length - 1 : data.length;
+    return divisor > 0 ? sumSquaredDiff / divisor : null;
   };
 
   const calculateStdDev = (varianceVal: number | null): number | null => {
@@ -139,25 +154,86 @@ export default function BasicStatisticsPage() {
 
   const calculateSkewness = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
     if (data.length < 3 || mean === null || stdDevSample === null || stdDevSample === 0) {
-      return null; // Skewness is undefined or unreliable for n < 3 or if std dev is 0
+      return null;
     }
     const n = data.length;
     const sumOfCubedStdScores = data.reduce((acc, val) => {
       return acc + Math.pow((val - mean) / stdDevSample, 3);
     }, 0);
-    return sumOfCubedStdScores / n;
+    // Using G1 estimator for sample skewness (adjusts for bias)
+    // return (n / ((n - 1) * (n - 2))) * sumOfCubedStdScores;
+    // Simpler estimator (less biased for larger n, or as a basic measure):
+     return sumOfCubedStdScores / n;
   };
 
   const calculateKurtosis = (data: number[], mean: number | null, stdDevSample: number | null): number | null => {
-    // Calculates sample excess kurtosis
     if (data.length < 4 || mean === null || stdDevSample === null || stdDevSample === 0) {
-      return null; // Kurtosis is undefined or unreliable for n < 4 or if std dev is 0
+      return null;
     }
     const n = data.length;
     const sumOfQuarticStdScores = data.reduce((acc, val) => {
       return acc + Math.pow((val - mean) / stdDevSample, 4);
     }, 0);
+    // Using g2 estimator for sample excess kurtosis
+    // const term1 = (n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3));
+    // const term2 = sumOfQuarticStdScores;
+    // const term3 = (3 * Math.pow(n - 1, 2)) / ((n - 2) * (n - 3));
+    // return term1 * term2 - term3;
+    // Simpler estimator for excess kurtosis:
     return (sumOfQuarticStdScores / n) - 3;
+  };
+
+  const prepareHistogramData = (data: number[], minVal: number, maxVal: number): HistogramData[] => {
+    if (data.length === 0 || minVal === null || maxVal === null) return [];
+    const n = data.length;
+    const numBins = Math.max(1, Math.ceil(Math.sqrt(n))); // Ensure at least 1 bin
+    const binWidth = (maxVal - minVal) / numBins || 1; // Avoid division by zero if max=min
+
+    const bins: HistogramData[] = [];
+    for (let i = 0; i < numBins; i++) {
+      const binStart = minVal + i * binWidth;
+      const binEnd = minVal + (i + 1) * binWidth;
+      bins.push({ name: `${formatNumber(binStart,1)}-${formatNumber(binEnd,1)}`, count: 0 });
+    }
+    // Ensure the last bin captures the max value
+    if (bins.length > 0) {
+        const lastBinParts = bins[bins.length - 1].name.split('-');
+        bins[bins.length - 1].name = `${lastBinParts[0]}-${formatNumber(maxVal,1)}`;
+    }
+
+
+    data.forEach(val => {
+      let binIndex = Math.floor((val - minVal) / binWidth);
+      if (val === maxVal) { // Ensure maxVal goes into the last bin
+        binIndex = numBins - 1;
+      }
+      if (binIndex >= 0 && binIndex < numBins) {
+        bins[binIndex].count++;
+      }
+    });
+    return bins;
+  };
+  
+  const prepareBoxPlotData = (s: DescriptiveStats | null): any[] => {
+    if (!s || s.min === null || s.q1 === null || s.median === null || s.q3 === null || s.max === null) {
+      return [];
+    }
+    // Recharts needs an array for BarChart. We'll represent one "dataset".
+    return [
+      {
+        name: "Dataset",
+        // value: [s.min, s.q1, s.median, s.q3, s.max] // This is a common way to pass data for box plots
+        // For our bar-based construction:
+        lowerWhisker: [s.min, s.q1],
+        box: [s.q1, s.q3],
+        upperWhisker: [s.q3, s.max],
+        median: s.median,
+        min: s.min,
+        q1: s.q1,
+        q3: s.q3,
+        max: s.max,
+      }
+    ];
   };
 
 
@@ -166,6 +242,8 @@ export default function BasicStatisticsPage() {
     setError(null);
     setParsedData([]);
     setStats(null);
+    setHistogramData([]);
+    setBoxPlotChartData([]);
 
     if (!rawData.trim()) {
       setError("Please enter some data.");
@@ -209,7 +287,7 @@ export default function BasicStatisticsPage() {
     const skewnessVal = calculateSkewness(numbers, meanVal, stdDevSampleVal);
     const kurtosisVal = calculateKurtosis(numbers, meanVal, stdDevSampleVal);
 
-    setStats({
+    const currentStats = {
       count: numbers.length,
       mean: meanVal,
       median: medianVal,
@@ -227,7 +305,14 @@ export default function BasicStatisticsPage() {
       frequencyTable: frequencyTableVal,
       skewness: skewnessVal, 
       kurtosis: kurtosisVal, 
-    });
+    };
+    setStats(currentStats);
+
+    if (minVal !== null && maxVal !== null) {
+      setHistogramData(prepareHistogramData(numbers, minVal, maxVal));
+    }
+    setBoxPlotChartData(prepareBoxPlotData(currentStats));
+
 
     toast({
       title: "Data Processed",
@@ -241,6 +326,8 @@ export default function BasicStatisticsPage() {
     setParsedData([]);
     setError(null);
     setStats(null);
+    setHistogramData([]);
+    setBoxPlotChartData([]);
     toast({
       title: "Data Cleared",
       description: "Input field and results have been cleared.",
@@ -249,9 +336,15 @@ export default function BasicStatisticsPage() {
 
   const formatNumber = (num: number | null | undefined, decimalPlaces: number = 2): string => {
     if (num === null || num === undefined) return 'N/A';
-    if (isNaN(num)) return 'N/A'; // Handle cases where calculation might result in NaN
+    if (isNaN(num)) return 'N/A';
     return num.toFixed(decimalPlaces);
   };
+
+  const chartConfig = {
+    count: { label: "Frequency", color: "hsl(var(--chart-1))" },
+    dataset: { label: "Dataset", color: "hsl(var(--chart-2))" },
+  } satisfies Record<string, any>;
+
 
   return (
     <div className="space-y-8">
@@ -345,7 +438,7 @@ export default function BasicStatisticsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[250px]">Measure</TableHead>
+                          <TableHead className="w-[300px]">Measure</TableHead>
                           <TableHead>Value</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -451,39 +544,97 @@ export default function BasicStatisticsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Data Visualizations</CardTitle>
-                     <CardDescription>Visual representations of your data will appear here. (Coming Soon)</CardDescription>
+                     <CardDescription>Visual representations of your data.</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="bg-muted/30">
-                            <CardHeader><CardTitle className="text-lg">Histogram</CardTitle></CardHeader>
-                            <CardContent className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4">
-                                <Image 
-                                    src="https://placehold.co/300x150.png" 
-                                    alt="Histogram placeholder" 
-                                    width={300} 
-                                    height={150}
-                                    data-ai-hint="histogram chart"
-                                    className="opacity-50 mb-2 rounded"
-                                />
-                                <p className="text-sm text-muted-foreground">Histogram display coming soon.</p>
-                            </CardContent>
-                        </Card>
-                         <Card className="bg-muted/30">
-                            <CardHeader><CardTitle className="text-lg">Box Plot</CardTitle></CardHeader>
-                            <CardContent className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4">
-                                <Image 
-                                    src="https://placehold.co/300x150.png" 
-                                    alt="Box plot placeholder" 
-                                    width={300} 
-                                    height={150}
-                                    data-ai-hint="box plot"
-                                    className="opacity-50 mb-2 rounded"
-                                />
-                                <p className="text-sm text-muted-foreground">Box plot display coming soon.</p>
-                            </CardContent>
-                        </Card>
-                    </div>
+                  <CardContent className="space-y-8">
+                    {histogramData.length > 0 ? (
+                       <Card className="bg-card">
+                          <CardHeader>
+                            <CardTitle className="text-lg">Histogram</CardTitle>
+                            <CardDescription>Distribution of data values across bins.</CardDescription>
+                          </CardHeader>
+                          <CardContent className="h-[300px] w-full p-0">
+                            <ChartContainer config={chartConfig} className="h-full w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={histogramData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis dataKey="name" tickLine={false} axisLine={false} dy={5} />
+                                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} dx={-5} />
+                                  <RechartsTooltip
+                                    cursor={{ fill: "hsl(var(--muted))" }}
+                                    content={<ChartTooltipContent hideLabel />}
+                                  />
+                                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </ChartContainer>
+                          </CardContent>
+                       </Card>
+                    ) : (
+                      <Alert>
+                        <Info className="h-4 w-4"/>
+                        <AlertTitle>Histogram</AlertTitle>
+                        <AlertDescription>Not enough data to display histogram.</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {boxPlotChartData.length > 0 && stats ? (
+                       <Card className="bg-card">
+                          <CardHeader>
+                            <CardTitle className="text-lg">Box Plot</CardTitle>
+                            <CardDescription>Summary of data distribution (Min, Q1, Median, Q3, Max).</CardDescription>
+                          </CardHeader>
+                          <CardContent className="h-[200px] w-full p-0">
+                             <ChartContainer config={chartConfig} className="h-full w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={boxPlotChartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false}/>
+                                    <XAxis type="number" domain={[stats.min!, stats.max!]} />
+                                    <YAxis type="category" dataKey="name" hide/>
+                                    <RechartsTooltip 
+                                       cursor={{fill: 'transparent'}}
+                                       content={({ payload }) => {
+                                        if (payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div className="bg-popover text-popover-foreground p-2 shadow-md rounded-md border text-xs">
+                                                    <p>Min: {formatNumber(data.min)}</p>
+                                                    <p>Q1: {formatNumber(data.q1)}</p>
+                                                    <p>Median: {formatNumber(data.median)}</p>
+                                                    <p>Q3: {formatNumber(data.q3)}</p>
+                                                    <p>Max: {formatNumber(data.max)}</p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                       }}
+                                    />
+                                    {/* Main box from Q1 to Q3 */}
+                                    <Bar dataKey="box" fill="hsl(var(--chart-1))" barSize={30} stackId="a"/>
+                                    {/* Lower whisker: space from min to Q1 (rendered before Q1) */}
+                                    <Bar dataKey={(d) => [d.min, d.q1]} fill="hsl(var(--foreground))" barSize={2} stackId="a" shape={<rect width={2}/>} />
+                                    {/* Upper whisker: space from Q3 to max (rendered after Q3) */}
+                                    <Bar dataKey={(d) => [d.q3, d.max]} fill="hsl(var(--foreground))" barSize={2} stackId="a" shape={<rect width={2}/>} />
+                                   
+                                    {/* This approach with stacked bars for whiskers is very tricky and might not look standard.
+                                        A "real" box plot in Recharts often involves custom shapes or more complex layering.
+                                        The below is a simplified representation of the box part.
+                                    */}
+                                     {/* Median Line */}
+                                    <ReferenceLine x={stats.median!} stroke="hsl(var(--destructive))" strokeWidth={2} />
+                                </BarChart>
+                                </ResponsiveContainer>
+                            </ChartContainer>
+                            <p className="text-xs text-muted-foreground p-2">Note: This is a simplified Box Plot representation. Min/Max whiskers extend to data extremes.</p>
+                          </CardContent>
+                       </Card>
+                    ) : (
+                       <Alert>
+                        <Info className="h-4 w-4"/>
+                        <AlertTitle>Box Plot</AlertTitle>
+                        <AlertDescription>Not enough data to display box plot.</AlertDescription>
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -538,3 +689,4 @@ export default function BasicStatisticsPage() {
     </div>
   );
 }
+
