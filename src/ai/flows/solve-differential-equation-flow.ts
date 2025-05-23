@@ -29,7 +29,7 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   output: { 
     schema: z.string().nullable(), // Allow null output from the model
   },
-  model: 'googleai/gemini-1.5-pro-latest',
+  // model: 'googleai/gemini-1.5-pro-latest', // Temporarily removed to use default model
   prompt: `
 Differential Equation: {{{equationString}}}
 Dependent Variable: {{{dependentVariable}}}
