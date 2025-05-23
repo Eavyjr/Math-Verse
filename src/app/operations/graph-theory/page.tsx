@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge } from '@xyflow/react';
+// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
 
 
 // Data structures for graph
@@ -51,8 +51,8 @@ interface GraphProperties {
 
 // const initialRfNodes: RFNode[] = [];
 // const initialRfEdges: RFEdge[] = [];
-const initialRfNodes: any[] = []; // Temporary type
-const initialRfEdges: any[] = []; // Temporary type
+const initialRfNodes: any[] = []; // Temp type
+const initialRfEdges: any[] = []; // Temp type
 
 
 export default function GraphTheoryPage() {
@@ -76,12 +76,12 @@ export default function GraphTheoryPage() {
     loops: [],
   });
 
-  // const [rfNodes, setRfNodes, onNodesChange] = useNodesState(initialRfNodes);
-  // const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(initialRfEdges);
-  const [rfNodes, setRfNodes] = useState(initialRfNodes); // Temp
-  const [rfEdges, setRfEdges] = useState(initialRfEdges); // Temp
-  const onNodesChange: any = (window as any).onNodesChange; // Temp
-  const onEdgesChange: any = (window as any).onEdgesChange; // Temp
+  // const [rfNodes, setRfNodesState, onRfNodesChange]: [RFNode[], any, OnNodesChange] = useNodesState(initialRfNodes);
+  // const [rfEdges, setRfEdgesState, onRfEdgesChange]: [RFEdge[], any, OnEdgesChange] = useEdgesState(initialRfEdges);
+  const [rfNodes, setRfNodesState] = useState(initialRfNodes); // Temp state
+  const [rfEdges, setRfEdgesState] = useState(initialRfEdges); // Temp state
+  const onRfNodesChange = (window as any).onRfNodesChange; // Temp stub
+  const onRfEdgesChange = (window as any).onRfEdgesChange; // Temp stub
 
 
   // Effect to derive internal 'nodes' state from 'edges'
@@ -96,39 +96,41 @@ export default function GraphTheoryPage() {
   }, [edges]);
 
   // Effect to transform internal 'nodes' and 'edges' to React Flow format
-  useEffect(() => {
-    // This effect is temporarily disabled due to @xyflow/react install issues
-    // const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
-    //   id: node.id,
-    //   data: { label: node.label },
-    //   position: { x: (index % 5) * 150, y: Math.floor(index / 5) * 100 }, 
-    //   type: 'default', 
-    //   style: { 
-    //     background: 'hsl(var(--primary-foreground))', 
-    //     color: 'hsl(var(--primary))', 
-    //     border: '2px solid hsl(var(--primary))',
-    //     borderRadius: '0.375rem', 
-    //     padding: '0.5rem 1rem', 
-    //   },
-    // }));
+  // useEffect(() => {
+  //   const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
+  //     id: node.id,
+  //     data: { label: node.label },
+  //     position: { x: (index % 5) * 150 + Math.random() * 50, y: Math.floor(index / 5) * 120 + Math.random() * 30 }, 
+  //     type: 'default', 
+  //     style: { 
+  //       background: 'hsl(var(--primary-foreground))', 
+  //       color: 'hsl(var(--primary))', 
+  //       border: '2px solid hsl(var(--primary))',
+  //       borderRadius: '0.375rem', 
+  //       padding: '0.5rem 1rem',
+  //       width: 'auto',
+  //       minWidth: '60px',
+  //       textAlign: 'center',
+  //     },
+  //   }));
 
-    // const newRfEdgesData: RFEdge[] = edges.map(edge => ({
-    //   id: edge.id,
-    //   source: edge.source,
-    //   target: edge.target,
-    //   label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
-    //   animated: isDirected,
-    //   markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
-    //   style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
-    //   labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
-    //   labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
-    //   labelBgPadding: [4, 2] as [number, number],
-    //   labelBgBorderRadius: 2,
-    // }));
+  //   const newRfEdgesData: RFEdge[] = edges.map(edge => ({
+  //     id: edge.id,
+  //     source: edge.source,
+  //     target: edge.target,
+  //     label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
+  //     animated: isDirected,
+  //     markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
+  //     style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+  //     labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
+  //     labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
+  //     labelBgPadding: [4, 2] as [number, number],
+  //     labelBgBorderRadius: 2,
+  //   }));
     
-    // setRfNodes(newRfNodesData);
-    // setRfEdges(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted, setRfNodes, setRfEdges]);
+  //   setRfNodesState(newRfNodesData);
+  //   setRfEdgesState(newRfEdgesData);
+  // }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
 
 
   // Effect to compute Adjacency Matrix
@@ -150,6 +152,8 @@ export default function GraphTheoryPage() {
       matrix[sourceIdx][targetIdx] = value;
       if (!isDirected && sourceIdx !== targetIdx) {
         matrix[targetIdx][sourceIdx] = value;
+      } else if (!isDirected && sourceIdx === targetIdx) { 
+        // matrix[sourceIdx][targetIdx] = value; // Already set
       }
     });
     setAdjacencyMatrix(matrix);
@@ -172,13 +176,13 @@ export default function GraphTheoryPage() {
       const weightValue = isWeighted && edge.weight !== undefined ? edge.weight : 1;
 
       if (isDirected) {
-        matrix[sourceIdx][edgeIdx] = weightValue; 
-        if (sourceIdx !== targetIdx) { 
-          matrix[targetIdx][edgeIdx] = -weightValue; 
-        } else { 
-           matrix[sourceIdx][edgeIdx] = weightValue;
+        if (sourceIdx === targetIdx) { // Directed loop
+            matrix[sourceIdx][edgeIdx] = weightValue; 
+        } else {
+            matrix[sourceIdx][edgeIdx] = weightValue; 
+            matrix[targetIdx][edgeIdx] = -weightValue;
         }
-      } else { 
+      } else { // Undirected
         matrix[sourceIdx][edgeIdx] = weightValue;
         if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = weightValue; 
@@ -220,6 +224,8 @@ export default function GraphTheoryPage() {
         if(sourceDegree && sourceDegree.degree !== undefined) sourceDegree.degree++;
         if (edge.source !== edge.target && targetDegree && targetDegree.degree !== undefined) { 
           targetDegree.degree++;
+        } else if (edge.source === edge.target && sourceDegree && sourceDegree.degree !== undefined) {
+          sourceDegree.degree++; 
         }
       }
     });
@@ -248,7 +254,7 @@ export default function GraphTheoryPage() {
     }
 
     const newEdge: Edge = {
-      id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       source: newEdgeSource.trim().toUpperCase(),
       target: newEdgeTarget.trim().toUpperCase(),
       ...(isWeighted && { weight: weightValue }),
@@ -346,15 +352,15 @@ export default function GraphTheoryPage() {
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
         <CardDescription>
-            Interactive graph powered by @xyflow/react.
+            Interactive graph visualization placeholder.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow relative flex items-center justify-center bg-muted/30 rounded-md">
         {/* <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={onRfNodesChange}
+          onEdgesChange={onRfEdgesChange}
           fitView
           attributionPosition="bottom-right"
           className="bg-muted/30 rounded-md"
@@ -465,7 +471,7 @@ export default function GraphTheoryPage() {
         <div>
           <h4 className="font-semibold mb-1">Node Degrees:</h4>
           {nodes.length > 0 ? (
-            <ul className="list-disc list-inside pl-4 space-y-1 text-xs">
+            <ul className="list-disc list-inside pl-4 space-y-1 text-xs max-h-40 overflow-y-auto">
               {nodes.map(node => (
                 <li key={node.id}>
                   <span className="font-mono">{node.label}:</span> 
@@ -482,7 +488,7 @@ export default function GraphTheoryPage() {
         <div>
           <h4 className="font-semibold mb-1">Loops:</h4>
           {graphProperties.loops.length > 0 ? (
-            <ul className="list-disc list-inside pl-4 space-y-1 text-xs">
+            <ul className="list-disc list-inside pl-4 space-y-1 text-xs max-h-20 overflow-y-auto">
               {graphProperties.loops.map(loop => (
                 <li key={loop.id}>
                   <span className="font-mono">{loop.source} &rarr; {loop.target}</span>
@@ -643,10 +649,10 @@ export default function GraphTheoryPage() {
           </Tabs>
           
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
-            <Button variant="outline">
+            <Button variant="outline" disabled>
                 <Download className="mr-2 h-5 w-5" /> Export Graph (Soon)
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" disabled>
                 Import Graph (Soon)
             </Button>
           </div>
