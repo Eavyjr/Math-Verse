@@ -1,15 +1,13 @@
 
 import type { Metadata } from 'next';
-// import { Geist_Sans as GeistSans, Geist_Mono as GeistMono } from 'next/font/google'; // Temporarily commented out
+import { Geist_Sans as GeistSans, Geist_Mono as GeistMono } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 // import { Toaster } from "@/components/ui/toaster"; // Temporarily commented out
-// Import KaTeX CSS directly
-import "katex/dist/katex.min.css";
+import "katex/dist/katex.min.css"; // KaTeX CSS for LaTeX rendering
 // import { Analytics } from "@vercel/analytics/next"; // Temporarily commented out
 
-/* // Temporarily commented out
 const geistSans = GeistSans({
   variable: '--font-geist-sans',
   subsets: ['latin'],
@@ -19,7 +17,6 @@ const geistMono = GeistMono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
-*/
 
 export const metadata: Metadata = {
   title: 'MathVerse',
@@ -34,10 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* KaTeX CSS is imported via JS above */}
+        {/* KaTeX CSS already imported via JS style import */}
       </head>
-      {/* <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}> */}
-      <body className={`antialiased flex flex-col min-h-screen bg-background text-foreground`}> {/* Temporarily remove font variables */}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
           {children}
