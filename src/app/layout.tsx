@@ -1,21 +1,24 @@
 
 import type { Metadata } from 'next';
-import { Geist_Sans as GeistSans, Geist_Mono as GeistMono } from 'next/font/google';
+import { Inter, Fira_Code } from 'next/font/google'; // Changed from Geist_Sans and Geist_Mono
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-// import { Toaster } from "@/components/ui/toaster"; // Temporarily commented out
-import "katex/dist/katex.min.css"; // KaTeX CSS for LaTeX rendering
-// import { Analytics } from "@vercel/analytics/next"; // Temporarily commented out
+// import { Toaster } from "@/components/ui/toaster"; // Toaster remains commented out
+import "katex/dist/katex.min.css";
+// import { Analytics } from "@vercel/analytics/next"; // Analytics remains commented out
 
-const geistSans = GeistSans({
-  variable: '--font-geist-sans',
+// Initialize Inter font
+const inter = Inter({
+  variable: '--font-geist-sans', // Keeping CSS variable name for simplicity
   subsets: ['latin'],
 });
 
-const geistMono = GeistMono({
-  variable: '--font-geist-mono',
+// Initialize Fira Code font
+const firaCode = Fira_Code({
+  variable: '--font-geist-mono', // Keeping CSS variable name for simplicity
   subsets: ['latin'],
+  weight: ['400', '500', '700'], // Fira Code often requires specific weights
 });
 
 export const metadata: Metadata = {
@@ -31,16 +34,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* KaTeX CSS already imported via JS style import */}
+        {/* KaTeX CSS imported via JS style import */}
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
+      <body className={`${inter.variable} ${firaCode.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
           {children}
         </main>
         <Footer />
-        {/* <Toaster /> */} {/* Temporarily commented out */}
-        {/* <Analytics /> */} {/* Temporarily commented out */}
+        {/* <Toaster /> */} {/* Toaster remains commented out */}
+        {/* <Analytics /> */} {/* Analytics remains commented out */}
       </body>
     </html>
   );
