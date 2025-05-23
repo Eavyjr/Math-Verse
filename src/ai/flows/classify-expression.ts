@@ -11,6 +11,7 @@ const ClassifyExpressionInputSchema = z.object({
 export type ClassifyExpressionInput = z.infer<typeof ClassifyExpressionInputSchema>;
 
 const ClassifyExpressionOutputSchema = z.object({
+  originalExpression: z.string().describe('The original mathematical expression that was classified.'),
   classification: z.string().describe('The classification of the mathematical expression (e.g., polynomial, differential equation).'),
   solutionStrategies: z.string().describe('Suggested solution strategies for the given expression.'),
 });
@@ -25,7 +26,12 @@ export async function classifyExpression(
 const classifyExpressionPrompt = ai.definePrompt({
   name: 'classifyExpressionPrompt',
   input: {schema: ClassifyExpressionInputSchema},
-  output: {schema: ClassifyExpressionOutputSchema},
+  // We only need classification and strategies from the prompt itself.
+  // The originalExpression will be added by the flow.
+  output: {schema: z.object({
+    classification: ClassifyExpressionOutputSchema.shape.classification,
+    solutionStrategies: ClassifyExpressionOutputSchema.shape.solutionStrategies,
+  })},
   prompt: `You are a mathematical expert. Classify the following mathematical expression and suggest relevant solution strategies.\n\nExpression: {{{expression}}}`,
 });
 
@@ -36,7 +42,14 @@ const classifyExpressionFlow = ai.defineFlow(
     outputSchema: ClassifyExpressionOutputSchema,
   },
   async input => {
-    const {output} = await classifyExpressionPrompt(input);
-    return output!;
+    const {output: promptOutput} = await classifyExpressionPrompt(input);
+    if (!promptOutput) {
+      throw new Error("AI model did not return a valid output for classification.");
+    }
+    return {
+      originalExpression: input.expression,
+      classification: promptOutput.classification,
+      solutionStrategies: promptOutput.solutionStrategies,
+    };
   }
 );

@@ -106,8 +106,11 @@ export default function HomePage() {
             />
           )}
           
-          {!isLoading && (aiResponse || !error) && ( // Show placeholder if not loading and no error, or if there is an AI response
-            <VisualizationPlaceholder expressionType={aiResponse?.classification} />
+          {!isLoading && (aiResponse || !error) && ( 
+            <VisualizationPlaceholder
+              expression={aiResponse?.originalExpression}
+              classification={aiResponse?.classification}
+            />
           )}
 
           {!isLoading && !error && !aiResponse && (
