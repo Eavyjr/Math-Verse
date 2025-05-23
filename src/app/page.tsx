@@ -18,7 +18,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAiResult = (data: ClassifyExpressionOutput) => {
+  const handleAiResult = (data: ClassifyExpressionOutput | null) => {
     setAiResponse(data);
     setError(null); // Clear previous errors on new result
   };

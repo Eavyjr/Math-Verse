@@ -26,30 +26,41 @@ export async function classifyExpression(
 const classifyExpressionPrompt = ai.definePrompt({
   name: 'classifyExpressionPrompt',
   input: {schema: ClassifyExpressionInputSchema},
-  // We only need classification and strategies from the prompt itself.
-  // The originalExpression will be added by the flow.
+  // Allow model to return null for these fields
   output: {schema: z.object({
-    classification: ClassifyExpressionOutputSchema.shape.classification,
-    solutionStrategies: ClassifyExpressionOutputSchema.shape.solutionStrategies,
+    classification: z.string().nullable().describe('The classification of the mathematical expression (e.g., polynomial, differential equation).'),
+    solutionStrategies: z.string().nullable().describe('Suggested solution strategies for the given expression.'),
   })},
   prompt: `You are a mathematical expert. Classify the following mathematical expression and suggest relevant solution strategies.\n\nExpression: {{{expression}}}`,
+  config: {
+    temperature: 0.3, // Slightly higher temp for more varied suggestions if appropriate
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  }
 });
 
 const classifyExpressionFlow = ai.defineFlow(
   {
     name: 'classifyExpressionFlow',
     inputSchema: ClassifyExpressionInputSchema,
-    outputSchema: ClassifyExpressionOutputSchema,
+    outputSchema: ClassifyExpressionOutputSchema, // Flow still guarantees strings
   },
   async input => {
     const {output: promptOutput} = await classifyExpressionPrompt(input);
+    
     if (!promptOutput) {
-      throw new Error("AI model did not return a valid output for classification.");
+      throw new Error("AI model did not return a valid output object for classification.");
     }
+
+    // Ensure the flow returns strings as per ClassifyExpressionOutputSchema
     return {
       originalExpression: input.expression,
-      classification: promptOutput.classification,
-      solutionStrategies: promptOutput.solutionStrategies,
+      classification: promptOutput.classification ?? "Classification not available.",
+      solutionStrategies: promptOutput.solutionStrategies ?? "Solution strategies not available.",
     };
   }
 );
