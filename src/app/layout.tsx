@@ -1,20 +1,20 @@
 
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist_Sans as GeistSans, Geist_Mono as GeistMono } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import { Toaster } from "@/components/ui/toaster";
+// import { Toaster } from "@/components/ui/toaster"; // Temporarily commented out
 // Import KaTeX CSS directly
 import "katex/dist/katex.min.css";
 // import { Analytics } from "@vercel/analytics/next"; // Temporarily commented out
 
-const geistSans = Geist({
+const geistSans = GeistSans({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = GeistMono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* KaTeX CSS is now imported via JS above */}
+        {/* KaTeX CSS is imported via JS above */}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
@@ -40,7 +40,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
-        <Toaster />
+        {/* <Toaster /> */} {/* Temporarily commented out */}
         {/* <Analytics /> */} {/* Temporarily commented out */}
       </body>
     </html>
