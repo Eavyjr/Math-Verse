@@ -1,34 +1,24 @@
+
 'use client';
 
 import Link from 'next/link';
-import { MathLogoIcon } from '@/components/icons/math-logo';
+// import { MathLogoIcon } from '@/components/icons/math-logo'; // Temporarily commented out
 import { Button } from '@/components/ui/button';
-import { User } from 'lucide-react'; // Example, replace with actual auth state
+// import { User } from 'lucide-react'; // Temporarily commented out
 
 export default function Header() {
-  const isAuthenticated = false; // TODO: Replace with actual auth state from Firebase/context
+  // const isAuthenticated = false; // TODO: Replace with actual auth state
 
   return (
     <header className="py-4 px-6 border-b bg-card shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary hover:text-primary/90 transition-colors">
-          <MathLogoIcon className="h-8 w-8" />
-          <span>MathVerse</span>
+        <Link href="/" className="text-2xl font-bold text-primary">
+          MathVerse (Simplified)
         </Link>
-        
-        <nav className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/dashboard"> {/* Or profile page */}
-                <User className="h-6 w-6" />
-                <span className="sr-only">User Profile</span>
-              </Link>
-            </Button>
-          ) : (
-            <Button asChild variant="outline">
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-          )}
+        <nav>
+          <Button variant="outline" asChild>
+            <Link href="/auth/signin">Sign In</Link>
+          </Link>
         </nav>
       </div>
     </header>
