@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import for redirection
+import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInFormData } from '@/lib/schemas';
@@ -14,10 +14,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { signInWithEmailAndPassword } from 'firebase/auth';
-// IMPORTANT: Create this file if it doesn't exist.
-// It should initialize Firebase and export the 'auth' object.
-// Example: export const auth = getAuth(initializeApp(firebaseConfig));
-import { auth } from '@/lib/firebase'; // Assuming firebase.ts is in src/lib
+import { auth } from '@/lib/firebase'; // auth is now Auth | null
 
 export default function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +31,16 @@ export default function SignInForm() {
 
   const onSubmit: SubmitHandler<SignInFormData> = async (data) => {
     setIsLoading(true);
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description: "Firebase is not properly configured. Please contact support.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       console.log('Firebase Sign In Success:', userCredential.user);
@@ -41,7 +48,7 @@ export default function SignInForm() {
         title: "Sign In Successful!",
         description: "Welcome back! Redirecting to dashboard...",
       });
-      router.push('/dashboard'); // Redirect to dashboard on success
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Firebase Sign In Error:', error);
       let errorMessage = "Invalid credentials or user not found. Please try again.";
@@ -55,7 +62,7 @@ export default function SignInForm() {
             break;
           case 'auth/user-not-found':
           case 'auth/wrong-password':
-          case 'auth/invalid-credential': // Catches common invalid login attempts
+          case 'auth/invalid-credential':
             errorMessage = 'Invalid email or password.';
             break;
           default:
@@ -107,7 +114,7 @@ export default function SignInForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || !auth}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -117,6 +124,11 @@ export default function SignInForm() {
                 'Sign In'
               )}
             </Button>
+            {!auth && (
+              <p className="text-xs text-destructive text-center mt-2">
+                Authentication service is currently unavailable.
+              </p>
+            )}
           </form>
         </Form>
       </CardContent>

@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import for redirection
+import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signUpSchema, type SignUpFormData } from '@/lib/schemas';
@@ -14,10 +14,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-// IMPORTANT: Create this file if it doesn't exist.
-// It should initialize Firebase and export the 'auth' object.
-// Example: export const auth = getAuth(initializeApp(firebaseConfig));
-import { auth } from '@/lib/firebase'; // Assuming firebase.ts is in src/lib
+import { auth } from '@/lib/firebase'; // auth is now Auth | null
 
 export default function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,17 +32,24 @@ export default function SignUpForm() {
 
   const onSubmit: SubmitHandler<SignUpFormData> = async (data) => {
     setIsLoading(true);
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description: "Firebase is not properly configured. Please contact support.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // We won't use fullName directly for Firebase Auth email/password sign-up,
-      // but you might store it in Firestore/Realtime Database later linked to the user's UID.
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       console.log('Firebase Sign Up Success:', userCredential.user);
       toast({
         title: "Sign Up Successful!",
         description: "Your account has been created. Redirecting to dashboard...",
       });
-      // TODO: Implement email verification flow if desired.
-      router.push('/dashboard'); // Redirect to dashboard on success
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Firebase Sign Up Error:', error);
       let errorMessage = "An unexpected error occurred. Please try again.";
@@ -125,7 +129,7 @@ export default function SignUpForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || !auth}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -135,6 +139,11 @@ export default function SignUpForm() {
                 'Sign Up'
               )}
             </Button>
+            {!auth && (
+               <p className="text-xs text-destructive text-center mt-2">
+                Authentication service is currently unavailable.
+              </p>
+            )}
           </form>
         </Form>
       </CardContent>
