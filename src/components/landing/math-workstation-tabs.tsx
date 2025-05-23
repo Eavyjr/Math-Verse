@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, Route, BarChartHorizontalBig, Share2 } from 'lucide-react';
+import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, Route } from 'lucide-react'; // Added Route
 
 const workstations = [
   {
@@ -51,7 +51,7 @@ const workstations = [
   {
     value: "statistics",
     title: "Basic Statistics",
-    icon: <Route className="mr-2 h-5 w-5" />, // Using Route icon as a placeholder for stats
+    icon: <Route className="mr-2 h-5 w-5" />,
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
     href: "/operations/statistics"
@@ -65,12 +65,13 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:flex md:overflow-x-auto md:items-center md:space-x-1 bg-transparent p-1 border-b">
+        <TabsList className="flex w-full overflow-x-auto items-center space-x-1 bg-transparent p-1 border-b no-scrollbar">
+          {/* 'no-scrollbar' is a common utility, if not available, you might need to add CSS to hide scrollbar for .no-scrollbar */}
           {workstations.map((ws) => (
             <TabsTrigger
               key={ws.value}
               value={ws.value}
-              className="py-3 px-3 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm md:flex-grow-0 md:flex-shrink-0" // Ensure triggers don't shrink too much
+              className="py-3 px-4 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm whitespace-nowrap"
             >
               {ws.icon} {ws.title}
             </TabsTrigger>
@@ -101,5 +102,4 @@ export default function MathWorkstationTabs() {
     </div>
   );
 }
-
     
