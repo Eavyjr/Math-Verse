@@ -7,7 +7,7 @@ import Footer from '@/components/layout/footer';
 import { Toaster } from "@/components/ui/toaster";
 // Import KaTeX CSS directly
 import "katex/dist/katex.min.css";
-import { Analytics } from "@vercel/analytics/next";
+// import { Analytics } from "@vercel/analytics/next"; // Temporarily commented out
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -41,7 +41,7 @@ export default function RootLayout({
         </main>
         <Footer />
         <Toaster />
-        <Analytics />
+        {/* <Analytics /> */} {/* Temporarily commented out */}
       </body>
     </html>
   );
