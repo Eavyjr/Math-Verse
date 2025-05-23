@@ -25,7 +25,7 @@ export async function handleClassifyExpressionAction(
     const result = await classifyExpression(input);
     return { data: result, error: null };
   } catch (e) {
-    console.error('Error classifying expression:', e);
+    console.error('Error in handleClassifyExpressionAction:', e);
     let errorMessage = 'An error occurred while processing your request. Please try again.';
     if (e instanceof Error) {
         if (e.message.includes('quota')) {
@@ -33,8 +33,10 @@ export async function handleClassifyExpressionAction(
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this expression. Please try a different expression or operation.';
         } else {
-            errorMessage = e.message;
+            errorMessage = e.message || 'An unknown error occurred during classification.';
         }
+    } else if (typeof e === 'string') {
+        errorMessage = e;
     }
     return { data: null, error: errorMessage };
   }
@@ -166,11 +168,13 @@ export async function handleSolveDifferentialEquationAction(
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid output')) {
-        errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation.';
+      } else if (e.message.includes('model did not return a valid output') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only')) {
+        errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
       } else {
         errorMessage = `An AI processing error occurred. Details: ${e.message}`;
       }
+    } else if (typeof e === 'string') {
+        errorMessage = e;
     }
     return { data: null, error: errorMessage };
   }
@@ -225,6 +229,8 @@ export async function handlePerformMatrixOperationAction(
         } else {
             errorMessage = `An AI processing error occurred. Details: ${e.message}`;
         }
+    } else if (typeof e === 'string') {
+        errorMessage = e;
     }
     return { data: null, error: errorMessage };
   }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, type SubmitHandler } from 'react-hook-form';
@@ -17,8 +18,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface ExpressionInputFormProps {
-  onResult: (data: ClassifyExpressionOutput) => void;
-  onError: (error: string) => void;
+  onResult: (data: ClassifyExpressionOutput | null) => void; // Allow null for error cases
+  onError: (error: string | null) => void; // Allow null to clear error
   onLoading: (loading: boolean) => void;
   isLoading: boolean;
 }
@@ -31,15 +32,23 @@ export default function ExpressionInputForm({ onResult, onError, onLoading, isLo
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     onLoading(true);
-    // Clear previous error/result before new submission
-    onError(''); 
-    const result = await handleClassifyExpressionAction(data.expression);
-    if (result.error) {
-      onError(result.error);
-      onResult(null as any); // Clear previous result on error
-    } else if (result.data) {
-      onResult(result.data);
-      onError(''); // Clear previous error on success
+    onError(null); // Clear previous error
+    onResult(null); // Clear previous result
+    
+    console.log("ExpressionInputForm: Submitting expression:", data.expression);
+    const actionResult = await handleClassifyExpressionAction(data.expression);
+    console.log("ExpressionInputForm: Received actionResult:", actionResult);
+
+    if (actionResult.error) {
+      onError(actionResult.error);
+      onResult(null); 
+    } else if (actionResult.data) {
+      onResult(actionResult.data);
+      onError(null); 
+    } else {
+      // This case should ideally not happen if actionResult always has data or error
+      onError("An unexpected issue occurred. No data or error received.");
+      onResult(null);
     }
     onLoading(false);
   };

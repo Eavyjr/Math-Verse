@@ -19,13 +19,15 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleAiResult = (data: ClassifyExpressionOutput | null) => {
+    console.log("HomePage received result:", data);
     setAiResponse(data);
-    setError(null); // Clear previous errors on new result
+    setError(null); 
   };
 
-  const handleAiError = (errorMessage: string) => {
+  const handleAiError = (errorMessage: string | null) => {
+    console.error("HomePage received error:", errorMessage);
     setError(errorMessage);
-    setAiResponse(null); // Clear previous results on error
+    setAiResponse(null); 
   };
 
   const handleAiLoading = (loadingState: boolean) => {
@@ -65,7 +67,12 @@ export default function HomePage() {
             onLoading={handleAiLoading}
             isLoading={isLoading}
           />
-          {error && (
+          {isLoading && (
+            <div className="mt-4 text-center text-muted-foreground">
+              Loading AI insights...
+            </div>
+          )}
+          {error && !isLoading && (
             <Alert variant="destructive" className="mt-4">
               <AlertCircle className="h-5 w-5" />
               <AlertTitle>Classifier Error</AlertTitle>
