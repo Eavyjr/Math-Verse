@@ -114,8 +114,8 @@ importers:
         specifier: ^0.475.0
         version: 0.475.0(react@18.3.1)
       mathjs:
-        specifier: ^13.0.3
-        version: 13.2.3
+        specifier: ^14.5.0
+        version: 14.5.0
       next:
         specifier: ^15.3.2
         version: 15.3.2(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -147,9 +147,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.23
     devDependencies:
-      '@types/mathjs':
-        specifier: ^9.4.2
-        version: 9.4.2
       '@types/node':
         specifier: ^20
         version: 20.17.50
@@ -1643,10 +1640,6 @@ packages:
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
 
-  '@types/mathjs@9.4.2':
-    resolution: {integrity: sha512-GF5g1vJmvKdWIWsE53XX7EDAyCaZ9p6gaYm1xhlXn5JjrY/NJrOfJN3fBxS3wyZpVh3QqKoMkS2WjFwxWMHOTw==}
-    deprecated: This is a stub types definition. mathjs provides its own type definitions, so you do not need this installed.
-
   '@types/node@20.17.50':
     resolution: {integrity: sha512-Mxiq0ULv/zo1OzOhwPqOA13I81CV/W3nvd3ChtQZRT5Cwz3cr0FKo/wMSsbTqL3EXpaBAEQhva2B8ByRkOIh9A==}
 
@@ -2353,8 +2346,9 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
-  fraction.js@4.3.7:
-    resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
+  fraction.js@5.2.2:
+    resolution: {integrity: sha512-uXBDv5knpYmv/2gLzWQ5mBHGBRk9wcKTeWu6GLTUEQfjCxO09uM/mHDrojlL+Q1mVGIIFo149Gba7od1XPgSzQ==}
+    engines: {node: '>= 12'}
 
   fresh@0.5.2:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
@@ -2720,8 +2714,8 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
-  mathjs@13.2.3:
-    resolution: {integrity: sha512-I67Op0JU7gGykFK64bJexkSAmX498x0oybxfVXn1rroEMZTmfxppORhnk8mEUnPrbTfabDKCqvm18vJKMk2UJQ==}
+  mathjs@14.5.0:
+    resolution: {integrity: sha512-/zg7ikD0zfb9Qogqr0EXIMwyHD9GKnkrAz7EGXvOD2e+4yQdKwQ4xqj5Mhk0TWT39IWhu3Pen3GXiUufkGHgOg==}
     engines: {node: '>= 18'}
     hasBin: true
 
@@ -5187,10 +5181,6 @@ snapshots:
 
   '@types/long@4.0.2': {}
 
-  '@types/mathjs@9.4.2':
-    dependencies:
-      mathjs: 13.2.3
-
   '@types/node@20.17.50':
     dependencies:
       undici-types: 6.19.8
@@ -5955,7 +5945,7 @@ snapshots:
 
   forwarded@0.2.0: {}
 
-  fraction.js@4.3.7: {}
+  fraction.js@5.2.2: {}
 
   fresh@0.5.2: {}
 
@@ -6385,13 +6375,13 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mathjs@13.2.3:
+  mathjs@14.5.0:
     dependencies:
       '@babel/runtime': 7.27.1
       complex.js: 2.4.2
       decimal.js: 10.5.0
       escape-latex: 1.2.0
-      fraction.js: 4.3.7
+      fraction.js: 5.2.2
       javascript-natural-sort: 0.7.1
       seedrandom: 3.0.5
       tiny-emitter: 2.1.0
