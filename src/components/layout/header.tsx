@@ -4,12 +4,12 @@
 import Link from 'next/link';
 import { MathLogoIcon } from '@/components/icons/math-logo';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/auth-context';
-import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut, UserCircle } from 'lucide-react'; // Icons for user state
+// import { useAuth } from '@/context/auth-context'; // Auth context commented out
+// import { Skeleton } from '@/components/ui/skeleton'; // Skeleton commented out
+// import { LogOut, UserCircle } from 'lucide-react'; // Icons commented out
 
 export default function Header() {
-  const { user, isLoading, signOut } = useAuth();
+  // const { user, isLoading, signOut } = useAuth(); // Auth logic commented out
 
   return (
     <header className="py-4 px-6 border-b bg-card shadow-sm sticky top-0 z-50">
@@ -19,6 +19,12 @@ export default function Header() {
           <span>MathVerse</span>
         </Link>
         <nav>
+          {/* Simplified header: Always show Sign In button for now */}
+          <Button variant="outline" asChild>
+            <Link href="/auth/signin">Sign In</Link>
+          </Button>
+          {/* 
+          // Previous auth-dependent logic:
           {isLoading ? (
             <Skeleton className="h-10 w-24" />
           ) : user ? (
@@ -37,6 +43,7 @@ export default function Header() {
               <Link href="/auth/signin">Sign In</Link>
             </Button>
           )}
+          */}
         </nav>
       </div>
     </header>
