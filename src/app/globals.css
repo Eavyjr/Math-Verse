@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Import React Flow styles */
-/* @import '@xyflow/react/dist/style.css'; */
+@import '@xyflow/react/dist/style.css';
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;

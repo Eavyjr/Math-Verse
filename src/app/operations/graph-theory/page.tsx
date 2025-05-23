@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-// import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
+import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
 
 
 // Data structures for graph
@@ -49,10 +49,8 @@ interface GraphProperties {
   loops: Edge[];
 }
 
-// const initialRfNodes: RFNode[] = [];
-// const initialRfEdges: RFEdge[] = [];
-const initialRfNodes: any[] = []; // Temp type
-const initialRfEdges: any[] = []; // Temp type
+const initialRfNodes: RFNode[] = [];
+const initialRfEdges: RFEdge[] = [];
 
 
 export default function GraphTheoryPage() {
@@ -61,7 +59,7 @@ export default function GraphTheoryPage() {
   const [isWeighted, setIsWeighted] = useState(false);
   
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [nodes, setNodes] = useState<Node[]>([]); // Derived nodes {id, label}
+  const [nodes, setNodes] = useState<Node[]>([]); 
 
   const [newEdgeSource, setNewEdgeSource] = useState('');
   const [newEdgeTarget, setNewEdgeTarget] = useState('');
@@ -76,12 +74,8 @@ export default function GraphTheoryPage() {
     loops: [],
   });
 
-  // const [rfNodes, setRfNodesState, onRfNodesChange]: [RFNode[], any, OnNodesChange] = useNodesState(initialRfNodes);
-  // const [rfEdges, setRfEdgesState, onRfEdgesChange]: [RFEdge[], any, OnEdgesChange] = useEdgesState(initialRfEdges);
-  const [rfNodes, setRfNodesState] = useState(initialRfNodes); // Temp state
-  const [rfEdges, setRfEdgesState] = useState(initialRfEdges); // Temp state
-  const onRfNodesChange = (window as any).onRfNodesChange; // Temp stub
-  const onRfEdgesChange = (window as any).onRfEdgesChange; // Temp stub
+  const [rfNodes, setRfNodesState, onRfNodesChange]: [RFNode[], any, OnNodesChange] = useNodesState(initialRfNodes);
+  const [rfEdges, setRfEdgesState, onRfEdgesChange]: [RFEdge[], any, OnEdgesChange] = useEdgesState(initialRfEdges);
 
 
   // Effect to derive internal 'nodes' state from 'edges'
@@ -96,41 +90,41 @@ export default function GraphTheoryPage() {
   }, [edges]);
 
   // Effect to transform internal 'nodes' and 'edges' to React Flow format
-  // useEffect(() => {
-  //   const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
-  //     id: node.id,
-  //     data: { label: node.label },
-  //     position: { x: (index % 5) * 150 + Math.random() * 50, y: Math.floor(index / 5) * 120 + Math.random() * 30 }, 
-  //     type: 'default', 
-  //     style: { 
-  //       background: 'hsl(var(--primary-foreground))', 
-  //       color: 'hsl(var(--primary))', 
-  //       border: '2px solid hsl(var(--primary))',
-  //       borderRadius: '0.375rem', 
-  //       padding: '0.5rem 1rem',
-  //       width: 'auto',
-  //       minWidth: '60px',
-  //       textAlign: 'center',
-  //     },
-  //   }));
+  useEffect(() => {
+    const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
+      id: node.id,
+      data: { label: node.label },
+      position: { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 }, 
+      type: 'default', 
+      style: { 
+        background: 'hsl(var(--primary-foreground))', 
+        color: 'hsl(var(--primary))', 
+        border: '2px solid hsl(var(--primary))',
+        borderRadius: '0.375rem', 
+        padding: '0.5rem 1rem',
+        width: 'auto',
+        minWidth: '60px',
+        textAlign: 'center',
+      },
+    }));
 
-  //   const newRfEdgesData: RFEdge[] = edges.map(edge => ({
-  //     id: edge.id,
-  //     source: edge.source,
-  //     target: edge.target,
-  //     label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
-  //     animated: isDirected,
-  //     markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
-  //     style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
-  //     labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
-  //     labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
-  //     labelBgPadding: [4, 2] as [number, number],
-  //     labelBgBorderRadius: 2,
-  //   }));
+    const newRfEdgesData: RFEdge[] = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
+      animated: isDirected,
+      markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
+      style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+      labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
+      labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
+      labelBgPadding: [4, 2] as [number, number],
+      labelBgBorderRadius: 2,
+    }));
     
-  //   setRfNodesState(newRfNodesData);
-  //   setRfEdgesState(newRfEdgesData);
-  // }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
+    setRfNodesState(newRfNodesData);
+    setRfEdgesState(newRfEdgesData);
+  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
 
 
   // Effect to compute Adjacency Matrix
@@ -152,8 +146,6 @@ export default function GraphTheoryPage() {
       matrix[sourceIdx][targetIdx] = value;
       if (!isDirected && sourceIdx !== targetIdx) {
         matrix[targetIdx][sourceIdx] = value;
-      } else if (!isDirected && sourceIdx === targetIdx) { 
-        // matrix[sourceIdx][targetIdx] = value; // Already set
       }
     });
     setAdjacencyMatrix(matrix);
@@ -176,13 +168,13 @@ export default function GraphTheoryPage() {
       const weightValue = isWeighted && edge.weight !== undefined ? edge.weight : 1;
 
       if (isDirected) {
-        if (sourceIdx === targetIdx) { // Directed loop
+        if (sourceIdx === targetIdx) { 
             matrix[sourceIdx][edgeIdx] = weightValue; 
         } else {
             matrix[sourceIdx][edgeIdx] = weightValue; 
             matrix[targetIdx][edgeIdx] = -weightValue;
         }
-      } else { // Undirected
+      } else { 
         matrix[sourceIdx][edgeIdx] = weightValue;
         if (sourceIdx !== targetIdx) { 
           matrix[targetIdx][edgeIdx] = weightValue; 
@@ -224,8 +216,11 @@ export default function GraphTheoryPage() {
         if(sourceDegree && sourceDegree.degree !== undefined) sourceDegree.degree++;
         if (edge.source !== edge.target && targetDegree && targetDegree.degree !== undefined) { 
           targetDegree.degree++;
-        } else if (edge.source === edge.target && sourceDegree && sourceDegree.degree !== undefined) {
-          sourceDegree.degree++; 
+        } else if (edge.source === edge.target && sourceDegree && sourceDegree.degree !== undefined && newProperties.loops.find(l => l.id === edge.id)) {
+           // For undirected loops, degree is typically counted as 2.
+           // Since it's already counted once for the source, add one more.
+           // This check ensures it's only for loops to avoid double counting non-loop edges.
+           sourceDegree.degree++;
         }
       }
     });
@@ -352,11 +347,11 @@ export default function GraphTheoryPage() {
       <CardHeader>
         <CardTitle className="text-lg">Graph Visualization</CardTitle>
         <CardDescription>
-            Interactive graph visualization placeholder.
+            Interactive graph visualization. Updates as you edit the edge list.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow relative flex items-center justify-center bg-muted/30 rounded-md">
-        {/* <ReactFlow
+        <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onRfNodesChange}
@@ -368,12 +363,7 @@ export default function GraphTheoryPage() {
           <Controls />
           <MiniMap nodeStrokeWidth={3} zoomable pannable />
           <Background gap={16} color="hsl(var(--border))" />
-        </ReactFlow> */}
-        <div className="text-center text-muted-foreground p-4">
-          <Projector className="h-16 w-16 mx-auto mb-2 opacity-30" />
-          <p>Graph visualization (using @xyflow/react) is temporarily disabled.</p>
-          <p className="text-xs">Please resolve npm install issues to re-enable.</p>
-        </div>
+        </ReactFlow>
       </CardContent>
     </Card>
   );
