@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Calculator as CalculatorIcon, Compass } from 'lucide-react';
+import { ArrowLeft, Calculator as CalculatorIcon, Compass, BotMessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 declare global {
@@ -19,7 +19,7 @@ export default function GraphingAndGeometryPage() {
   const [isDesmosGraphingReady, setIsDesmosGraphingReady] = useState(false);
 
   const desmosGeometryContainerRef = useRef<HTMLDivElement>(null);
-  const desmosGeometryInstanceRef = useRef<any>(null);
+  const desmosGeometryInstanceRef = useRef<any>(null); // Will now also be a GraphingCalculator
   const [desmosGeometryError, setDesmosGeometryError] = useState<string | null>(null);
   const [isDesmosGeometryReady, setIsDesmosGeometryReady] = useState(false);
 
@@ -75,13 +75,14 @@ export default function GraphingAndGeometryPage() {
         desmosGraphingInstanceRef.current.destroy();
         desmosGraphingInstanceRef.current = null;
       } else if (calculatorInstance && typeof calculatorInstance.destroy === 'function') {
+        // Fallback if ref didn't update in time for some reason
         calculatorInstance.destroy();
       }
       setIsDesmosGraphingReady(false);
     };
   }, [isClient]);
 
-  // Effect for Geometry Calculator
+  // Effect for "Geometry Exploration" Calculator (using GraphingCalculator)
   useEffect(() => {
     if (!isClient) return;
 
@@ -92,18 +93,25 @@ export default function GraphingAndGeometryPage() {
     function initDesmosGeometryInstance() {
       if (container && window.Desmos && !desmosGeometryInstanceRef.current) {
         try {
-          // Options for Geometry Calculator can be added here if needed
           const desmosOptions = {
-            // Common options: settingsMenu, zoomButtons, etc.
-            // Geometry specific options might be available, refer to Desmos API docs
+            // You can customize options here for a more geometry-focused feel
+            // For example, different default graph settings, or fewer expression lines initially.
+            keypad: true, 
+            expressions: true, 
+            settingsMenu: true,
+            zoomButtons: true,
+            // Consider settings like:
+            // lockViewport: true, // if you want a static view for constructions
+            // expressionsCollapsed: true, // To make the expression list less prominent initially
           };
-          geometryInstance = window.Desmos.GeometryCalculator(container, desmosOptions);
+          // Use GraphingCalculator as GeometryCalculator is not available in this script
+          geometryInstance = window.Desmos.GraphingCalculator(container, desmosOptions);
           desmosGeometryInstanceRef.current = geometryInstance;
           setIsDesmosGeometryReady(true);
           setDesmosGeometryError(null);
         } catch (e) {
-          console.error("Error initializing Desmos Geometry Calculator:", e);
-          setDesmosGeometryError("Failed to initialize Desmos Geometry Calculator.");
+          console.error("Error initializing second Desmos Graphing Calculator (for Geometry):", e);
+          setDesmosGeometryError("Failed to initialize second Desmos calculator.");
           setIsDesmosGeometryReady(false);
         }
       }
@@ -141,8 +149,8 @@ export default function GraphingAndGeometryPage() {
           Back to Workstations
         </Link>
         <h1 className="text-2xl font-bold text-primary flex items-center">
-          <CalculatorIcon className="mr-2 h-6 w-6" />
-          Graphing & Geometry
+          <BotMessageSquare className="mr-2 h-6 w-6" /> {/* Changed icon for better representation */}
+          Graphing & Geometry Tools
         </h1>
       </div>
       
@@ -183,26 +191,26 @@ export default function GraphingAndGeometryPage() {
       <Card className="flex-grow flex flex-col shadow-lg overflow-hidden mt-6">
         <CardHeader className="py-3 px-4 border-b">
           <CardTitle className="text-lg flex items-center">
-            <Compass className="mr-2 h-5 w-5" /> Desmos Geometry Tool
+            <Compass className="mr-2 h-5 w-5" /> Desmos Geometry Exploration (via Graphing Calculator)
           </CardTitle>
           <CardDescription className="text-sm">
-            Construct geometric figures, explore transformations, and measure angles and distances.
+            Construct and explore geometric figures using the graphing calculator's capabilities. Plot points, lines, circles, and more.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow p-0 relative min-h-[300px] md:min-h-[400px]">
           <div
             ref={desmosGeometryContainerRef}
             className="w-full h-full"
-            aria-label="Interactive Desmos Geometry Calculator"
+            aria-label="Interactive Desmos Calculator for Geometry"
           >
             {!isClient && (
                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <p>Initializing geometry tool...</p>
+                    <p>Initializing geometry exploration tool...</p>
                 </div>
             )}
             {isClient && !isDesmosGeometryReady && !desmosGeometryError && (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>Loading Desmos Geometry Tool...</p>
+                <p>Loading Desmos Calculator for Geometry...</p>
               </div>
             )}
             {desmosGeometryError && (
