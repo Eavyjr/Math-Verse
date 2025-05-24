@@ -1,50 +1,109 @@
 
 'use client';
 
-import * as React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Info, AlertTriangle } from 'lucide-react';
-import Image from 'next/image';
 
 interface VisualizationPlaceholderProps {
   expression?: string | null;
   classification?: string | null;
 }
 
-const getPlaceholderDetails = (classification?: string | null): { hint: string; placeholderText: string } => {
-  if (!classification || classification === "Classification not available.") {
-    return { hint: "math graph", placeholderText: "Math Graph" };
+declare global {
+  interface Window {
+    Desmos?: any; // Desmos loads itself onto the window object
   }
-  const lowerClass = classification.toLowerCase();
-  if (lowerClass.includes("polynomial") || lowerClass.includes("linear") || lowerClass.includes("quadratic") || lowerClass.includes("cubic")) return { hint: "function plot", placeholderText: "Function Plot" };
-  if (lowerClass.includes("trigonometric") || lowerClass.includes("sin") || lowerClass.includes("cos")) return { hint: "trig plot", placeholderText: "Trigonometric Plot" };
-  if (lowerClass.includes("exponential") || lowerClass.includes("logarithm")) return { hint: "exponential plot", placeholderText: "Exponential Plot" };
-  if (lowerClass.includes("differential equation")) return { hint: "slope field", placeholderText: "Slope Field/Solution Curve" };
-  if (lowerClass.includes("matrix")) return { hint: "matrix grid", placeholderText: "Matrix Representation" };
-  if (lowerClass.includes("identity")) return { hint: "identity graph", placeholderText: "Identity Plot" };
-  return { hint: "math graph", placeholderText: "Mathematical Visualization" };
-};
+}
 
 export default function VisualizationPlaceholder({ expression, classification }: VisualizationPlaceholderProps) {
-  const { hint, placeholderText: dynamicPlaceholderText } = getPlaceholderDetails(classification);
-  
-  let textInImage = dynamicPlaceholderText;
-  if (expression && expression.trim()) {
-    const shortExpr = expression.length > 20 ? expression.substring(0, 17) + "..." : expression;
-    textInImage = `${dynamicPlaceholderText}: ${shortExpr}`;
-  }
-  
-  const placeholderUrl = `https://placehold.co/400x250.png?text=${encodeURIComponent(textInImage)}`;
+  const desmosContainerRef = useRef<HTMLDivElement>(null);
+  const desmosCalculatorRef = useRef<any>(null); // Stores the Desmos calculator instance
+  const [desmosError, setDesmosError] = useState<string | null>(null);
+  const [isDesmosReady, setIsDesmosReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.Desmos !== 'undefined' && desmosContainerRef.current && !desmosCalculatorRef.current) {
+      try {
+        // Ensure the API key is mentioned in the docs or use a placeholder key from Desmos examples if you don't have one
+        // The key 'dsmr_api_0123456789abcdef' is often used in public examples.
+        // For production, obtain a proper API key from Desmos.
+        const elt = desmosContainerRef.current;
+        // Clear previous instance if any
+        if (elt.firstChild) {
+           elt.removeChild(elt.firstChild);
+        }
+        desmosCalculatorRef.current = window.Desmos.GraphingCalculator(elt, {
+          keypad: false,
+          expressions: false,
+          settingsMenu: false,
+          zoomButtons: true,
+          showGrid: true,
+        });
+        setIsDesmosReady(true);
+        setDesmosError(null); // Clear previous errors
+      } catch (e) {
+        console.error("Error initializing Desmos calculator:", e);
+        setDesmosError("Failed to initialize Desmos graphing calculator.");
+        setIsDesmosReady(false);
+      }
+    } else if (!window.Desmos) {
+      // Poll for Desmos API if not immediately available
+      const intervalId = setInterval(() => {
+        if (typeof window.Desmos !== 'undefined' && desmosContainerRef.current && !desmosCalculatorRef.current) {
+          clearInterval(intervalId);
+          try {
+            const elt = desmosContainerRef.current;
+            if (elt.firstChild) {
+               elt.removeChild(elt.firstChild);
+            }
+            desmosCalculatorRef.current = window.Desmos.GraphingCalculator(elt, {
+                keypad: false,
+                expressions: false,
+                settingsMenu: false,
+                zoomButtons: true,
+                showGrid: true,
+            });
+            setIsDesmosReady(true);
+            setDesmosError(null);
+          } catch (e) {
+            console.error("Error initializing Desmos (retry):", e);
+            setDesmosError("Failed to initialize Desmos graphing calculator on retry.");
+            setIsDesmosReady(false);
+          }
+        }
+      }, 500);
+      return () => clearInterval(intervalId);
+    }
+  }, []); // Runs once on mount
+
+  useEffect(() => {
+    if (desmosCalculatorRef.current && isDesmosReady && expression && expression.trim()) {
+      try {
+        desmosCalculatorRef.current.setExpression({ id: 'graph1', latex: expression });
+        setDesmosError(null); // Clear previous expression errors
+      } catch(e) {
+        console.error("Error setting expression in Desmos:", e);
+        setDesmosError(`Desmos could not plot: ${expression}. Please check the expression syntax.`);
+        // Optionally clear the graph if expression is invalid
+        // desmosCalculatorRef.current.setExpression({ id: 'graph1', latex: '' });
+      }
+    } else if (desmosCalculatorRef.current && isDesmosReady && (!expression || !expression.trim())) {
+      // Clear the graph if expression is empty or null
+      desmosCalculatorRef.current.setExpression({ id: 'graph1', latex: '' });
+      setDesmosError(null);
+    }
+  }, [expression, isDesmosReady]);
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-accent" />
-          Expression Visualization
+          Expression Visualization (via Desmos)
         </CardTitle>
         <CardDescription>
-          A visual representation based on the classified expression. (Interactive plotting is experimental/coming soon for specific types).
+          An interactive plot of the expression powered by Desmos.
         </CardDescription>
       </CardHeader>
       <CardContent className="text-muted-foreground">
@@ -60,23 +119,32 @@ export default function VisualizationPlaceholder({ expression, classification }:
             )}
           </div>
         )}
-        <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-          <Image
-            src={placeholderUrl}
-            alt={classification ? `${classification} plot placeholder` : "Graph placeholder"}
-            width={400}
-            height={250}
-            data-ai-hint={hint}
-            className="opacity-75 mb-2 rounded-md object-contain max-h-[100px]"
-            key={placeholderUrl} 
-          />
-          <p className="flex items-center gap-1 text-sm text-center">
-            <Info className="h-4 w-4 shrink-0" />
-            {expression ? `Placeholder visualization for: ${expression}` : "Enter an expression for classification."}
-          </p>
+
+        <div 
+          ref={desmosContainerRef} 
+          className="w-full h-[300px] border-2 border-dashed border-border rounded-md bg-background flex items-center justify-center"
+          aria-label="Desmos Graphing Calculator"
+        >
+          {!isDesmosReady && !desmosError && (
+            <p className="flex items-center gap-1 text-sm text-center p-4">
+              <Info className="h-4 w-4 shrink-0" />
+              Loading Desmos Graphing Calculator...
+            </p>
+          )}
         </div>
+        
+        {desmosError && (
+            <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-5 w-5"/>
+                <AlertTitle>Graphing Error</AlertTitle>
+                <AlertDescription>{desmosError}</AlertDescription>
+            </Alert>
+        )}
+
         <p className="mt-4 text-xs text-muted-foreground italic">
-          **Note:** This is a dynamic placeholder image. Actual interactive plotting is limited or under development.
+          **Note:** Graphing is powered by the Desmos API. 
+          An API key is required for full functionality; this example uses a placeholder. 
+          <a href="https://www.desmos.com/api" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">Get your Desmos API key</a>.
         </p>
       </CardContent>
     </Card>

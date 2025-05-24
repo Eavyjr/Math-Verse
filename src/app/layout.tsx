@@ -4,17 +4,17 @@ import { Inter, Fira_Code } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import "katex/dist/katex.min.css"; // KaTeX CSS
+import "katex/dist/katex.min.css"; 
 // import { AuthProvider } from '@/context/auth-context'; // AuthProvider commented out
-// import { Toaster } from '@/components/ui/toaster'; // Toaster commented out for now
+// import { Toaster } from '@/components/ui/toaster'; // Toaster commented out
 
 const inter = Inter({
-  variable: '--font-geist-sans', // Changed from --font-inter to match globals.css
+  variable: '--font-geist-sans',
   subsets: ['latin'],
 });
 
 const firaCode = Fira_Code({
-  variable: '--font-geist-mono', // Changed from --font-fira-code to match globals.css
+  variable: '--font-geist-mono',
   subsets: ['latin'],
   weight: ['400', '500', '700'],
 });
@@ -32,7 +32,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* KaTeX CSS is imported directly in this file now */}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossOrigin="anonymous" />
+        {/* Desmos API Script - IMPORTANT: Replace with your actual API key */}
+        <script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dsmr_api_0123456789abcdef" async></script>
       </head>
       <body className={`${inter.variable} ${firaCode.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         {/* <AuthProvider> */}
