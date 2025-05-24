@@ -19,13 +19,17 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleAiResult = (data: ClassifyExpressionOutput | null) => {
-    console.log("HomePage received result:", data);
+    console.log("HomePage received AI result:", data);
     setAiResponse(data);
     setError(null); 
   };
 
   const handleAiError = (errorMessage: string | null) => {
-    console.error("HomePage received error:", errorMessage);
+    if (errorMessage) {
+      console.error("HomePage received AI error:", errorMessage);
+    } else {
+      console.log("HomePage: AI error state cleared (previous successful operation or new input).");
+    }
     setError(errorMessage);
     setAiResponse(null); 
   };
