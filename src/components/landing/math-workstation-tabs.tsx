@@ -12,7 +12,7 @@ const workstations = [
     value: "algebra",
     title: "Basic Algebra",
     icon: <Calculator className="mr-2 h-5 w-5" />,
-    description: "Solve, simplify, and factor algebraic expressions with ease. Get step-by-step solutions and understand the fundamentals.",
+    description: "Solve, simplify, and factor algebraic expressions. Get step-by-step solutions and AI-powered guidance.",
     cta: "Explore Algebra",
     href: "/operations/algebra"
   },
@@ -20,7 +20,7 @@ const workstations = [
     value: "integration",
     title: "Integration",
     icon: <Sigma className="mr-2 h-5 w-5" />,
-    description: "Compute definite and indefinite integrals. Visualize functions and explore various integration techniques.",
+    description: "Compute definite and indefinite integrals. Explore various integration techniques with AI assistance.",
     cta: "Explore Integration",
     href: "/operations/integration"
   },
@@ -28,7 +28,7 @@ const workstations = [
     value: "differentiation",
     title: "Differentiation & DEs",
     icon: <Ratio className="mr-2 h-5 w-5" />,
-    description: "Find derivatives, solve differential equations, understand their types, and see step-by-step solutions.",
+    description: "Find derivatives, solve differential equations, and see step-by-step solutions. Now includes higher-order derivatives.",
     cta: "Explore Calculus",
     href: "/operations/differentiation"
   },
@@ -36,7 +36,7 @@ const workstations = [
     value: "matrix",
     title: "Matrix Operations",
     icon: <Grid3X3 className="mr-2 h-5 w-5" />,
-    description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions. Visualize 2x2 matrices.",
+    description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions.",
     cta: "Explore Matrices",
     href: "/operations/matrix"
   },
@@ -44,7 +44,7 @@ const workstations = [
     value: "graph-theory",
     title: "Graph Theory",
     icon: <Share2 className="mr-2 h-5 w-5" />,
-    description: "Interactively create, edit, and analyze graphs. Visualize algorithms like DFS, BFS, Dijkstra's, and more.",
+    description: "Interactively create, edit, and analyze graphs. Visualize algorithms and explore graph properties.",
     cta: "Explore Graph Theory",
     href: "/operations/graph-theory"
   },
@@ -52,7 +52,7 @@ const workstations = [
     value: "statistics",
     title: "Basic Statistics",
     icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />,
-    description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
+    description: "Analyze data, calculate descriptive statistics, visualize distributions, and perform regression analysis.",
     cta: "Explore Statistics",
     href: "/operations/statistics"
   },
@@ -60,7 +60,7 @@ const workstations = [
     value: "graphing-calculator",
     title: "Graphing Calculator",
     icon: <FunctionSquare className="mr-2 h-5 w-5" />,
-    description: "A full-featured Desmos graphing calculator for advanced plotting and exploration.",
+    description: "A full-featured Desmos graphing calculator for advanced plotting and geometric explorations.",
     cta: "Open Calculator",
     href: "/operations/graphing-calculator"
   },
@@ -73,18 +73,21 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        <TabsList className="flex overflow-x-auto items-center space-x-1 bg-transparent p-1 border-b no-scrollbar">
-          {/* Removed w-full from TabsList */}
-          {workstations.map((ws) => (
-            <TabsTrigger
-              key={ws.value}
-              value={ws.value}
-              className="py-3 px-4 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm whitespace-nowrap"
-            >
-              {ws.icon} {ws.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Outer div handles scrolling and bottom border */}
+        <div className="overflow-x-auto no-scrollbar border-b">
+          {/* TabsList is now inline-flex to size based on content */}
+          <TabsList className="inline-flex items-center space-x-1 bg-transparent p-1">
+            {workstations.map((ws) => (
+              <TabsTrigger
+                key={ws.value}
+                value={ws.value}
+                className="py-3 px-4 flex-shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg bg-card hover:bg-muted transition-all rounded-sm whitespace-nowrap"
+              >
+                {ws.icon} {ws.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         {workstations.map((ws) => (
           <TabsContent key={ws.value} value={ws.value}>
             <Card className="shadow-xl border-t-4 border-primary mt-2">
