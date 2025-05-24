@@ -3,55 +3,57 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, Info } from 'lucide-react';
+import { BarChart3, Info, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 
 interface VisualizationPlaceholderProps {
-  expression?: string;
-  classification?: string;
+  expression?: string | null;
+  classification?: string | null;
 }
 
-const getPlaceholderDetails = (classification?: string): { hint: string; placeholderText: string } => {
-  if (!classification) return { hint: "math graph", placeholderText: "Math Graph" };
+const getPlaceholderDetails = (classification?: string | null): { hint: string; placeholderText: string } => {
+  if (!classification || classification === "Classification not available.") {
+    return { hint: "math graph", placeholderText: "Math Graph" };
+  }
   const lowerClass = classification.toLowerCase();
   if (lowerClass.includes("polynomial") || lowerClass.includes("linear") || lowerClass.includes("quadratic") || lowerClass.includes("cubic")) return { hint: "function plot", placeholderText: "Function Plot" };
   if (lowerClass.includes("trigonometric") || lowerClass.includes("sin") || lowerClass.includes("cos")) return { hint: "trig plot", placeholderText: "Trigonometric Plot" };
   if (lowerClass.includes("exponential") || lowerClass.includes("logarithm")) return { hint: "exponential plot", placeholderText: "Exponential Plot" };
-  if (lowerClass.includes("differential equation")) return { hint: "slope field", placeholderText: "Slope Field" };
-  if (lowerClass.includes("matrix")) return { hint: "matrix grid", placeholderText: "Matrix Grid" };
-  return { hint: "math graph", placeholderText: "Math Graph" };
+  if (lowerClass.includes("differential equation")) return { hint: "slope field", placeholderText: "Slope Field/Solution Curve" };
+  if (lowerClass.includes("matrix")) return { hint: "matrix grid", placeholderText: "Matrix Representation" };
+  if (lowerClass.includes("identity")) return { hint: "identity graph", placeholderText: "Identity Plot" };
+  return { hint: "math graph", placeholderText: "Mathematical Visualization" };
 };
 
 export default function VisualizationPlaceholder({ expression, classification }: VisualizationPlaceholderProps) {
   const { hint, placeholderText: dynamicPlaceholderText } = getPlaceholderDetails(classification);
   
-  let displayTextInImage = dynamicPlaceholderText;
-  if (expression) {
-    // Truncate long expressions for the placeholder image text
-    const shortExpr = expression.length > 25 ? expression.substring(0, 22) + "..." : expression;
-    displayTextInImage = `${dynamicPlaceholderText}: ${shortExpr}`;
+  let textInImage = dynamicPlaceholderText;
+  if (expression && expression.trim()) {
+    const shortExpr = expression.length > 20 ? expression.substring(0, 17) + "..." : expression;
+    textInImage = `${dynamicPlaceholderText}: ${shortExpr}`;
   }
   
-  const placeholderUrl = `https://placehold.co/400x250.png?text=${encodeURIComponent(displayTextInImage)}`;
+  const placeholderUrl = `https://placehold.co/400x250.png?text=${encodeURIComponent(textInImage)}`;
 
   return (
     <Card className="w-full shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-accent" />
-          Dynamic Visualization
+          Expression Visualization
         </CardTitle>
         <CardDescription>
-          A visual representation of the classified expression will appear here. (Full interactive plotting coming soon!)
+          A visual representation based on the classified expression. (Interactive plotting is experimental/coming soon for specific types).
         </CardDescription>
       </CardHeader>
       <CardContent className="text-muted-foreground">
-        {expression && (
+        {expression && expression.trim() && (
           <div className="mb-4 p-3 border rounded-md bg-secondary/50 text-sm">
             <p className="font-semibold text-foreground">
               Expression: <span className="font-mono bg-background/70 p-1 rounded">{expression}</span>
             </p>
-            {classification && (
+            {classification && classification !== "Classification not available." && (
               <p className="text-foreground/80">
                 Classification: <span className="font-medium">{classification}</span>
               </p>
@@ -66,15 +68,15 @@ export default function VisualizationPlaceholder({ expression, classification }:
             height={250}
             data-ai-hint={hint}
             className="opacity-75 mb-2 rounded-md object-contain max-h-[100px]"
-            key={placeholderUrl} // Add key to force re-render if URL changes
+            key={placeholderUrl} 
           />
-          <p className="flex items-center gap-1 text-sm">
-            <Info className="h-4 w-4" />
-            {expression ? `Visual for: ${expression}` : "Enter an expression to see its visualization."}
+          <p className="flex items-center gap-1 text-sm text-center">
+            <Info className="h-4 w-4 shrink-0" />
+            {expression ? `Placeholder visualization for: ${expression}` : "Enter an expression for classification."}
           </p>
         </div>
         <p className="mt-4 text-xs text-muted-foreground italic">
-          **Note:** Currently shows a dynamic placeholder. Interactive plotting is under development.
+          **Note:** This is a dynamic placeholder image. Actual interactive plotting is limited or under development.
         </p>
       </CardContent>
     </Card>

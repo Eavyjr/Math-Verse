@@ -18,8 +18,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface ExpressionInputFormProps {
-  onResult: (data: ClassifyExpressionOutput | null) => void; // Allow null for error cases
-  onError: (error: string | null) => void; // Allow null to clear error
+  onResult: (data: ClassifyExpressionOutput | null) => void;
+  onError: (error: string | null) => void;
   onLoading: (loading: boolean) => void;
   isLoading: boolean;
 }
@@ -32,8 +32,8 @@ export default function ExpressionInputForm({ onResult, onError, onLoading, isLo
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     onLoading(true);
-    onError(null); // Clear previous error
-    onResult(null); // Clear previous result
+    onError(null); 
+    onResult(null); 
     
     console.log("ExpressionInputForm: Submitting expression:", data.expression);
     const actionResult = await handleClassifyExpressionAction(data.expression);
@@ -41,14 +41,10 @@ export default function ExpressionInputForm({ onResult, onError, onLoading, isLo
 
     if (actionResult.error) {
       onError(actionResult.error);
-      onResult(null); 
     } else if (actionResult.data) {
       onResult(actionResult.data);
-      onError(null); 
     } else {
-      // This case should ideally not happen if actionResult always has data or error
-      onError("An unexpected issue occurred. No data or error received.");
-      onResult(null);
+      onError("An unexpected issue occurred. No data or error received from the classifier.");
     }
     onLoading(false);
   };
@@ -82,7 +78,7 @@ export default function ExpressionInputForm({ onResult, onError, onLoading, isLo
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processing...
+                  Classifying...
                 </>
               ) : (
                 'Classify & Suggest Solution'

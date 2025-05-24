@@ -21,8 +21,10 @@ export async function handleClassifyExpressionAction(
   }
 
   try {
+    console.log("handleClassifyExpressionAction: Calling classifyExpression flow for:", expression);
     const input: ClassifyExpressionInput = { expression };
     const result = await classifyExpression(input);
+    console.log("handleClassifyExpressionAction: Received result from flow:", result);
     return { data: result, error: null };
   } catch (e) {
     console.error('Error in handleClassifyExpressionAction:', e);
@@ -30,14 +32,15 @@ export async function handleClassifyExpressionAction(
     if (e instanceof Error) {
         if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
-        } else if (e.message.includes('model did not return a valid output')) {
-            errorMessage = 'The AI model could not process this expression. Please try a different expression or operation.';
+        } else if (e.message.includes('model did not return a valid output') || e.message.includes('not available due to model error')) {
+            errorMessage = 'The AI model could not process this expression. Please try a different expression.';
         } else {
             errorMessage = e.message || 'An unknown error occurred during classification.';
         }
     } else if (typeof e === 'string') {
         errorMessage = e;
     }
+    console.error("handleClassifyExpressionAction: Returning error:", errorMessage);
     return { data: null, error: errorMessage };
   }
 }
@@ -168,7 +171,7 @@ export async function handleSolveDifferentialEquationAction(
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid output') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only')) {
+      } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only')) {
         errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
       } else {
         errorMessage = `An AI processing error occurred. Details: ${e.message}`;

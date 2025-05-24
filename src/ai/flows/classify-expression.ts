@@ -1,6 +1,12 @@
-// The classifyExpression flow classifies mathematical expressions and suggests solution strategies.
 
 'use server';
+/**
+ * @fileOverview The classifyExpression flow classifies mathematical expressions and suggests solution strategies.
+ *
+ * - classifyExpression - A function that handles the expression classification.
+ * - ClassifyExpressionInput - The input type for the classifyExpression function.
+ * - ClassifyExpressionOutput - The return type for the classifyExpression function.
+ */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
@@ -26,14 +32,22 @@ export async function classifyExpression(
 const classifyExpressionPrompt = ai.definePrompt({
   name: 'classifyExpressionPrompt',
   input: {schema: ClassifyExpressionInputSchema},
-  // Allow model to return null for these fields
-  output: {schema: z.object({
-    classification: z.string().nullable().describe('The classification of the mathematical expression (e.g., polynomial, differential equation).'),
-    solutionStrategies: z.string().nullable().describe('Suggested solution strategies for the given expression.'),
-  })},
-  prompt: `You are a mathematical expert. Classify the following mathematical expression and suggest relevant solution strategies.\n\nExpression: {{{expression}}}`,
+  output: {
+    schema: z.object({
+      classification: z.string().nullable().describe('The classification of the mathematical expression (e.g., polynomial, differential equation).'),
+      solutionStrategies: z.string().nullable().describe('Suggested solution strategies for the given expression.'),
+    }),
+  },
+  prompt: `You are a mathematical expert.
+Task: Classify the following mathematical expression and suggest relevant solution strategies.
+Expression: {{{expression}}}
+
+Provide the classification (e.g., "Polynomial", "First-order linear differential equation", "Trigonometric identity", "Matrix operation") and suggest 2-3 concise solution strategies or relevant concepts to explore for the given expression.
+If the expression is trivial or too simple for detailed strategies, provide a brief comment.
+If the expression is malformed or unclassifiable, state that.
+`,
   config: {
-    temperature: 0.3, // Slightly higher temp for more varied suggestions if appropriate
+    temperature: 0.3,
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -47,16 +61,21 @@ const classifyExpressionFlow = ai.defineFlow(
   {
     name: 'classifyExpressionFlow',
     inputSchema: ClassifyExpressionInputSchema,
-    outputSchema: ClassifyExpressionOutputSchema, // Flow still guarantees strings
+    outputSchema: ClassifyExpressionOutputSchema,
   },
-  async input => {
+  async (input) => {
     const {output: promptOutput} = await classifyExpressionPrompt(input);
     
     if (!promptOutput) {
-      throw new Error("AI model did not return a valid output object for classification.");
+      // This case implies the model call itself failed fundamentally or returned nothing matching the schema.
+      console.error("classifyExpressionFlow: AI model did not return a valid output object.");
+      return {
+        originalExpression: input.expression,
+        classification: "Classification not available due to model error.",
+        solutionStrategies: "Solution strategies not available due to model error.",
+      };
     }
 
-    // Ensure the flow returns strings as per ClassifyExpressionOutputSchema
     return {
       originalExpression: input.expression,
       classification: promptOutput.classification ?? "Classification not available.",

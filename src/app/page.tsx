@@ -19,16 +19,24 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleAiResult = (data: ClassifyExpressionOutput | null) => {
-    console.log("HomePage received AI result:", data);
-    setAiResponse(data);
-    setError(null); 
+    if (data) {
+      console.log("HomePage received AI result:", data);
+      setAiResponse(data);
+      setError(null);
+    } else {
+      // This case could happen if the action returned { data: null, error: null }
+      // or if data was somehow cleared before reaching here.
+      console.log("HomePage received null data for AI result. Clearing previous response.");
+      setAiResponse(null); 
+      // setError might have been set by handleAiError already if the action returned an error.
+    }
   };
 
   const handleAiError = (errorMessage: string | null) => {
     if (errorMessage) {
-      console.error("HomePage received AI error:", errorMessage);
+      console.error("HomePage received error:", errorMessage);
     } else {
-      console.log("HomePage: AI error state cleared (previous successful operation or new input).");
+      console.log("HomePage: AI error state cleared.");
     }
     setError(errorMessage);
     setAiResponse(null); 
@@ -73,7 +81,7 @@ export default function HomePage() {
           />
           {isLoading && (
             <div className="mt-4 text-center text-muted-foreground">
-              Loading AI insights...
+              AI is classifying your expression...
             </div>
           )}
           {error && !isLoading && (
@@ -83,6 +91,7 @@ export default function HomePage() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+          {/* Render AiGuidance and VisualizationPlaceholder only if there's a valid aiResponse */}
           {aiResponse && !isLoading && !error && (
             <div className="mt-6 space-y-6">
               <AiGuidance 
