@@ -21,9 +21,9 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
-  if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
-    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
-  } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
+  // Attempt to strip common outer delimiters if AI accidentally includes them for main results
+  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
+      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
   }
   
@@ -41,14 +41,14 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
-  return parts.map((part, index) => {
+  return parts.map((part) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2); 
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
       } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
         const latex = part.slice(2, -2); 
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
