@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Calculator as CalculatorIcon } from 'lucide-react'; // Renamed Calculator to CalculatorIcon
+import { ArrowLeft, Calculator as CalculatorIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 declare global {
@@ -17,8 +17,15 @@ export default function GraphingCalculatorPage() {
   const desmosCalculatorRef = useRef<any>(null);
   const [desmosError, setDesmosError] = useState<string | null>(null);
   const [isDesmosReady, setIsDesmosReady] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const container = desmosContainerRef.current;
     let initIntervalId: NodeJS.Timeout | null = null;
     let calculatorInstance: any = null;
@@ -26,15 +33,14 @@ export default function GraphingCalculatorPage() {
     function initDesmosInstance() {
       if (container && window.Desmos && !desmosCalculatorRef.current) {
         try {
-          // Initialize the GraphingCalculator with default options
-          // It already includes scientific functions and basic geometry tools.
-          calculatorInstance = window.Desmos.GraphingCalculator(container, {
-            // Examples of options:
-            // expressions: false, // Hide expressions list by default
-            // settingsMenu: false, // Hide settings menu
-            // zoomButtons: true, // Show zoom buttons
-            // lockViewport: true, // Prevent panning/zooming
-          });
+          const desmosOptions = {
+            keypad: true,          // Show the calculator keypad
+            expressions: true,     // Show the expressions list
+            settingsMenu: true,    // Show the settings menu (graph paper, projector mode, etc.)
+            zoomButtons: true,     // Show zoom buttons
+            // Additional options can be added here if needed
+          };
+          calculatorInstance = window.Desmos.GraphingCalculator(container, desmosOptions);
           desmosCalculatorRef.current = calculatorInstance;
           setIsDesmosReady(true);
           setDesmosError(null);
@@ -65,11 +71,12 @@ export default function GraphingCalculatorPage() {
         desmosCalculatorRef.current.destroy();
         desmosCalculatorRef.current = null;
       } else if (calculatorInstance && typeof calculatorInstance.destroy === 'function') {
+        // Fallback if ref didn't update in time for cleanup
         calculatorInstance.destroy();
       }
       setIsDesmosReady(false);
     };
-  }, []);
+  }, [isClient]); // Depend on isClient to ensure window.Desmos is accessed client-side
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height,60px)-var(--footer-height,0px)-2rem)] space-y-4">
@@ -79,7 +86,7 @@ export default function GraphingCalculatorPage() {
           Back to Workstations
         </Link>
         <h1 className="text-2xl font-bold text-primary flex items-center">
-          <CalculatorIcon className="mr-2 h-6 w-6" /> {/* Use renamed import */}
+          <CalculatorIcon className="mr-2 h-6 w-6" />
           Graphing Calculator
         </h1>
       </div>
@@ -94,10 +101,15 @@ export default function GraphingCalculatorPage() {
         <CardContent className="flex-grow p-0 relative">
           <div
             ref={desmosContainerRef}
-            className="w-full h-full min-h-[500px] md:min-h-[calc(100%-0px)]" // Ensure it takes full height within CardContent
+            className="w-full h-full min-h-[500px] md:min-h-[calc(100%-0px)]"
             aria-label="Interactive Desmos Graphing Calculator"
           >
-            {!isDesmosReady && !desmosError && (
+            {!isClient && (
+                 <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>Initializing calculator...</p>
+                </div>
+            )}
+            {isClient && !isDesmosReady && !desmosError && (
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <p>Loading Desmos Calculator...</p>
               </div>
