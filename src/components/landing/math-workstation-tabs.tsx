@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, Route } from 'lucide-react'; // Added Route
+import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, Route, FunctionSquare, Grid3X3 } from 'lucide-react';
 
 const workstations = [
   {
@@ -35,7 +35,7 @@ const workstations = [
   {
     value: "matrix",
     title: "Matrix Operations",
-    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />,
+    icon: <Grid3X3 className="mr-2 h-5 w-5" />, // Changed icon for Matrix
     description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions. Visualize 2x2 matrices.",
     cta: "Explore Matrices",
     href: "/operations/matrix"
@@ -51,10 +51,18 @@ const workstations = [
   {
     value: "statistics",
     title: "Basic Statistics",
-    icon: <Route className="mr-2 h-5 w-5" />,
+    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />, // Changed icon for Statistics
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
     href: "/operations/statistics"
+  },
+  {
+    value: "graphing-calculator",
+    title: "Graphing Calculator",
+    icon: <FunctionSquare className="mr-2 h-5 w-5" />,
+    description: "A full-featured Desmos graphing calculator for advanced plotting and exploration.",
+    cta: "Open Calculator",
+    href: "/operations/graphing-calculator"
   },
 ];
 
@@ -66,7 +74,6 @@ export default function MathWorkstationTabs() {
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
         <TabsList className="flex w-full overflow-x-auto items-center space-x-1 bg-transparent p-1 border-b no-scrollbar">
-          {/* 'no-scrollbar' is a common utility, if not available, you might need to add CSS to hide scrollbar for .no-scrollbar */}
           {workstations.map((ws) => (
             <TabsTrigger
               key={ws.value}
@@ -102,4 +109,3 @@ export default function MathWorkstationTabs() {
     </div>
   );
 }
-    
