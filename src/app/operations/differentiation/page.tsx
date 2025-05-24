@@ -35,12 +35,11 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
-      output: 'html',
       macros: { "\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", latexString);
-    return latexString;
+    return cleanLatexString; // Fallback to the cleaned string on error
   }
 };
 
@@ -56,10 +55,11 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
+      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
       console.error("KaTeX steps rendering error:", e, "Part:", part);
-      return part;
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Sanitize fallback
     }
   }).join('');
 };
