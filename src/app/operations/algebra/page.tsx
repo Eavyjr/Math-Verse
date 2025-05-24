@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
+import "katex/dist/katex.min.css"; // Import KaTeX CSS
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -26,15 +27,24 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
 ];
 
 // Helper function to render a single LaTeX string to HTML
-const renderMath = (latexString: string, displayMode: boolean = false): string => {
-  if (!latexString) return "";
+const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
+  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
+  let cleanLatexString = latexString.trim();
+
+  // Attempt to strip outer delimiters if present
+  if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  }
+
   try {
-    return katex.renderToString(latexString, {
+    return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
     });
   } catch (e) {
-    console.error("Katex rendering error:", e);
+    console.error("Katex rendering error:", e, "Original string:", latexString);
     return latexString; // Fallback to raw string on error
   }
 };
@@ -42,7 +52,6 @@ const renderMath = (latexString: string, displayMode: boolean = false): string =
 // Helper function to render content with mixed text and KaTeX
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  // Regex to find \(...\) or \[...\]
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
   return parts.map(part => {
     if (part.startsWith('\\(') && part.endsWith('\\)')) {
@@ -56,10 +65,8 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         return katex.renderToString(latex, { throwOnError: false, displayMode: true });
       } catch (e) { console.error("KaTeX steps rendering error (display):", e); return part; }
     }
-    // Escape HTML characters in plain text parts to prevent XSS
-    // For simplicity, we are not doing full XSS protection here, assuming AI steps are generally safe.
-    // In a production app, consider a robust HTML sanitizer for user-facing AI output.
-    return part; 
+    // Escape HTML characters in plain text parts
+    return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }).join('');
 };
 
@@ -240,14 +247,14 @@ export default function BasicAlgebraCalculatorPage() {
                   <span className="font-semibold text-muted-foreground">Original Expression: </span>
                    <span 
                     className="font-mono p-1 rounded-sm bg-muted"
-                    dangerouslySetInnerHTML={{ __html: renderMath(`\\(${apiResponse.expression}\\)`) }}
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.expression, false) }}
                    />
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
                   <span 
                     className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground"
-                    dangerouslySetInnerHTML={{ __html: renderMath(`\\(${apiResponse.result}\\)`) }}
+                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.result, false) }}
                   />
                 </div>
 
@@ -287,3 +294,4 @@ export default function BasicAlgebraCalculatorPage() {
     </div>
   );
 }
+

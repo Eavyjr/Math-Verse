@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import katex from 'katex';
+import "katex/dist/katex.min.css"; // Import KaTeX CSS
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -17,15 +18,24 @@ import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 
 // Helper function to render a single LaTeX string to HTML
-const renderMath = (latexString: string, displayMode: boolean = false): string => {
-  if (!latexString) return "";
+const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
+  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
+  let cleanLatexString = latexString.trim();
+
+  // Attempt to strip outer delimiters if present
+  if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  }
+  
   try {
-    return katex.renderToString(latexString, {
+    return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
     });
   } catch (e) {
-    console.error("Katex rendering error:", e);
+    console.error("Katex rendering error:", e, "Original string:", latexString);
     return latexString; // Fallback to raw string on error
   }
 };
@@ -33,24 +43,22 @@ const renderMath = (latexString: string, displayMode: boolean = false): string =
 // Helper function to render content with mixed text and KaTeX
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  // Regex to find \(...\) or \[...\]
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  return parts.map(part => {
-    if (part.startsWith('\\(') && part.endsWith('\\)')) {
-      const latex = part.slice(2, -2);
-      try {
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
-      } catch (e) { console.error("KaTeX steps rendering error (inline):", e); return part; }
-    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-      const latex = part.slice(2, -2);
-      try {
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
-      } catch (e) { console.error("KaTeX steps rendering error (display):", e); return part; }
+  return parts.map((part, index) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      // Escape HTML characters in plain text parts
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+      console.error("KaTeX steps rendering error:", e, "Part:", part);
+      return part;
     }
-    // For plain text parts, you might want to escape HTML entities if the content is user-generated
-    // or untrusted. For AI-generated steps, this is often less critical but good practice.
-    // For simplicity here, we return the part directly.
-    return part;
   }).join('');
 };
 
@@ -147,8 +155,7 @@ export default function IntegrationCalculatorPage() {
   
   const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
     if (!query) return "";
-    // Ensure the function string itself is not treated as a command by KaTeX prematurely
-    const funcStr = query.functionString.replace(/\\/g, '\\\\');
+    const funcStr = query.functionString.replace(/\\/g, '\\\\'); 
     const varStr = query.variable.replace(/\\/g, '\\\\');
     
     let latex = `\\int`;
@@ -333,8 +340,8 @@ export default function IntegrationCalculatorPage() {
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Query: </span>
                   <span 
-                    className="font-mono p-1 rounded-sm bg-muted text-sm"
-                    dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery)) }}
+                    className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto"
+                    dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery), false) }}
                   />
                 </div>
                 
@@ -358,7 +365,7 @@ export default function IntegrationCalculatorPage() {
                           dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
                         />
                         <p className="mt-2 text-xs text-muted-foreground italic">
-                          Steps are provided by the AI and may vary in detail or format. Math expressions in steps are rendered using KaTeX.
+                          Steps are provided by the AI. Math in steps is rendered by KaTeX.
                         </p>
                       </AccordionContent>
                     </AccordionItem>
@@ -414,3 +421,4 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
+

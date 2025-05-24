@@ -22,16 +22,25 @@ import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differe
 import { Textarea } from '@/components/ui/textarea';
 
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null) return "";
+  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
+  let cleanLatexString = latexString.trim();
+
+  // Attempt to strip outer delimiters if present
+  if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+  }
+  
   try {
-    return katex.renderToString(latexString, {
+    return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
       output: 'html',
       macros: { "\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
-    console.error("Katex rendering error:", e);
+    console.error("Katex rendering error:", e, "Original string:", latexString);
     return latexString;
   }
 };
@@ -70,9 +79,9 @@ export default function DifferentiationCalculatorPage() {
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
   const [deIndependentVar, setDeIndependentVar] = useState('x');
-  const [initialConditions, setInitialConditions] = useState<string[]>([]); // Changed to string[]
-  const [currentIcInput, setCurrentIcInput] = useState(''); // For the single IC input field
-  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null); // Now expects a string
+  const [initialConditions, setInitialConditions] = useState<string[]>([]); 
+  const [currentIcInput, setCurrentIcInput] = useState(''); 
+  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null); 
   const [isDeLoading, setIsDeLoading] = useState(false);
   const [deError, setDeError] = useState<string | null>(null);
   const [dePreviewHtml, setDePreviewHtml] = useState<string>('');
@@ -185,7 +194,7 @@ export default function DifferentiationCalculatorPage() {
         if (actionResult.error) {
             setDeError(actionResult.error);
         } else if (actionResult.data) {
-            setDeApiResponse(actionResult.data); // Data is now a string
+            setDeApiResponse(actionResult.data); 
         } else {
             setDeError('Received no data from the DE solver. Please try again.');
         }
@@ -209,7 +218,7 @@ export default function DifferentiationCalculatorPage() {
   const addInitialCondition = () => {
     if (currentIcInput.trim()) {
       setInitialConditions([...initialConditions, currentIcInput.trim()]);
-      setCurrentIcInput(''); // Clear the input field after adding
+      setCurrentIcInput(''); 
     }
   };
 
@@ -387,7 +396,7 @@ export default function DifferentiationCalculatorPage() {
                       <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Derivative:</h3>
                       <div 
                         className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                        dangerouslySetInnerHTML={{ __html: renderMath(diffApiResponse.derivativeResult, true) }} 
+                        dangerouslySetInnerHTML={{ __html: renderMath(diffApiResponse.derivativeResult, false) }} 
                       />
                     </div>
 
@@ -514,7 +523,7 @@ export default function DifferentiationCalculatorPage() {
                     <Label className="block text-md font-semibold text-foreground">Initial Conditions (Optional - one per line):</Label>
                     {initialConditions.map((ic, index) => (
                         <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50 text-sm">
-                           <span className="font-mono flex-grow p-1 bg-background rounded" dangerouslySetInnerHTML={{__html: renderMath(ic) }} />
+                           <span className="font-mono flex-grow p-1 bg-background rounded" dangerouslySetInnerHTML={{__html: renderMath(ic, false) }} />
                             <Button variant="ghost" size="icon" onClick={() => removeInitialCondition(index)} aria-label="Remove initial condition">
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -617,3 +626,4 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
+

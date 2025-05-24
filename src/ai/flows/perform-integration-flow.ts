@@ -8,8 +8,8 @@
  * - IntegrationOutput - The return type for the performIntegration function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {ai}from '@/ai/genkit';
+import {z}from 'genkit';
 
 const IntegrationInputSchema = z.object({
   functionString: z.string().describe('The function to integrate (e.g., "x^2", "sin(x)").'),
@@ -24,7 +24,7 @@ const IntegrationOutputSchema = z.object({
   integralResult: z
     .string()
     .describe(
-      'The result of the integration. This should be purely the mathematical expression or value, suitable for LaTeX rendering using inline delimiters like \\(...\\). For indefinite integrals, include "+ C".'
+      'The result of the integration. This MUST be ONLY the pure mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any delimiters like \\(...\\) or \\[...\\] in this field. For indefinite integrals, include "+ C".'
     ),
   steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\", \"Substitution Method\"). This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
   originalQuery: IntegrationInputSchema.describe("The original input parameters for the integration."),
@@ -41,8 +41,8 @@ export async function performIntegration(
 const systemPrompt = `You are an expert calculus assistant specialized in performing integrations.
 Given a function, a variable of integration, and optionally bounds for a definite integral, calculate the integral.
 
-- The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value. This 'integralResult' should be directly usable for LaTeX rendering with inline delimiters (e.g., "\\(x^3/3 + C\\)" or "\\(1/2\\)"). Do not include any explanations, apologies, or conversational text in the 'integralResult' field.
-- For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the result (e.g., "\\(x^3/3 + C\\)").
+- The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any explanations, apologies, conversational text, or delimiters like \\(...\\) or \\[...\\] in this 'integralResult' field.
+- For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the 'integralResult' string (e.g., "x^3/3 + C").
 - For definite integrals (when isDefinite is true), evaluate the integral from the lowerBound to the upperBound.
 - If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method", "Evaluating at bounds"). Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).
 - Provide a brief 'plotHint' describing what a visualization of the function and its integral might look like (e.g., "A parabola and its cubic antiderivative"). This is for a textual description, not for generating an actual plot.
@@ -66,7 +66,7 @@ Upper Bound: {{{upperBound}}}
 
 Perform the integration based on these details. Provide the result, detailed steps (if applicable, stating the rule for each step), and a plot hint.
 Ensure 'originalQuery' in your output accurately reflects these input parameters.
-Ensure all mathematical expressions in 'integralResult' and 'steps' are formatted with inline MathJax/KaTeX delimiters \\(...\\).`,
+The 'integralResult' field MUST BE only the pure LaTeX expression. Mathematical expressions in 'steps' should be formatted with inline MathJax/KaTeX delimiters \\(...\\).`,
   config: {
     temperature: 0.1, 
     safetySettings: [ 
