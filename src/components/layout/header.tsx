@@ -9,13 +9,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Calculator, X } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 
-// auth-context and related imports are commented out as per previous instructions
+// AuthProvider and related imports are currently commented out
 // import { useAuth } from '@/context/auth-context';
 // import { Skeleton } from '@/components/ui/skeleton';
 // import { LogOut, UserCircle } from 'lucide-react';
@@ -26,53 +26,81 @@ declare global {
   }
 }
 
+type DesmosInitStatus = 'idle' | 'loading_api' | 'preparing' | 'success' | 'error';
+
 export default function Header() {
-  // const { user, isLoading, signOut } = useAuth(); // Auth logic commented out
+  // const { user, isLoading: authIsLoading, signOut } = useAuth(); // Auth logic commented out
   const [isScientificCalculatorOpen, setIsScientificCalculatorOpen] = useState(false);
   const scientificCalculatorRef = useRef<HTMLDivElement>(null);
   const desmosSciInstanceRef = useRef<any>(null);
   const [isClient, setIsClient] = useState(false);
+  const [desmosSciInitStatus, setDesmosSciInitStatus] = useState<DesmosInitStatus>('idle');
 
   useEffect(() => {
-    // This effect runs only on the client after the component mounts
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    // Guard against running this effect on the server or before client mount
-    if (!isClient || !isScientificCalculatorOpen || !scientificCalculatorRef.current) {
-      // If the dialog is closed, ensure the instance is destroyed
-      if (!isScientificCalculatorOpen && desmosSciInstanceRef.current && typeof desmosSciInstanceRef.current.destroy === 'function') {
-        desmosSciInstanceRef.current.destroy();
-        desmosSciInstanceRef.current = null;
-      }
-      return;
-    }
-
     let calculator: any = null;
-    if (window.Desmos) { // window should be defined here because isClient is true
-      if (!desmosSciInstanceRef.current) {
-        try {
-          calculator = window.Desmos.ScientificCalculator(scientificCalculatorRef.current, {
-            // Scientific calculator specific options can go here if needed
-          });
-          desmosSciInstanceRef.current = calculator;
-        } catch (e) {
-          console.error("Error initializing Desmos Scientific Calculator:", e);
-        }
-      }
-    } else {
-      console.warn("Desmos API not loaded yet for scientific calculator popup.");
-    }
 
-    // Cleanup function for when the dialog closes or component unmounts
-    return () => {
+    if (isClient && isScientificCalculatorOpen) {
+      if (scientificCalculatorRef.current) {
+        if (window.Desmos) {
+          if (!desmosSciInstanceRef.current) { // Only init if no instance exists
+            setDesmosSciInitStatus('preparing');
+            try {
+              // Ensure the container is clean before Desmos tries to initialize
+              // This helps if the dialog was opened, closed, and reopened quickly.
+              while (scientificCalculatorRef.current.firstChild) {
+                scientificCalculatorRef.current.removeChild(scientificCalculatorRef.current.firstChild);
+              }
+              calculator = window.Desmos.ScientificCalculator(scientificCalculatorRef.current, {
+                // Optionally, set some Desmos options here if needed
+                // e.g., settingsMenu: false, zoomButtons: false,
+              });
+              if (calculator) {
+                desmosSciInstanceRef.current = calculator;
+                setDesmosSciInitStatus('success');
+              } else {
+                console.error("Desmos.ScientificCalculator returned a falsy value.");
+                setDesmosSciInitStatus('error');
+              }
+            } catch (e) {
+              console.error("Error initializing Desmos Scientific Calculator in header:", e);
+              setDesmosSciInitStatus('error');
+            }
+          } else {
+             // Instance already exists, assume it's fine.
+            setDesmosSciInitStatus('success');
+          }
+        } else {
+          setDesmosSciInitStatus('loading_api');
+        }
+      } else {
+        // Ref not available yet, should be rare if dialog content is mounted
+        // Set to idle or a specific 'ref_not_ready' state if needed for debugging
+        setDesmosSciInitStatus('idle');
+      }
+    } else if (!isScientificCalculatorOpen) {
+      // Dialog is closed or component is not client-side ready
       if (desmosSciInstanceRef.current && typeof desmosSciInstanceRef.current.destroy === 'function') {
         desmosSciInstanceRef.current.destroy();
         desmosSciInstanceRef.current = null;
       }
+      setDesmosSciInitStatus('idle'); // Reset status when dialog is closed
+    }
+
+    // Cleanup function for when the component unmounts OR dependencies change causing re-run before dialog close
+    return () => {
+      if (desmosSciInstanceRef.current && typeof desmosSciInstanceRef.current.destroy === 'function') {
+        // Check if it's a valid instance before destroying
+        if(desmosSciInstanceRef.current.HelperExpression !== undefined || desmosSciInstanceRef.current.getState !== undefined) {
+            desmosSciInstanceRef.current.destroy();
+        }
+        desmosSciInstanceRef.current = null;
+      }
     };
-  }, [isScientificCalculatorOpen, isClient]); // Re-run if dialog visibility or isClient changes
+  }, [isScientificCalculatorOpen, isClient]);
 
   return (
     <header className="py-4 px-6 border-b bg-card shadow-sm sticky top-0 z-50">
@@ -98,20 +126,28 @@ export default function Header() {
               </DialogHeader>
               <div className="p-4 min-h-[300px] md:min-h-[400px]">
                 <div ref={scientificCalculatorRef} className="w-full h-full min-h-[300px] md:min-h-[400px]">
-                  {isClient && !window.Desmos && <p className="text-muted-foreground text-center">Loading calculator...</p>}
-                  {!isClient && <p className="text-muted-foreground text-center">Initializing calculator...</p>}
+                  {isScientificCalculatorOpen && (
+                    <>
+                      {!isClient && <p className="text-muted-foreground text-center p-4">Initializing...</p>}
+                      {isClient && desmosSciInitStatus === 'loading_api' && (
+                        <p className="text-muted-foreground text-center p-4">Loading Desmos API...</p>
+                      )}
+                      {isClient && (desmosSciInitStatus === 'idle' || desmosSciInitStatus === 'preparing') && window.Desmos && (
+                         <p className="text-muted-foreground text-center p-4">Preparing calculator...</p>
+                      )}
+                      {desmosSciInitStatus === 'error' && (
+                        <p className="text-destructive text-center p-4">Failed to load calculator. Please ensure you are online or try again.</p>
+                      )}
+                      {/* If status is 'success', Desmos should have taken over this div. No explicit message here. */}
+                    </>
+                  )}
                 </div>
               </div>
             </DialogContent>
           </Dialog>
 
-          {/* Simplified header: Always show Sign In button for now */}
-          <Button variant="outline" asChild>
-            <Link href="/auth/signin">Sign In</Link>
-          </Button>
-          {/* 
-          // Previous auth-dependent logic:
-          {isLoading ? (
+          {/* AuthProvider related UI is currently commented out */}
+          {/* {authIsLoading ? (
             <Skeleton className="h-10 w-24" />
           ) : user ? (
             <div className="flex items-center gap-4">
@@ -124,12 +160,11 @@ export default function Header() {
                 <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
-          ) : (
+          ) : ( */}
             <Button variant="outline" asChild>
               <Link href="/auth/signin">Sign In</Link>
             </Button>
-          )}
-          */}
+          {/* )} */}
         </nav>
       </div>
     </header>
