@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, Route, FunctionSquare, Grid3X3 } from 'lucide-react';
+import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, FunctionSquare, Grid3X3 } from 'lucide-react';
 
 const workstations = [
   {
@@ -35,7 +35,7 @@ const workstations = [
   {
     value: "matrix",
     title: "Matrix Operations",
-    icon: <Grid3X3 className="mr-2 h-5 w-5" />, // Changed icon for Matrix
+    icon: <Grid3X3 className="mr-2 h-5 w-5" />,
     description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions. Visualize 2x2 matrices.",
     cta: "Explore Matrices",
     href: "/operations/matrix"
@@ -51,7 +51,7 @@ const workstations = [
   {
     value: "statistics",
     title: "Basic Statistics",
-    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />, // Changed icon for Statistics
+    icon: <BarChartHorizontalBig className="mr-2 h-5 w-5" />,
     description: "Analyze data sets, calculate central tendencies, variance, and perform linear regression. Visualize with histograms and scatter plots.",
     cta: "Explore Statistics",
     href: "/operations/statistics"
@@ -73,7 +73,8 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        <TabsList className="flex w-full overflow-x-auto items-center space-x-1 bg-transparent p-1 border-b no-scrollbar">
+        <TabsList className="flex overflow-x-auto items-center space-x-1 bg-transparent p-1 border-b no-scrollbar">
+          {/* Removed w-full from TabsList */}
           {workstations.map((ws) => (
             <TabsTrigger
               key={ws.value}
