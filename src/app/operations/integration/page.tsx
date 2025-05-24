@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import katex from 'katex';
-import "katex/dist/katex.min.css"; // Import KaTeX CSS
+import "katex/dist/katex.min.css"; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -17,12 +17,10 @@ import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, 
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 
-// Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
-  // Attempt to strip outer delimiters if present
   if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
   } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
@@ -36,28 +34,26 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", latexString);
-    return latexString; // Fallback to raw string on error
+    return latexString; 
   }
 };
 
-// Helper function to render content with mixed text and KaTeX
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
   return parts.map((part, index) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+        const latex = part.slice(2, -2); 
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
       } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+        const latex = part.slice(2, -2); 
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
       }
-      // Escape HTML characters in plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
       console.error("KaTeX steps rendering error:", e, "Part:", part);
-      return part;
+      return part; 
     }
   }).join('');
 };
@@ -421,4 +417,3 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
-

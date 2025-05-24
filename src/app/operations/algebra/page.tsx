@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
-import "katex/dist/katex.min.css"; // Import KaTeX CSS
+import "katex/dist/katex.min.css"; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -26,18 +26,16 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
-// Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
-  // Attempt to strip outer delimiters if present
   if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
   } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
   }
-
+  
   try {
     return katex.renderToString(cleanLatexString, {
       throwOnError: false,
@@ -45,28 +43,27 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", latexString);
-    return latexString; // Fallback to raw string on error
+    return latexString; 
   }
 };
 
-// Helper function to render content with mixed text and KaTeX
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  return parts.map(part => {
-    if (part.startsWith('\\(') && part.endsWith('\\)')) {
-      const latex = part.slice(2, -2);
-      try {
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
+  return parts.map((part, index) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2); 
         return katex.renderToString(latex, { throwOnError: false, displayMode: false });
-      } catch (e) { console.error("KaTeX steps rendering error (inline):", e); return part; }
-    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-      const latex = part.slice(2, -2);
-      try {
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2); 
         return katex.renderToString(latex, { throwOnError: false, displayMode: true });
-      } catch (e) { console.error("KaTeX steps rendering error (display):", e); return part; }
+      }
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+      console.error("KaTeX steps rendering error:", e, "Part:", part);
+      return part; 
     }
-    // Escape HTML characters in plain text parts
-    return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }).join('');
 };
 
@@ -294,4 +291,3 @@ export default function BasicAlgebraCalculatorPage() {
     </div>
   );
 }
-

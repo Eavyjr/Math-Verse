@@ -18,14 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma } from 'lucide-react';
 import { handlePerformDifferentiationAction, handleSolveDifferentialEquationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
-import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; // DESolutionOutput is now string
+import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; 
 import { Textarea } from '@/components/ui/textarea';
 
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
-  // Attempt to strip outer delimiters if present
   if (cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
   } else if (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]')) {
@@ -52,10 +51,10 @@ const renderStepsContent = (stepsString: string | undefined): string => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false });
       } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
         const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true });
       }
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
@@ -66,7 +65,6 @@ const renderStepsContent = (stepsString: string | undefined): string => {
 };
 
 export default function DifferentiationCalculatorPage() {
-  // State for Function Derivatives
   const [functionString, setFunctionString] = useState('');
   const [variable, setVariable] = useState('x');
   const [order, setOrder] = useState<number>(1);
@@ -75,7 +73,6 @@ export default function DifferentiationCalculatorPage() {
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffPreviewHtml, setDiffPreviewHtml] = useState<string>('');
 
-  // State for Differential Equations
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
   const [deIndependentVar, setDeIndependentVar] = useState('x');
@@ -264,7 +261,6 @@ export default function DifferentiationCalculatorPage() {
             </TabsTrigger>
           </TabsList>
           
-          {/* Function Derivatives Tab Content */}
           <TabsContent value="derivatives" className="p-0">
             <CardContent className="p-6 space-y-6">
               <div className="p-4 border rounded-md bg-secondary/30">
@@ -466,7 +462,6 @@ export default function DifferentiationCalculatorPage() {
             </CardFooter>
           </TabsContent>
 
-          {/* Differential Equations Tab Content */}
           <TabsContent value="des" className="p-0">
             <CardContent className="p-6 space-y-6">
                 <div className="p-4 border rounded-md bg-secondary/30">
@@ -626,4 +621,3 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
-
