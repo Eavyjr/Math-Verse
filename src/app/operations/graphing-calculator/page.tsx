@@ -3,8 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Calculator } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, Calculator as CalculatorIcon } from 'lucide-react'; // Renamed Calculator to CalculatorIcon
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 declare global {
@@ -22,14 +21,19 @@ export default function GraphingCalculatorPage() {
   useEffect(() => {
     const container = desmosContainerRef.current;
     let initIntervalId: NodeJS.Timeout | null = null;
-    let calculatorInstance: any = null; // To store the instance for cleanup
+    let calculatorInstance: any = null;
 
     function initDesmosInstance() {
       if (container && window.Desmos && !desmosCalculatorRef.current) {
         try {
+          // Initialize the GraphingCalculator with default options
+          // It already includes scientific functions and basic geometry tools.
           calculatorInstance = window.Desmos.GraphingCalculator(container, {
-            // Default Desmos options, users can explore all features
-            // Keypad, expressions list, settings menu will be enabled by default
+            // Examples of options:
+            // expressions: false, // Hide expressions list by default
+            // settingsMenu: false, // Hide settings menu
+            // zoomButtons: true, // Show zoom buttons
+            // lockViewport: true, // Prevent panning/zooming
           });
           desmosCalculatorRef.current = calculatorInstance;
           setIsDesmosReady(true);
@@ -61,7 +65,6 @@ export default function GraphingCalculatorPage() {
         desmosCalculatorRef.current.destroy();
         desmosCalculatorRef.current = null;
       } else if (calculatorInstance && typeof calculatorInstance.destroy === 'function') {
-        // Fallback if ref didn't update in time for cleanup
         calculatorInstance.destroy();
       }
       setIsDesmosReady(false);
@@ -69,15 +72,15 @@ export default function GraphingCalculatorPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height,100px)-var(--footer-height,80px)-2rem)] space-y-4"> {/* Adjust height calculation as needed */}
+    <div className="flex flex-col h-[calc(100vh-var(--header-height,60px)-var(--footer-height,0px)-2rem)] space-y-4">
       <div className="flex items-center justify-between">
         <Link href="/" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Workstations
         </Link>
         <h1 className="text-2xl font-bold text-primary flex items-center">
-          <Calculator className="mr-2 h-6 w-6" />
-          Full Graphing Calculator
+          <CalculatorIcon className="mr-2 h-6 w-6" /> {/* Use renamed import */}
+          Graphing Calculator
         </h1>
       </div>
       
@@ -85,13 +88,13 @@ export default function GraphingCalculatorPage() {
         <CardHeader className="py-3 px-4 border-b">
           <CardTitle className="text-lg">Desmos Graphing Calculator</CardTitle>
           <CardDescription className="text-sm">
-            Explore functions, plot data, evaluate equations, and more.
+            Explore functions, plot data, evaluate equations, and utilize scientific and geometry tools.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow p-0 relative">
           <div
             ref={desmosContainerRef}
-            className="w-full h-full min-h-[400px]" // Ensure a minimum height
+            className="w-full h-full min-h-[500px] md:min-h-[calc(100%-0px)]" // Ensure it takes full height within CardContent
             aria-label="Interactive Desmos Graphing Calculator"
           >
             {!isDesmosReady && !desmosError && (
