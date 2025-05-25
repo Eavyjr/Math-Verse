@@ -14,17 +14,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2 } from 'lucide-react';
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
-
 
 // Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
-  // Strip common outer delimiters if AI accidentally includes them
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
@@ -36,17 +34,16 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error for math string:", latexString, e);
-    return cleanLatexString; // Fallback to raw string on error
+    return cleanLatexString; 
   }
 };
 
-// Helper function to render content with mixed text and KaTeX (for steps or descriptive results)
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
   console.log("renderStepsContent input:", stepsString);
 
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  const htmlParts = parts.map((part, index) => {
+  const htmlParts = parts.map((part) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -55,18 +52,16 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
-      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
         console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
   });
   const finalHtml = htmlParts.join('');
   console.log("renderStepsContent output HTML:", finalHtml);
   return finalHtml;
 };
-
 
 const initialMatrix = () => [[0, 0], [0, 0]];
 
@@ -84,9 +79,17 @@ const parseAIResult = (resultString: string): number[][] | number | string => {
     if (!isNaN(num) && isFinite(num) && num.toString().trim() === resultString.trim()) {
         return num;
     }
-    return resultString; // Treat as descriptive text or error message from AI
+    return resultString; 
 };
 
+interface MatrixProperties {
+  shape: string;
+  isSquare: boolean;
+  isSymmetric: boolean | null; // null if not square
+  isIdentity: boolean | null; // null if not square
+  isDiagonal: boolean | null; // null if not square
+  isZeroMatrix: boolean;
+}
 
 export default function MatrixOperationsPage() {
   const { toast } = useToast();
@@ -98,6 +101,8 @@ export default function MatrixOperationsPage() {
   const [apiResponse, setApiResponse] = useState<MatrixOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [matrixAProperties, setMatrixAProperties] = useState<MatrixProperties | null>(null);
 
   const operations: { label: string; options: { value: MatrixOperationInput['operation']; label: string }[] }[] = [
     {
@@ -126,6 +131,87 @@ export default function MatrixOperationsPage() {
     }
   ];
 
+  // Matrix Properties Calculation
+  useEffect(() => {
+    if (!matrixA || matrixA.length === 0 || matrixA[0].length === 0) {
+      setMatrixAProperties(null);
+      return;
+    }
+
+    const rows = matrixA.length;
+    const cols = matrixA[0].length;
+    const shape = `${rows} x ${cols}`;
+    const square = rows === cols;
+
+    let symmetric: boolean | null = null;
+    let identity: boolean | null = null;
+    let diagonal: boolean | null = null;
+    
+    if (square) {
+      // Symmetric
+      symmetric = true;
+      for (let i = 0; i < rows; i++) {
+        for (let j = i + 1; j < cols; j++) {
+          if (matrixA[i][j] !== matrixA[j][i]) {
+            symmetric = false;
+            break;
+          }
+        }
+        if (!symmetric) break;
+      }
+
+      // Identity
+      identity = true;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          if (i === j && matrixA[i][j] !== 1) {
+            identity = false;
+            break;
+          }
+          if (i !== j && matrixA[i][j] !== 0) {
+            identity = false;
+            break;
+          }
+        }
+        if (!identity) break;
+      }
+
+      // Diagonal
+      diagonal = true;
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          if (i !== j && matrixA[i][j] !== 0) {
+            diagonal = false;
+            break;
+          }
+        }
+        if (!diagonal) break;
+      }
+    }
+
+    // Zero Matrix
+    let zero = true;
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        if (matrixA[i][j] !== 0) {
+          zero = false;
+          break;
+        }
+      }
+      if (!zero) break;
+    }
+
+    setMatrixAProperties({
+      shape,
+      isSquare: square,
+      isSymmetric: symmetric,
+      isIdentity: identity,
+      isDiagonal: diagonal,
+      isZeroMatrix: zero,
+    });
+  }, [matrixA]);
+
+
   const handleMatrixChange = (
     matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>,
     rowIndex: number,
@@ -135,7 +221,7 @@ export default function MatrixOperationsPage() {
     const numValue = parseFloat(value);
     matrixSetter(prevMatrix => {
       const newMatrix = prevMatrix.map(row => [...row]);
-      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue;
+      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue; // Default to 0 if NaN
       return newMatrix;
     });
     setError(null);
@@ -143,7 +229,7 @@ export default function MatrixOperationsPage() {
   };
 
   const addRow = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>, matrix: number[][]) => {
-    const numCols = matrix.length > 0 && matrix[0] ? matrix[0].length : 1;
+    const numCols = matrix.length > 0 && matrix[0] ? matrix[0].length : 1; // Default to 1 column if matrix is empty
     matrixSetter(prev => [...prev, Array(numCols).fill(0)]);
   };
 
@@ -156,7 +242,10 @@ export default function MatrixOperationsPage() {
   };
 
   const addCol = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>) => {
-     matrixSetter(prev => prev.map(row => [...row, 0]));
+     matrixSetter(prev => {
+        if (prev.length === 0) return [[0]]; // Handle case where matrix is initially empty
+        return prev.map(row => [...row, 0])
+     });
   };
 
   const removeCol = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>, matrix: number[][]) => {
@@ -238,6 +327,7 @@ export default function MatrixOperationsPage() {
     setSelectedOperation(null);
     setApiResponse(null);
     setError(null);
+    setMatrixAProperties(null);
   };
 
   const formatMatrixForKaTeX = (matrix: number[][]): string => {
@@ -251,13 +341,30 @@ export default function MatrixOperationsPage() {
 
     if (typeof parsedResult === 'number') {
       return <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg" dangerouslySetInnerHTML={{ __html: renderMath(parsedResult.toString(), false) }} />;
-    } else if (Array.isArray(parsedResult)) {
+    } else if (Array.isArray(parsedResult)) { // Check if it's a matrix (array of arrays)
       return <div className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
                   dangerouslySetInnerHTML={{ __html: renderMath(formatMatrixForKaTeX(parsedResult), true) }} />;
     } else { // It's a descriptive string, potentially with KaTeX
       return <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
                   dangerouslySetInnerHTML={{ __html: renderStepsContent(parsedResult) }} />;
     }
+  };
+
+  const renderMatrixProperties = () => {
+    if (!matrixAProperties) {
+      return <p className="text-muted-foreground">Enter Matrix A to see its properties.</p>;
+    }
+    const { shape, isSquare, isSymmetric, isIdentity, isDiagonal, isZeroMatrix } = matrixAProperties;
+    return (
+      <ul className="space-y-1 text-sm">
+        <li><span className="font-semibold">Shape:</span> {shape}</li>
+        <li><span className="font-semibold">Square:</span> {isSquare ? 'Yes' : 'No'}</li>
+        <li><span className="font-semibold">Symmetric:</span> {isSquare ? (isSymmetric ? 'Yes' : 'No') : 'N/A'}</li>
+        <li><span className="font-semibold">Identity:</span> {isSquare ? (isIdentity ? 'Yes' : 'No') : 'N/A'}</li>
+        <li><span className="font-semibold">Diagonal:</span> {isSquare ? (isDiagonal ? 'Yes' : 'No') : 'N/A'}</li>
+        <li><span className="font-semibold">Zero Matrix:</span> {isZeroMatrix ? 'Yes' : 'No'}</li>
+      </ul>
+    );
   };
 
 
@@ -413,11 +520,11 @@ export default function MatrixOperationsPage() {
           
           <Card className="mt-8 bg-secondary/30">
             <CardHeader>
-                <CardTitle className="text-xl flex items-center"><Info className="mr-2 h-5 w-5"/>Matrix Properties (Coming Soon)</CardTitle>
-                <CardDescription>Characteristics of the input matrices (e.g., shape, symmetric, invertible) will be displayed here after input.</CardDescription>
+                <CardTitle className="text-xl flex items-center"><Activity className="mr-2 h-5 w-5"/>Matrix Properties (Matrix A)</CardTitle>
+                <CardDescription>Calculated characteristics of Matrix A.</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground">Placeholder for rank, dimensions, etc.</p>
+                {renderMatrixProperties()}
             </CardContent>
           </Card>
 
@@ -451,4 +558,3 @@ export default function MatrixOperationsPage() {
     </div>
   );
 }
-
