@@ -1,20 +1,18 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Shapes, Dices, Trash2, PlusCircle, MinusCircle, RotateCcw, Palette, Eye, Sigma } from 'lucide-react';
+import { ArrowLeft, Shapes, Dices, RotateCcw, Palette, Eye, Sigma, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Box, Grid as DreiGrid, AxesHelper } from '@react-three/drei'; // Added Grid and AxesHelper
 
-// Placeholder for future react-three-fiber imports
-// import { Canvas } from '@react-three/fiber';
-// import { OrbitControls, Box, Sphere, Line } from '@react-three/drei';
-
-const initialMatrix3x3 = () => [
+const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
   [0, 1, 0],
   [0, 0, 1],
@@ -23,7 +21,11 @@ const initialMatrix3x3 = () => [
 export default function LinearTransformationsPage() {
   const { toast } = useToast();
   const [matrix, setMatrix] = useState<number[][]>(initialMatrix3x3());
-  // Add state for vectors, shapes to transform, etc. later
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleMatrixChange = (
     rowIndex: number,
@@ -45,7 +47,7 @@ export default function LinearTransformationsPage() {
         .map(() =>
           Array(3)
             .fill(null)
-            .map(() => parseFloat((Math.random() * 20 - 10).toFixed(1)))
+            .map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) // Smaller range for better visualization
         )
     );
     toast({ title: "Matrix Randomized", description: "3x3 matrix values have been randomized." });
@@ -87,6 +89,7 @@ export default function LinearTransformationsPage() {
                       <Input
                         key={colIndex}
                         type="number"
+                        step="0.1"
                         value={cell}
                         onChange={(e) => handleMatrixChange(rowIndex, colIndex, e.target.value)}
                         className="w-full text-center border-2 focus:border-accent focus:ring-accent"
@@ -112,7 +115,7 @@ export default function LinearTransformationsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  (Options for displaying basis vectors, unit cube, custom vectors, etc. - Coming Soon)
+                  (Options for basis vectors, unit cube, custom vectors - Coming Soon)
                 </p>
               </CardContent>
             </Card>
@@ -124,21 +127,49 @@ export default function LinearTransformationsPage() {
               <CardHeader>
                 <CardTitle className="text-xl flex items-center"><Palette className="mr-2 h-5 w-5" />3D Viewport</CardTitle>
               </CardHeader>
-              <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md">
-                {/* Canvas for react-three-fiber will go here */}
-                <p className="text-muted-foreground text-center">
-                  3D Visualization Area
-                  <br />
-                  (react-three-fiber integration coming soon)
-                </p>
+              <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
+                {isClient ? (
+                  <Canvas camera={{ position: [3, 3, 5], fov: 50 }}>
+                    <ambientLight intensity={Math.PI / 2} />
+                    <directionalLight position={[10, 10, 5]} intensity={1} />
+                    <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+                    
+                    <AxesHelper args={[2]} /> {/* Red: X, Green: Y, Blue: Z */}
+                    <DreiGrid 
+                        position={[0, -0.01, 0]}
+                        args={[10.5, 10.5]} 
+                        cellSize={0.5} 
+                        cellThickness={1}
+                        cellColor={'#6f6f6f'}
+                        sectionSize={2}
+                        sectionThickness={1.5}
+                        sectionColor={'hsl(var(--primary))'}
+                        fadeDistance={25}
+                        fadeStrength={1}
+                        followCamera={false}
+                        infiniteGrid
+                    />
+                    
+                    {/* Simple Box as a placeholder for future transformed objects */}
+                    <Box args={[1, 1, 1]} position={[0, 0.5, 0]}>
+                      <meshStandardMaterial color="hsl(var(--accent))" />
+                    </Box>
+                    
+                    <OrbitControls />
+                  </Canvas>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                    <p>Loading 3D Viewport...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
           <p className="text-sm text-muted-foreground">
-            Interact with the 3x3 matrix to see its effect on 3D space. More features and shapes coming soon.
-            Requires <code className="text-xs">three</code> and <code className="text-xs">@react-three/fiber</code> to be installed.
+            Interact with the 3x3 matrix. The 3D visualization will update to show the transformation (future).
           </p>
         </CardFooter>
       </Card>
