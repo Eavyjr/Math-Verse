@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid as DreiGrid, AxesHelper, Html, Cylinder, Cone } from '@react-three/drei';
+import { OrbitControls, Grid as DreiGrid, Html, Cylinder, Cone } from '@react-three/drei';
 import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix, type MathJsStatic, norm } from 'mathjs';
 import * as THREE from 'three'; // Import THREE for Vector3
 
@@ -24,8 +24,8 @@ const initialMatrix3x3 = (): number[][] => [
 ];
 
 interface TransformedVectorInfo {
-  original: number[];
-  transformed: number[];
+  original: THREE.Vector3;
+  transformed: THREE.Vector3;
   color: string;
   transformedColor: string;
   label: string;
@@ -38,6 +38,7 @@ interface ArrowHelperProps {
   color: string;
   headLength?: number;
   headWidth?: number;
+  label?: string;
 }
 
 const ArrowHelper: React.FC<ArrowHelperProps> = ({
@@ -45,42 +46,60 @@ const ArrowHelper: React.FC<ArrowHelperProps> = ({
   origin = new THREE.Vector3(0,0,0),
   length,
   color,
-  headLength = length * 0.2, // Default head length
-  headWidth = length * 0.1, // Default head width
+  headLength: customHeadLength,
+  headWidth: customHeadWidth,
+  label,
 }) => {
-  if (length === 0) return null; // Don't render a zero-length arrow
+  if (length === 0) return null;
 
   const dir = direction.clone().normalize();
-  const shaftLength = length - headLength;
+  const headLength = customHeadLength === undefined ? length * 0.2 : customHeadLength;
+  const headWidth = customHeadWidth === undefined ? length * 0.1 : customHeadWidth;
+  
+  // Ensure headLength is not greater than total length
+  const actualHeadLength = Math.min(headLength, length);
+  const shaftLength = length - actualHeadLength;
 
-  const orientation = new THREE.Quaternion();
-  const up = new THREE.Vector3(0, 1, 0);
-  orientation.setFromUnitVectors(up, dir);
+  const shaftRadius = Math.max(0.01, headWidth * 0.2); // Ensure shaft has some thickness
 
-  // Position for the shaft (midpoint)
+
+  // Position for the shaft (midpoint from origin along direction)
   const shaftPosition = new THREE.Vector3()
     .copy(dir)
     .multiplyScalar(shaftLength / 2)
     .add(origin);
 
-  // Position for the cone (at the end of the shaft)
+  // Position for the cone (at the end of the shaft, from origin)
   const conePosition = new THREE.Vector3()
     .copy(dir)
     .multiplyScalar(shaftLength)
     .add(origin);
+  
+  const labelPosition = new THREE.Vector3()
+    .copy(dir)
+    .multiplyScalar(length * 1.1) // Position label slightly beyond the arrow tip
+    .add(origin);
+
 
   return (
-    <group position={origin}>
-      {shaftLength > 0 && (
-        <mesh position={shaftPosition} quaternion={orientation}>
-          <cylinderGeometry args={[headWidth * 0.3, headWidth * 0.3, shaftLength, 8]} />
+    <group>
+      {shaftLength > 0.001 && (
+        <mesh position={shaftPosition} quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)}>
+          <cylinderGeometry args={[shaftRadius, shaftRadius, shaftLength, 8]} />
           <meshStandardMaterial color={color} />
         </mesh>
       )}
-      <mesh position={conePosition} quaternion={orientation}>
-        <coneGeometry args={[headWidth, headLength, 8]} />
-        <meshStandardMaterial color={color} />
-      </mesh>
+      {actualHeadLength > 0.001 && (
+         <mesh position={conePosition} quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)}>
+          <coneGeometry args={[headWidth, actualHeadLength, 8]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      )}
+      {label && (
+        <Html position={labelPosition} style={{ pointerEvents: 'none', fontSize: '12px', color: color, userSelect: 'none' }}>
+          {label}
+        </Html>
+      )}
     </group>
   );
 };
@@ -116,7 +135,7 @@ export default function LinearTransformationsPage() {
         .map(() =>
           Array(3)
             .fill(null)
-            .map(() => parseFloat((Math.random() * 4 - 2).toFixed(1)))
+            .map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) // Range -2 to 2
         )
     );
     toast({ title: "Matrix Randomized", description: "3x3 matrix values have been randomized." });
@@ -129,24 +148,25 @@ export default function LinearTransformationsPage() {
 
   useEffect(() => {
     const basisVectorsData = [
-      { vector: [1, 0, 0], color: "hsl(var(--chart-1))", transformedColor: "hsla(var(--chart-1), 0.7)", label: "i" },
-      { vector: [0, 1, 0], color: "hsl(var(--chart-2))", transformedColor: "hsla(var(--chart-2), 0.7)", label: "j" },
-      { vector: [0, 0, 1], color: "hsl(var(--chart-3))", transformedColor: "hsla(var(--chart-3), 0.7)", label: "k" },
+      { vector: new THREE.Vector3(1, 0, 0), color: "hsl(var(--chart-1))", transformedColor: "hsla(var(--chart-1), 0.7)", label: "i" },
+      { vector: new THREE.Vector3(0, 1, 0), color: "hsl(var(--chart-2))", transformedColor: "hsla(var(--chart-2), 0.7)", label: "j" },
+      { vector: new THREE.Vector3(0, 0, 1), color: "hsl(var(--chart-3))", transformedColor: "hsla(var(--chart-3), 0.7)", label: "k" },
     ];
 
     try {
-      const userMatrix = mathMatrix(matrix);
-      if (userMatrix.size().length !== 2 || userMatrix.size()[0] !== 3 || userMatrix.size()[1] !== 3) {
+      const userMatrixJs = mathMatrix(matrix);
+      if (userMatrixJs.size().length !== 2 || userMatrixJs.size()[0] !== 3 || userMatrixJs.size()[1] !== 3) {
+        // This case should ideally not happen if input is restricted to 3x3
         throw new Error("Matrix must be 3x3.");
       }
 
       const transformed = basisVectorsData.map(b => {
-        const basisVector = mathColumn(b.vector);
-        const resultMatrix = multiply(userMatrix, basisVector) as Matrix;
+        const basisVectorMathJs = mathColumn([b.vector.x, b.vector.y, b.vector.z]);
+        const resultMatrix = multiply(userMatrixJs, basisVectorMathJs) as Matrix;
         const resultArray = resultMatrix.toArray().flat() as number[];
         return {
           original: b.vector,
-          transformed: resultArray,
+          transformed: new THREE.Vector3(resultArray[0], resultArray[1], resultArray[2]),
           color: b.color,
           transformedColor: b.transformedColor,
           label: b.label,
@@ -160,10 +180,11 @@ export default function LinearTransformationsPage() {
         title: "Transformation Error",
         description: error.message || "Could not apply matrix to basis vectors.",
       });
+      // Reset to original vectors if transformation fails
       setTransformedBasisVectors(basisVectorsData.map(b => ({
         ...b,
-        transformed: b.vector, // Show original if error
-        transformedColor: b.color,
+        transformed: b.vector.clone(),
+        transformedColor: b.color, 
       })));
     }
   }, [matrix, toast]);
@@ -231,6 +252,11 @@ export default function LinearTransformationsPage() {
                 <div className="flex items-center"><div className="w-4 h-4 mr-2 rounded-sm opacity-70" style={{ backgroundColor: "hsl(var(--chart-3))" }}></div>Transformed k' (Lighter Blue-ish)</div>
               </CardContent>
             </Card>
+            {/* Placeholder for visualization options */}
+            <Card>
+                <CardHeader><CardTitle className="text-xl">Visualization Options</CardTitle></CardHeader>
+                <CardContent><p className="text-sm text-muted-foreground">More options coming soon (e.g., show unit cube, other vectors).</p></CardContent>
+            </Card>
           </div>
 
           <div className="md:col-span-2">
@@ -245,7 +271,7 @@ export default function LinearTransformationsPage() {
                     <directionalLight position={[10, 10, 10]} intensity={1} />
                     <pointLight position={[-10, -10, -10]} intensity={0.5} decay={2} distance={100} />
                     
-                    <AxesHelper args={[3]} />
+                    <primitive object={new THREE.AxesHelper(3)} />
                     <DreiGrid 
                         position={[0, -0.01, 0]}
                         args={[10.5, 10.5]} 
@@ -263,40 +289,34 @@ export default function LinearTransformationsPage() {
                     
                     <Suspense fallback={null}>
                       {transformedBasisVectors.map((vecInfo, index) => {
-                        const originalVec3 = new THREE.Vector3(...vecInfo.original);
-                        const transformedVec3 = new THREE.Vector3(...vecInfo.transformed);
-                        const originalLength = originalVec3.length();
-                        const transformedLength = transformedVec3.length();
+                        const originalLength = vecInfo.original.length();
+                        const transformedLength = vecInfo.transformed.length();
 
                         return (
                           <React.Fragment key={index}>
                             {/* Original Vector */}
                             {originalLength > 0.001 && (
                               <ArrowHelper
-                                direction={originalVec3}
+                                direction={vecInfo.original}
                                 length={originalLength}
                                 color={vecInfo.color}
-                                headLength={0.2}
-                                headWidth={0.1}
+                                headLength={originalLength * 0.2}
+                                headWidth={originalLength * 0.1}
+                                label={vecInfo.label}
                               />
                             )}
-                             <Html position={originalVec3}  style={{ pointerEvents: 'none', fontSize: '12px', color: vecInfo.color, userSelect: 'none' }}>
-                                {vecInfo.label}
-                             </Html>
                             
                             {/* Transformed Vector */}
                             {transformedLength > 0.001 && (
                               <ArrowHelper
-                                direction={transformedVec3}
+                                direction={vecInfo.transformed}
                                 length={transformedLength}
                                 color={vecInfo.transformedColor}
-                                headLength={0.2}
-                                headWidth={0.1}
+                                headLength={transformedLength * 0.2}
+                                headWidth={transformedLength * 0.1}
+                                label={`${vecInfo.label}'`}
                               />
                             )}
-                             <Html position={transformedVec3} style={{ pointerEvents: 'none', fontSize: '12px', color: vecInfo.transformedColor, userSelect: 'none', opacity: 0.8 }}>
-                                {vecInfo.label}'
-                             </Html>
                           </React.Fragment>
                         );
                       })}
@@ -316,10 +336,12 @@ export default function LinearTransformationsPage() {
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
           <p className="text-sm text-muted-foreground">
-            Adjust the 3x3 matrix (A) to see how it transforms the standard basis vectors i (red-ish), j (green-ish), and k (blue-ish). The transformed vectors i', j', k' are shown in lighter/translucent shades.
+            Adjust the 3x3 matrix (A) to see how it transforms the standard basis vectors i, j, and k in 3D space.
           </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
+    
