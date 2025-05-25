@@ -2,11 +2,11 @@
 'use server';
 /**
  * @fileOverview Solves differential equations using an AI model.
- * This version uses a simplified prompt returning a single string.
+ * This version uses a simplified prompt returning a single string (the solution).
  */
 
 import {ai} from '@/ai/genkit'; 
-import {z} from 'genkit';
+import {z}from 'genkit';
 
 // Schema matching the user-provided prompt's input
 // This schema is now internal to the file and not exported directly.
@@ -29,12 +29,12 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   output: { 
     schema: z.string().nullable(), // Allow null output from the model
   },
-  prompt: `You are an expert calculus assistant specialized in solving differential equations.
-Your task is to solve the given differential equation.
-You should be able to understand common derivative notations like y', dy/dx, y'', d^2y/dx^2, etc.
-Unless specified otherwise by the 'Dependent Variable' and 'Independent Variable' fields below, assume the dependent variable (often 'y') is a function of the independent variable (often 'x'), i.e., y = y(x).
-If initial conditions are provided, find the particular solution. Otherwise, find the general solution (include constants of integration like C, C1, C2 as needed).
-Format the solution and steps clearly, using LaTeX for mathematical expressions where appropriate. Enclose inline math with \\(...\\) and display math with \\[ ... \\].
+  prompt: `You are a calculus assistant.
+Your task is to solve the given differential equation and provide ONLY the solution.
+Understand common derivative notations like y', dy/dx, y'', d^2y/dx^2.
+Assume '{{{dependentVariable}}}' is a function of '{{{independentVariable}}}' (e.g., y = y(x)) unless specified.
+If initial conditions are provided, find the particular solution. Otherwise, find the general solution (include constants like C, C1, C2 as needed).
+Format the solution using LaTeX for mathematical expressions where appropriate (e.g., \\(y = Ce^x + x^2\\)).
 
 ---
 Details for the current problem:
@@ -49,7 +49,7 @@ Initial Conditions:
 {{/if}}
 ---
 
-Solve the equation based on the details above. Provide the solution and, if possible, the steps involved.
+Solve the equation and provide ONLY the mathematical solution string.
 `,
   config: {
     temperature: 0.2,

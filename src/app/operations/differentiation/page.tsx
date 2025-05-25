@@ -47,8 +47,7 @@ const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
   console.log("renderStepsContent input:", stepsString);
 
-  // Regex to find \(...\) or \[...\]
-  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g);
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
   
   const htmlParts = parts.map((part, index) => {
     try {
@@ -59,11 +58,10 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
-      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
         console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
     }
   });
   const finalHtml = htmlParts.join('');
@@ -85,7 +83,7 @@ export default function DifferentiationCalculatorPage() {
   const [deIndependentVar, setDeIndependentVar] = useState('x');
   const [initialConditions, setInitialConditions] = useState<string[]>([]); 
   const [currentIcInput, setCurrentIcInput] = useState(''); 
-  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null); 
+  const [deApiResponse, setDeApiResponse] = useState<DESolutionOutput | null>(null); // Now expects a string
   const [isDeLoading, setIsDeLoading] = useState(false);
   const [deError, setDeError] = useState<string | null>(null);
   const [dePreviewHtml, setDePreviewHtml] = useState<string>('');
@@ -114,13 +112,13 @@ export default function DifferentiationCalculatorPage() {
     if (deString.trim()) {
         let preview = deString;
         if(initialConditions.length > 0){
-            preview += `, \\quad ` + initialConditions.join(",\\ ");
+            preview += `, \\quad ` + initialConditions.map(ic => ic.replace(/=/g, " = ")).join(",\\ ");
         }
         setDePreviewHtml(renderMath(preview, true));
     } else {
         setDePreviewHtml(renderMath("y' + P(x)y = Q(x)", true)); 
     }
-  }, [deString, initialConditions]);
+  }, [deString, deDependentVar, deIndependentVar, initialConditions]);
 
 
   const handleDiffSubmit = async () => {
@@ -192,17 +190,21 @@ export default function DifferentiationCalculatorPage() {
         independentVariable: deIndependentVar,
         initialConditions: initialConditions.filter(ic => ic.trim()), 
     };
+    
+    console.log("Submitting DE with input:", input);
 
     try {
         const actionResult = await handleSolveDifferentialEquationAction(input);
+        console.log("DE Action Result:", actionResult);
         if (actionResult.error) {
             setDeError(actionResult.error);
-        } else if (actionResult.data) {
+        } else if (actionResult.data !== null && actionResult.data !== undefined) {
             setDeApiResponse(actionResult.data); 
         } else {
             setDeError('Received no data from the DE solver. Please try again.');
         }
     } catch (e: any) {
+        console.error("Error in handleDeSubmit:", e);
         setDeError(e.message || 'An unexpected error occurred while solving the DE.');
     } finally {
         setIsDeLoading(false);
@@ -601,7 +603,7 @@ export default function DifferentiationCalculatorPage() {
                                 />
                             </div>
                             <div className="border-t pt-4 mt-4">
-                                <h3 className="text-xl font-semibold text-muted-foreground mb-2">AI Response:</h3>
+                                <h3 className="text-xl font-semibold text-muted-foreground mb-2">AI Response (Solution):</h3>
                                 <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                                     dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse) }}
@@ -625,3 +627,4 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
+
