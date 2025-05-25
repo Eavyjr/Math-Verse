@@ -26,7 +26,7 @@ const IntegrationOutputSchema = z.object({
     .describe(
       'The result of the integration. This MUST be ONLY the pure mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any delimiters like \\(...\\) or \\[...\\] in this field. For indefinite integrals, include "+ C".'
     ),
-  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\", \"Substitution Method\"). This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
+  steps: z.string().optional().describe("A detailed and complete step-by-step explanation of how the result was obtained, from start to finish. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\", \"Substitution Method\"). This should be formatted as readable text. Use simple LaTeX for mathematical expressions within steps, such as `\\(\\frac{a}{b}\\)` for fractions or `\\(x^2\\)` for exponents, ensuring they are wrapped in `\\(...\\)` delimiters."),
   originalQuery: IntegrationInputSchema.describe("The original input parameters for the integration."),
   plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its integral might show."),
 });
@@ -44,7 +44,7 @@ Given a function, a variable of integration, and optionally bounds for a definit
 - The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any explanations, apologies, conversational text, or delimiters like \\(...\\) or \\[...\\] in this 'integralResult' field.
 - For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the 'integralResult' string (e.g., "x^3/3 + C").
 - For definite integrals (when isDefinite is true), evaluate the integral from the lowerBound to the upperBound.
-- If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method", "Evaluating at bounds"). Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\).
+- If possible and applicable, provide a detailed and COMPLETE step-by-step explanation of how you arrived at the result in the 'steps' field, ensuring the derivation is carried through to the final answer. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method", "Evaluating at bounds"). Format these steps clearly for readability. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\). Ensure the steps are not truncated or abbreviated.
 - Provide a brief 'plotHint' describing what a visualization of the function and its integral might look like (e.g., "A parabola and its cubic antiderivative"). This is for a textual description, not for generating an actual plot.
 
 Handle the input function and variable carefully.
@@ -64,7 +64,7 @@ Lower Bound: {{{lowerBound}}}
 Upper Bound: {{{upperBound}}}
 {{/if}}
 
-Perform the integration based on these details. Provide the result, detailed steps (if applicable, stating the rule for each step), and a plot hint.
+Perform the integration based on these details. Provide the result, detailed and complete steps (stating the rule for each step and ensuring no truncation), and a plot hint.
 Ensure 'originalQuery' in your output accurately reflects these input parameters.
 The 'integralResult' field MUST BE only the pure LaTeX expression. Mathematical expressions in 'steps' should be formatted with inline MathJax/KaTeX delimiters \\(...\\).`,
   config: {
