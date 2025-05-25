@@ -2,13 +2,11 @@
 'use server';
 /**
  * @fileOverview Solves differential equations using an AI model, providing structured output.
- * This version targets an OpenAI model (e.g., gpt-3.5-turbo) for potentially better results.
  */
 
 import {ai} from '@/ai/genkit';
 import {z}from 'genkit';
 
-// Updated Input Schema
 const DESolutionInputSchema = z.object({
   equationString: z.string().describe('The differential equation to solve (e.g., "dy/dx = y", "y\'\' + y = sin(x)").'),
   dependentVariable: z.string().default('y').describe('The dependent variable (e.g., "y").'),
@@ -17,7 +15,6 @@ const DESolutionInputSchema = z.object({
 });
 export type DESolutionInput = z.infer<typeof DESolutionInputSchema>;
 
-// Updated Output Schema for structured results
 const DESolutionOutputSchema = z.object({
   classification: z.string().nullable().describe('The type of differential equation identified (e.g., "First-Order Linear", "Second-Order Homogeneous with Constant Coefficients").'),
   solutionMethod: z.string().nullable().describe('The primary method used to solve the DE (e.g., "Separation of Variables", "Integrating Factor", "Characteristic Equation").'),
@@ -29,17 +26,16 @@ const DESolutionOutputSchema = z.object({
 });
 export type DESolutionOutput = z.infer<typeof DESolutionOutputSchema>;
 
-
 const systemPrompt = `You are an expert calculus assistant specializing in solving differential equations.
 Your task is to analyze the given differential equation, solve it, and provide a structured response including classification, method, solutions, and detailed steps.
 
 Input Details:
-- Equation: The differential equation string. Understand common notations like y', dy/dx, y'', d^2y/dx^2. Unless specified otherwise by the 'Dependent Variable' and 'Independent Variable' fields below, assume the dependent variable (often 'y') is a function of the independent variable (often 'x'), i.e., y = y(x).
+- Equation: The differential equation string. You should be able to understand common derivative notations like y', dy/dx, y'', d^2y/dx^2, etc. Unless specified otherwise by the 'Dependent Variable' and 'Independent Variable' fields below, assume the dependent variable (often 'y') is a function of the independent variable (often 'x'), i.e., y = y(x).
 - Dependent Variable: The main function variable (e.g., y).
 - Independent Variable: The variable the function depends on (e.g., x).
 - Initial Conditions: Optional. If provided, use them to find a particular solution.
 
-Output Requirements (Provide all fields if possible, use null if not applicable for a field):
+Output Requirements (Provide all fields if possible, use null for a field if not applicable or cannot be determined):
 1.  **classification**: Classify the DE (e.g., "First-Order Separable", "Second-Order Linear Homogeneous with Constant Coefficients").
 2.  **solutionMethod**: State the primary method used (e.g., "Separation of Variables", "Integrating Factor", "Method of Undetermined Coefficients").
 3.  **generalSolution**: Provide the general solution in LaTeX format. Include constants (C, C1, C2, etc.) as needed. Example: "y(x) = C e^x".
@@ -58,12 +54,12 @@ If the equation is too complex or unsolvable with standard methods, clearly stat
 
 const solveDifferentialEquationPrompt = ai.definePrompt({
   name: 'solveDifferentialEquationPrompt',
-  // model: 'openai/gpt-3.5-turbo', // Reverted to default Google AI model
+  // model: 'openai/gpt-3.5-turbo', // Example: If using OpenAI
   inputSchema: DESolutionInputSchema,
   output: {
-    schema: DESolutionOutputSchema, // Expecting structured output
+    schema: DESolutionOutputSchema, 
   },
-  prompt: systemPrompt + // Prepending system prompt instructions directly
+  prompt: systemPrompt + // Using system prompt in the main prompt for some models
   `
 ---
 Solve the following differential equation based on the details provided:
@@ -89,21 +85,31 @@ Provide the structured output as specified in the system instructions.
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }, // Adjusted to MEDIUM from HIGH
     ],
   }
 });
 
 export async function solveDifferentialEquation(input: DESolutionInput): Promise<DESolutionOutput> {
-  console.log("Calling solveDifferentialEquationPrompt (for Google AI by default) with input:", input);
+  console.log("Calling solveDifferentialEquationPrompt with input:", input);
   const response = await solveDifferentialEquationPrompt(input);
   const output = response.output;
 
   if (output === null || output === undefined) {
-    throw new Error('AI model did not return a valid structured solution (received null or undefined). This could be due to the complexity or phrasing of the equation, safety filters, or an issue with the AI model. Please try rephrasing, simplifying the equation, or checking if the content might be restricted.');
+    throw new Error('AI model did not return a valid solution (received null or undefined). This could be due to the complexity or phrasing of the equation, or safety filters. Please try rephrasing, simplifying the equation, or checking if the content might be restricted.');
   }
-  if ((!output.generalSolution && !output.particularSolution) && (!output.steps || output.steps.trim() === '')) {
-     throw new Error('AI model returned an empty or insufficient response for the DE. Please check your equation or try rephrasing.');
+
+  // Check if all key informational fields are null or empty
+  const allKeyFieldsEmpty = 
+    (output.classification === null || output.classification.trim() === "") &&
+    (output.solutionMethod === null || output.solutionMethod.trim() === "") &&
+    (output.generalSolution === null || output.generalSolution.trim() === "") &&
+    (output.particularSolution === null || output.particularSolution === undefined || output.particularSolution.trim() === "") &&
+    (output.steps === null || output.steps.trim() === "");
+
+  if (allKeyFieldsEmpty) {
+    throw new Error('AI model returned a response, but all key information fields (classification, method, solution, steps) were empty or null. Please try a different or more specific equation.');
   }
+  
   return {...output, originalQuery: input };
 }

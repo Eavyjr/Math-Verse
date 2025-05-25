@@ -197,14 +197,17 @@ export default function DifferentiationCalculatorPage() {
         console.log("DE Action Result:", actionResult);
         if (actionResult.error) {
             setDeError(actionResult.error);
+            setDeApiResponse(null);
         } else if (actionResult.data !== null && actionResult.data !== undefined) {
             setDeApiResponse(actionResult.data); 
         } else {
             setDeError('Received no data from the DE solver. Please try again.');
+            setDeApiResponse(null);
         }
     } catch (e: any) {
         console.error("Error in handleDeSubmit:", e);
         setDeError(e.message || 'An unexpected error occurred while solving the DE.');
+        setDeApiResponse(null);
     } finally {
         setIsDeLoading(false);
     }
