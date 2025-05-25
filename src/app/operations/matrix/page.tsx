@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, Image as ImageIcon } from 'lucide-react'; // Added ImageIcon
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, ImageIcon, Shapes } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
@@ -68,17 +68,20 @@ const initialMatrix = () => [[0, 0], [0, 0]];
 const parseAIResult = (resultString: string): number[][] | number | string => {
     if (!resultString) return resultString;
     try {
+        // Attempt to parse as a JSON matrix first
         const parsed = JSON.parse(resultString);
         if (Array.isArray(parsed) && parsed.every(row => Array.isArray(row) && row.every(el => typeof el === 'number'))) {
             return parsed as number[][];
         }
     } catch (e) {
-      // Not a valid JSON matrix string
+      // Not a valid JSON matrix string, proceed to check if it's a number or just text
     }
+    // Check if it's a plain number
     const num = parseFloat(resultString);
     if (!isNaN(num) && isFinite(num) && num.toString().trim() === resultString.trim()) {
         return num;
     }
+    // Otherwise, treat it as a descriptive string (which might contain KaTeX for decompositions)
     return resultString; 
 };
 
@@ -133,78 +136,69 @@ export default function MatrixOperationsPage() {
     }
   ];
 
+  const getShape = (matrix: number[][]): string => {
+    if (!matrix || matrix.length === 0) return "0 x 0";
+    return `${matrix.length} x ${matrix[0]?.length || 0}`;
+  };
+
+  const isSquareMatrix = (matrix: number[][]): boolean => {
+    if (!matrix || matrix.length === 0) return false;
+    return matrix.length === (matrix[0]?.length || 0);
+  };
+
+  const isSymmetricMatrix = (matrix: number[][]): boolean | null => {
+    if (!isSquareMatrix(matrix)) return null;
+    const size = matrix.length;
+    for (let i = 0; i < size; i++) {
+      for (let j = i + 1; j < size; j++) {
+        if (matrix[i][j] !== matrix[j][i]) return false;
+      }
+    }
+    return true;
+  };
+
+  const isIdentityMatrix = (matrix: number[][]): boolean | null => {
+    if (!isSquareMatrix(matrix)) return null;
+    const size = matrix.length;
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        if (i === j && matrix[i][j] !== 1) return false;
+        if (i !== j && matrix[i][j] !== 0) return false;
+      }
+    }
+    return true;
+  };
+  
+  const isDiagonalMatrix = (matrix: number[][]): boolean | null => {
+    if (!isSquareMatrix(matrix)) return null;
+    const size = matrix.length;
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        if (i !== j && matrix[i][j] !== 0) return false;
+      }
+    }
+    return true;
+  };
+
+  const isZeroMatrixFunc = (matrix: number[][]): boolean => {
+    if (!matrix || matrix.length === 0) return true; // Or false depending on definition for empty
+    return matrix.every(row => row.every(cell => cell === 0));
+  };
+
+
   useEffect(() => {
     if (!matrixA || matrixA.length === 0 || matrixA[0].length === 0) {
       setMatrixAProperties(null);
       return;
     }
-
-    const rows = matrixA.length;
-    const cols = matrixA[0].length;
-    const shape = `${rows} x ${cols}`;
-    const square = rows === cols;
-
-    let symmetric: boolean | null = null;
-    let identity: boolean | null = null;
-    let diagonal: boolean | null = null;
-    
-    if (square) {
-      symmetric = true;
-      for (let i = 0; i < rows; i++) {
-        for (let j = i + 1; j < cols; j++) {
-          if (matrixA[i][j] !== matrixA[j][i]) {
-            symmetric = false;
-            break;
-          }
-        }
-        if (!symmetric) break;
-      }
-
-      identity = true;
-      for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-          if (i === j && matrixA[i][j] !== 1) {
-            identity = false;
-            break;
-          }
-          if (i !== j && matrixA[i][j] !== 0) {
-            identity = false;
-            break;
-          }
-        }
-        if (!identity) break;
-      }
-
-      diagonal = true;
-      for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-          if (i !== j && matrixA[i][j] !== 0) {
-            diagonal = false;
-            break;
-          }
-        }
-        if (!diagonal) break;
-      }
-    }
-
-    let zero = true;
-    for (let i = 0; i < rows; i++) {
-      for (let j = 0; j < cols; j++) {
-        if (matrixA[i][j] !== 0) {
-          zero = false;
-          break;
-        }
-      }
-      if (!zero) break;
-    }
-
+    const square = isSquareMatrix(matrixA);
     setMatrixAProperties({
-      shape,
+      shape: getShape(matrixA),
       isSquare: square,
-      isSymmetric: symmetric,
-      isIdentity: identity,
-      isDiagonal: diagonal,
-      isZeroMatrix: zero,
+      isSymmetric: isSymmetricMatrix(matrixA),
+      isIdentity: isIdentityMatrix(matrixA),
+      isDiagonal: isDiagonalMatrix(matrixA),
+      isZeroMatrix: isZeroMatrixFunc(matrixA),
     });
   }, [matrixA]);
 
@@ -217,25 +211,32 @@ export default function MatrixOperationsPage() {
 
     const isMatrixA2x2 = matrixA.length === 2 && matrixA[0]?.length === 2;
 
-    // Canvas setup
     const width = canvas.width;
     const height = canvas.height;
+    ctx.clearRect(0, 0, width, height); // Clear canvas
+
+    if (!isMatrixA2x2) {
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "hsl(var(--muted-foreground))";
+        ctx.textAlign = "center";
+        ctx.fillText("Visualization available for 2x2 Matrix A", width / 2, height / 2);
+        return;
+    }
+
     const originX = width / 2;
     const originY = height / 2;
-    const scale = 30; // pixels per unit
-
-    ctx.clearRect(0, 0, width, height);
+    const scale = 30; 
 
     // Draw grid
     ctx.strokeStyle = 'hsl(var(--border))';
     ctx.lineWidth = 0.5;
-    for (let x = -originX; x < originX; x += scale) {
+    for (let x = -Math.floor(width / (2*scale)) * scale; x <= Math.floor(width / (2*scale)) * scale; x += scale) {
         ctx.beginPath();
         ctx.moveTo(originX + x, 0);
         ctx.lineTo(originX + x, height);
         ctx.stroke();
     }
-    for (let y = -originY; y < originY; y += scale) {
+    for (let y = -Math.floor(height / (2*scale)) * scale; y <= Math.floor(height / (2*scale)) * scale; y += scale) {
         ctx.beginPath();
         ctx.moveTo(0, originY + y);
         ctx.lineTo(width, originY + y);
@@ -247,41 +248,27 @@ export default function MatrixOperationsPage() {
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, originY);
-    ctx.lineTo(width, originY); // X-axis
+    ctx.lineTo(width, originY); 
     ctx.moveTo(originX, 0);
-    ctx.lineTo(originX, height); // Y-axis
+    ctx.lineTo(originX, height); 
     ctx.stroke();
 
-    if (!isMatrixA2x2) {
-        ctx.font = "14px Arial";
-        ctx.fillStyle = "hsl(var(--muted-foreground))";
-        ctx.textAlign = "center";
-        ctx.fillText("Visualization available for 2x2 Matrix A", width / 2, height / 2);
-        return;
-    }
-
     const [[a, b], [c, d]] = matrixA;
-
-    // Basis vectors
     const iHat = { x: 1, y: 0 };
     const jHat = { x: 0, y: 1 };
-
-    // Transformed basis vectors
     const iHatTransformed = { x: a * iHat.x + b * iHat.y, y: c * iHat.x + d * iHat.y };
     const jHatTransformed = { x: a * jHat.x + b * jHat.y, y: c * jHat.x + d * jHat.y };
 
-    // Helper to draw a vector
     const drawVector = (vec: { x: number; y: number }, color: string, label?: string) => {
       ctx.beginPath();
       ctx.moveTo(originX, originY);
       const endX = originX + vec.x * scale;
-      const endY = originY - vec.y * scale; // Y is inverted in canvas
+      const endY = originY - vec.y * scale; // Y is inverted
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Arrowhead
       const headlen = 8;
       const angle = Math.atan2(endY - originY, endX - originX);
       ctx.beginPath();
@@ -296,17 +283,16 @@ export default function MatrixOperationsPage() {
       if (label) {
         ctx.fillStyle = color;
         ctx.font = "bold 12px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
         ctx.fillText(label, endX + 5, endY - 5);
       }
     };
-
-    // Draw original basis vectors
-    drawVector(iHat, 'hsl(var(--chart-1))', 'i'); // Example color
-    drawVector(jHat, 'hsl(var(--chart-2))', 'j'); // Example color
     
-    // Draw transformed basis vectors
-    drawVector(iHatTransformed, 'hsl(var(--chart-4))', "A*i"); // Example color
-    drawVector(jHatTransformed, 'hsl(var(--chart-5))', "A*j"); // Example color
+    drawVector(iHat, 'hsl(var(--chart-1))', 'i');
+    drawVector(jHat, 'hsl(var(--chart-2))', 'j');
+    drawVector(iHatTransformed, 'hsl(var(--chart-4))', "A·i");
+    drawVector(jHatTransformed, 'hsl(var(--chart-5))', "A·j");
 
   }, [matrixA]);
 
@@ -435,8 +421,8 @@ export default function MatrixOperationsPage() {
     return `\\begin{bmatrix} ${rows.join(' \\\\ ')} \\end{bmatrix}`;
   };
 
-  const renderComputedResult = (result: string) => {
-    const parsedResult = parseAIResult(result);
+  const renderComputedResult = (resultString: string) => {
+    const parsedResult = parseAIResult(resultString);
 
     if (typeof parsedResult === 'number') {
       return <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg" dangerouslySetInnerHTML={{ __html: renderMath(parsedResult.toString(), false) }} />;
@@ -451,7 +437,7 @@ export default function MatrixOperationsPage() {
 
   const renderMatrixProperties = () => {
     if (!matrixAProperties) {
-      return <p className="text-muted-foreground">Enter Matrix A to see its properties.</p>;
+      return <p className="text-muted-foreground text-sm">Enter values in Matrix A to see its properties.</p>;
     }
     const { shape, isSquare, isSymmetric, isIdentity, isDiagonal, isZeroMatrix } = matrixAProperties;
     return (
@@ -499,7 +485,7 @@ export default function MatrixOperationsPage() {
                     id="scalar-input"
                     type="number"
                     value={scalarValue}
-                    onChange={(e) => setScalarValue(parseFloat(e.target.value))}
+                    onChange={(e) => setScalarValue(parseFloat(e.target.value) || 0)}
                     placeholder="Enter scalar value"
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent w-full md:w-1/3"
                 />
@@ -617,27 +603,36 @@ export default function MatrixOperationsPage() {
             </Card>
           )}
           
-          <Card className="mt-8 bg-secondary/30">
-            <CardHeader>
-                <CardTitle className="text-xl flex items-center"><Activity className="mr-2 h-5 w-5"/>Matrix Properties (Matrix A)</CardTitle>
-                <CardDescription>Calculated characteristics of Matrix A.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {renderMatrixProperties()}
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <Card className="bg-secondary/30">
+              <CardHeader>
+                  <CardTitle className="text-xl flex items-center"><Activity className="mr-2 h-5 w-5"/>Matrix Properties (Matrix A)</CardTitle>
+                  <CardDescription>Calculated characteristics of Matrix A.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  {renderMatrixProperties()}
+              </CardContent>
+            </Card>
 
-          <Card className="mt-8 bg-secondary/30">
-            <CardHeader>
-                <CardTitle className="text-xl flex items-center"><ImageIcon className="mr-2 h-5 w-5"/>2x2 Matrix Visualization</CardTitle>
-                <CardDescription>Visual representation of how Matrix A (if 2x2) transforms basis vectors.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-md p-4 bg-background min-h-[320px]">
-                    <canvas ref={canvasRef} width="300" height="300" className="bg-background rounded-md"></canvas>
-                </div>
-            </CardContent>
-          </Card>
+            <Card className="bg-secondary/30">
+              <CardHeader>
+                  <CardTitle className="text-xl flex items-center"><ImageIcon className="mr-2 h-5 w-5"/>2x2 Matrix Visualization</CardTitle>
+                  <CardDescription>Visual representation of how Matrix A (if 2x2) transforms basis vectors.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                   <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-md p-4 bg-background min-h-[320px]">
+                      <canvas ref={canvasRef} width="300" height="300" className="bg-background rounded-md"></canvas>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <Button variant="link" asChild>
+                      <Link href="/operations/linear-transformations">
+                        <Shapes className="mr-2 h-4 w-4" /> Explore 3D+ Transformations
+                      </Link>
+                    </Button>
+                  </div>
+              </CardContent>
+            </Card>
+          </div>
 
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50 border-t">
@@ -649,3 +644,4 @@ export default function MatrixOperationsPage() {
     </div>
   );
 }
+

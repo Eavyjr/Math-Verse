@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, BarChartHorizontalBig, Share2, FunctionSquare, Grid3X3 } from 'lucide-react';
+import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes } from 'lucide-react';
 
 const workstations = [
   {
@@ -28,7 +28,7 @@ const workstations = [
     value: "differentiation",
     title: "Differentiation & DEs",
     icon: <Ratio className="mr-2 h-5 w-5" />,
-    description: "Find derivatives, solve differential equations, and see step-by-step solutions. Now includes higher-order derivatives.",
+    description: "Find derivatives, solve differential equations, and see step-by-step solutions.",
     cta: "Explore Calculus",
     href: "/operations/differentiation"
   },
@@ -39,6 +39,14 @@ const workstations = [
     description: "Perform a wide range of matrix operations, from basic arithmetic to complex decompositions.",
     cta: "Explore Matrices",
     href: "/operations/matrix"
+  },
+  {
+    value: "linear-transformations",
+    title: "Linear Transformations",
+    icon: <Shapes className="mr-2 h-5 w-5" />,
+    description: "Visualize 3D matrix transformations. See how vectors and shapes change in space.",
+    cta: "Visualize Transforms",
+    href: "/operations/linear-transformations"
   },
   {
     value: "graph-theory",
@@ -73,9 +81,7 @@ export default function MathWorkstationTabs() {
         Explore Our Math Workstations
       </h2>
       <Tabs defaultValue={workstations[0].value} className="w-full">
-        {/* Outer div handles scrolling and bottom border */}
         <div className="overflow-x-auto no-scrollbar border-b">
-          {/* TabsList is now inline-flex to size based on content */}
           <TabsList className="inline-flex items-center space-x-1 bg-transparent p-1">
             {workstations.map((ws) => (
               <TabsTrigger
