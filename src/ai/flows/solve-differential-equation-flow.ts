@@ -31,9 +31,10 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   },
   prompt: `You are an expert calculus assistant specialized in solving differential equations.
 Your task is to solve the given differential equation.
-If possible, include the steps involved in reaching the solution.
-Format the solution and steps clearly, using LaTeX for mathematical expressions where appropriate. Enclose inline math with \\(...\\) and display math with \\[\ ... \\].
+You should be able to understand common derivative notations like y', dy/dx, y'', d^2y/dx^2, etc.
+Unless specified otherwise by the 'Dependent Variable' and 'Independent Variable' fields below, assume the dependent variable (often 'y') is a function of the independent variable (often 'x'), i.e., y = y(x).
 If initial conditions are provided, find the particular solution. Otherwise, find the general solution (include constants of integration like C, C1, C2 as needed).
+Format the solution and steps clearly, using LaTeX for mathematical expressions where appropriate. Enclose inline math with \\(...\\) and display math with \\[ ... \\].
 
 ---
 Details for the current problem:
