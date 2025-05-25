@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import katex from 'katex';
 import "katex/dist/katex.min.css";
 
@@ -14,19 +13,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity } from 'lucide-react';
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, Image as ImageIcon } from 'lucide-react'; // Added ImageIcon
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
 
-// Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
+
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
   }
+  
   try {
     return katex.renderToString(cleanLatexString, {
       throwOnError: false,
@@ -43,7 +43,7 @@ const renderStepsContent = (stepsString: string | undefined): string => {
   console.log("renderStepsContent input:", stepsString);
 
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  const htmlParts = parts.map((part) => {
+  const htmlParts = parts.map((part, index) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -85,9 +85,9 @@ const parseAIResult = (resultString: string): number[][] | number | string => {
 interface MatrixProperties {
   shape: string;
   isSquare: boolean;
-  isSymmetric: boolean | null; // null if not square
-  isIdentity: boolean | null; // null if not square
-  isDiagonal: boolean | null; // null if not square
+  isSymmetric: boolean | null;
+  isIdentity: boolean | null;
+  isDiagonal: boolean | null;
   isZeroMatrix: boolean;
 }
 
@@ -103,6 +103,8 @@ export default function MatrixOperationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [matrixAProperties, setMatrixAProperties] = useState<MatrixProperties | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
 
   const operations: { label: string; options: { value: MatrixOperationInput['operation']; label: string }[] }[] = [
     {
@@ -131,7 +133,6 @@ export default function MatrixOperationsPage() {
     }
   ];
 
-  // Matrix Properties Calculation
   useEffect(() => {
     if (!matrixA || matrixA.length === 0 || matrixA[0].length === 0) {
       setMatrixAProperties(null);
@@ -148,7 +149,6 @@ export default function MatrixOperationsPage() {
     let diagonal: boolean | null = null;
     
     if (square) {
-      // Symmetric
       symmetric = true;
       for (let i = 0; i < rows; i++) {
         for (let j = i + 1; j < cols; j++) {
@@ -160,7 +160,6 @@ export default function MatrixOperationsPage() {
         if (!symmetric) break;
       }
 
-      // Identity
       identity = true;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
@@ -176,7 +175,6 @@ export default function MatrixOperationsPage() {
         if (!identity) break;
       }
 
-      // Diagonal
       diagonal = true;
       for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
@@ -189,7 +187,6 @@ export default function MatrixOperationsPage() {
       }
     }
 
-    // Zero Matrix
     let zero = true;
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
@@ -212,6 +209,108 @@ export default function MatrixOperationsPage() {
   }, [matrixA]);
 
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const isMatrixA2x2 = matrixA.length === 2 && matrixA[0]?.length === 2;
+
+    // Canvas setup
+    const width = canvas.width;
+    const height = canvas.height;
+    const originX = width / 2;
+    const originY = height / 2;
+    const scale = 30; // pixels per unit
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw grid
+    ctx.strokeStyle = 'hsl(var(--border))';
+    ctx.lineWidth = 0.5;
+    for (let x = -originX; x < originX; x += scale) {
+        ctx.beginPath();
+        ctx.moveTo(originX + x, 0);
+        ctx.lineTo(originX + x, height);
+        ctx.stroke();
+    }
+    for (let y = -originY; y < originY; y += scale) {
+        ctx.beginPath();
+        ctx.moveTo(0, originY + y);
+        ctx.lineTo(width, originY + y);
+        ctx.stroke();
+    }
+
+    // Draw axes
+    ctx.strokeStyle = 'hsl(var(--foreground))';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, originY);
+    ctx.lineTo(width, originY); // X-axis
+    ctx.moveTo(originX, 0);
+    ctx.lineTo(originX, height); // Y-axis
+    ctx.stroke();
+
+    if (!isMatrixA2x2) {
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "hsl(var(--muted-foreground))";
+        ctx.textAlign = "center";
+        ctx.fillText("Visualization available for 2x2 Matrix A", width / 2, height / 2);
+        return;
+    }
+
+    const [[a, b], [c, d]] = matrixA;
+
+    // Basis vectors
+    const iHat = { x: 1, y: 0 };
+    const jHat = { x: 0, y: 1 };
+
+    // Transformed basis vectors
+    const iHatTransformed = { x: a * iHat.x + b * iHat.y, y: c * iHat.x + d * iHat.y };
+    const jHatTransformed = { x: a * jHat.x + b * jHat.y, y: c * jHat.x + d * jHat.y };
+
+    // Helper to draw a vector
+    const drawVector = (vec: { x: number; y: number }, color: string, label?: string) => {
+      ctx.beginPath();
+      ctx.moveTo(originX, originY);
+      const endX = originX + vec.x * scale;
+      const endY = originY - vec.y * scale; // Y is inverted in canvas
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Arrowhead
+      const headlen = 8;
+      const angle = Math.atan2(endY - originY, endX - originX);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      if (label) {
+        ctx.fillStyle = color;
+        ctx.font = "bold 12px Arial";
+        ctx.fillText(label, endX + 5, endY - 5);
+      }
+    };
+
+    // Draw original basis vectors
+    drawVector(iHat, 'hsl(var(--chart-1))', 'i'); // Example color
+    drawVector(jHat, 'hsl(var(--chart-2))', 'j'); // Example color
+    
+    // Draw transformed basis vectors
+    drawVector(iHatTransformed, 'hsl(var(--chart-4))', "A*i"); // Example color
+    drawVector(jHatTransformed, 'hsl(var(--chart-5))', "A*j"); // Example color
+
+  }, [matrixA]);
+
+
   const handleMatrixChange = (
     matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>,
     rowIndex: number,
@@ -221,7 +320,7 @@ export default function MatrixOperationsPage() {
     const numValue = parseFloat(value);
     matrixSetter(prevMatrix => {
       const newMatrix = prevMatrix.map(row => [...row]);
-      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue; // Default to 0 if NaN
+      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue; 
       return newMatrix;
     });
     setError(null);
@@ -229,7 +328,7 @@ export default function MatrixOperationsPage() {
   };
 
   const addRow = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>, matrix: number[][]) => {
-    const numCols = matrix.length > 0 && matrix[0] ? matrix[0].length : 1; // Default to 1 column if matrix is empty
+    const numCols = matrix.length > 0 && matrix[0] ? matrix[0].length : 1; 
     matrixSetter(prev => [...prev, Array(numCols).fill(0)]);
   };
 
@@ -243,7 +342,7 @@ export default function MatrixOperationsPage() {
 
   const addCol = (matrixSetter: React.Dispatch<React.SetStateAction<number[][]>>) => {
      matrixSetter(prev => {
-        if (prev.length === 0) return [[0]]; // Handle case where matrix is initially empty
+        if (prev.length === 0) return [[0]]; 
         return prev.map(row => [...row, 0])
      });
   };
@@ -341,10 +440,10 @@ export default function MatrixOperationsPage() {
 
     if (typeof parsedResult === 'number') {
       return <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg" dangerouslySetInnerHTML={{ __html: renderMath(parsedResult.toString(), false) }} />;
-    } else if (Array.isArray(parsedResult)) { // Check if it's a matrix (array of arrays)
+    } else if (Array.isArray(parsedResult)) { 
       return <div className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
                   dangerouslySetInnerHTML={{ __html: renderMath(formatMatrixForKaTeX(parsedResult), true) }} />;
-    } else { // It's a descriptive string, potentially with KaTeX
+    } else { 
       return <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
                   dangerouslySetInnerHTML={{ __html: renderStepsContent(parsedResult) }} />;
     }
@@ -530,20 +629,12 @@ export default function MatrixOperationsPage() {
 
           <Card className="mt-8 bg-secondary/30">
             <CardHeader>
-                <CardTitle className="text-xl flex items-center"><Info className="mr-2 h-5 w-5"/>2x2 Matrix Visualization (Coming Soon)</CardTitle>
-                <CardDescription>Visual representation of 2x2 matrices and transformations on vectors/grids.</CardDescription>
+                <CardTitle className="text-xl flex items-center"><ImageIcon className="mr-2 h-5 w-5"/>2x2 Matrix Visualization</CardTitle>
+                <CardDescription>Visual representation of how Matrix A (if 2x2) transforms basis vectors.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                    <Image 
-                        src="https://placehold.co/300x150.png" 
-                        alt="Matrix visualization placeholder" 
-                        width={300} 
-                        height={150}
-                        data-ai-hint="matrix grid"
-                        className="opacity-50 mb-2 rounded"
-                    />
-                    <p className="text-sm text-muted-foreground">Interactive visualization canvas for 2x2 matrices.</p>
+                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-md p-4 bg-background min-h-[320px]">
+                    <canvas ref={canvasRef} width="300" height="300" className="bg-background rounded-md"></canvas>
                 </div>
             </CardContent>
           </Card>
@@ -551,7 +642,7 @@ export default function MatrixOperationsPage() {
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground">
-                This tool uses an AI model to perform matrix operations. Results for complex operations or large matrices may vary in precision.
+                This tool uses an AI model to perform matrix operations. Results for complex operations or large matrices may vary in precision. 2x2 visualization is client-side.
             </p>
         </CardFooter>
       </Card>
