@@ -29,12 +29,11 @@ const solveDifferentialEquationPrompt = ai.definePrompt({
   output: { 
     schema: z.string().nullable(), // Allow null output from the model
   },
-  // model: 'googleai/gemini-1.5-pro-latest', // Reverted due to quota, using app default
   prompt: `You are an expert calculus assistant specialized in solving differential equations.
-Given a differential equation, dependent and independent variables, and optional initial conditions, provide the solution.
+Your task is to solve the given differential equation.
 If possible, include the steps involved in reaching the solution.
-Format the solution and steps clearly, using LaTeX for mathematical expressions where appropriate, enclosed in \\(...\\) for inline and \\[\ ... \\] for display math.
-If initial conditions are provided, find the particular solution. Otherwise, find the general solution (include constants like C, C1, C2).
+Format the solution and steps clearly, using LaTeX for mathematical expressions where appropriate. Enclose inline math with \\(...\\) and display math with \\[\ ... \\].
+If initial conditions are provided, find the particular solution. Otherwise, find the general solution (include constants of integration like C, C1, C2 as needed).
 
 ---
 Details for the current problem:
@@ -47,8 +46,9 @@ Initial Conditions:
 - {{{this}}}
 {{/each}}
 {{/if}}
+---
 
-Solve the equation based on the details above and provide the solution. If possible, include steps.
+Solve the equation based on the details above. Provide the solution and, if possible, the steps involved.
 `,
   config: {
     temperature: 0.2,
