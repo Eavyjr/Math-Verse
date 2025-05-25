@@ -28,7 +28,7 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   // Attempt to strip common outer delimiters if AI accidentally includes them for main results
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
-    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2);
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
   }
   
   try {
@@ -38,15 +38,16 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
       macros: { "\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
-    console.error("Katex rendering error:", e, "Original string:", latexString);
+    console.error("Katex rendering error for main result:", e, "Original string:", latexString);
     return cleanLatexString; // Fallback to the cleaned string on error
   }
 };
 
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
+  console.log("renderStepsContent - Input stepsString:", stepsString);
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  return parts.map((part) => {
+  const htmlParts = parts.map((part) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -58,10 +59,14 @@ const renderStepsContent = (stepsString: string | undefined): string => {
       // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
-      console.error("KaTeX steps rendering error:", e, "Part:", part);
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Sanitize fallback
+        console.error("Katex steps rendering error during map:", e, "Problematic Part:", part);
+        // Fallback to sanitized original part if KaTeX fails on a segment
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-  }).join('');
+  });
+  const finalHtml = htmlParts.join('');
+  console.log("renderStepsContent - Output HTML:", finalHtml);
+  return finalHtml;
 };
 
 export default function DifferentiationCalculatorPage() {
@@ -404,7 +409,7 @@ export default function DifferentiationCalculatorPage() {
                           </AccordionTrigger>
                           <AccordionContent>
                             <div 
-                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto min-h-[50px] overflow-wrap-break-word"
                               dangerouslySetInnerHTML={{ __html: renderStepsContent(diffApiResponse.steps) }}
                             />
                             <p className="mt-2 text-xs text-muted-foreground italic">
@@ -599,7 +604,7 @@ export default function DifferentiationCalculatorPage() {
                             <div className="border-t pt-4 mt-4">
                                 <h3 className="text-xl font-semibold text-muted-foreground mb-2">AI Response:</h3>
                                 <div 
-                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto min-h-[50px] overflow-wrap-break-word"
                                     dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse) }} 
                                 />
                             </div>
