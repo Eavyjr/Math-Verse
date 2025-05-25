@@ -1,3 +1,4 @@
+
 {
   "name": "mathverse",
   "version": "0.1.0",
@@ -44,7 +45,7 @@
     "dotenv": "^16.5.0",
     "firebase": "^11.7.3",
     "genkit": "^1.8.0",
-    "katex": "^0.16.10",
+    "katex": "^0.16.9",
     "lucide-react": "^0.475.0",
     "mathjs": "^13.0.3",
     "next": "^15.3.2",
@@ -59,6 +60,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/katex": "^0.16.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
