@@ -49,27 +49,21 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  console.log("renderStepsContent - Input stepsString:", stepsString);
+  // console.log("renderStepsContent - Input stepsString:", stepsString); // Debug log
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
   const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2); 
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2); 
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      // Sanitize plain text parts
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("Katex steps rendering error during map:", e, "Problematic Part:", part);
-        // Fallback to sanitized original part if KaTeX fails on a segment
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (part.startsWith('\\(') && part.endsWith('\\)')) {
+      const latex = part.slice(2, -2); 
+      return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+      const latex = part.slice(2, -2); 
+      return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
     }
+    // Sanitize plain text parts
+    return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   });
   const finalHtml = htmlParts.join('');
-  console.log("renderStepsContent - Output HTML:", finalHtml);
+  // console.log("renderStepsContent - Output HTML:", finalHtml); // Debug log
   return finalHtml;
 };
 
@@ -269,7 +263,7 @@ export default function BasicAlgebraCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto min-h-[50px] overflow-wrap-break-word"
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
                           dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
                         />
                         <p className="mt-2 text-xs text-muted-foreground italic">
