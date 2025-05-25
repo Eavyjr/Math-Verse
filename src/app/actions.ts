@@ -143,8 +143,8 @@ export async function handlePerformDifferentiationAction(
 }
 
 export async function handleSolveDifferentialEquationAction(
-  input: DESolutionInput
-): Promise<ActionResult<DESolutionOutput>> {
+  input: DESolutionInput // Input type matches the updated DESolutionInputSchema
+): Promise<ActionResult<DESolutionOutput>> { // Output type matches the updated DESolutionOutputSchema
   if (!input.equationString || input.equationString.trim() === '') {
     return { data: null, error: 'Differential equation cannot be empty.' };
   }
@@ -156,8 +156,8 @@ export async function handleSolveDifferentialEquationAction(
   }
   if (input.initialConditions) {
     for (const ic of input.initialConditions) {
-      if (!ic || ic.trim() === '') {
-        return { data: null, error: 'Initial condition cannot be empty if provided.' };
+      if (!ic || ic.trim() === '') { // Check if individual IC string is empty
+        return { data: null, error: 'Initial condition string cannot be empty if provided.' };
       }
     }
   }
@@ -171,7 +171,7 @@ export async function handleSolveDifferentialEquationAction(
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only')) {
+      } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only') || e.message.includes('empty or insufficient response')) {
         errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
       } else {
         errorMessage = `An AI processing error occurred. Details: ${e.message}`;
