@@ -39,29 +39,37 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error for main result:", e, "Original string:", latexString);
-    return cleanLatexString; // Fallback to the cleaned string on error
+    return cleanLatexString; 
   }
 };
 
-// const renderStepsContent = (stepsString: string | undefined): string => {
-//   if (!stepsString) return "";
-//   // console.log("renderStepsContent - Input stepsString:", stepsString); // Debug log
-//   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
-//   const htmlParts = parts.map((part) => {
-//     if (part.startsWith('\\(') && part.endsWith('\\)')) {
-//       const latex = part.slice(2, -2); 
-//       return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-//     } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-//       const latex = part.slice(2, -2); 
-//       return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-//     }
-//     // Sanitize plain text parts
-//     return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-//   });
-//   const finalHtml = htmlParts.join('');
-//   // console.log("renderStepsContent - Output HTML:", finalHtml); // Debug log
-//   return finalHtml;
-// };
+const renderStepsContent = (stepsString: string | undefined): string => {
+  if (!stepsString) return "";
+  console.log("renderStepsContent input:", stepsString);
+
+  // Regex to find \(...\) or \[...\]
+  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g);
+  
+  const htmlParts = parts.map((part, index) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      // Sanitize plain text parts
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+        console.error("KaTeX steps rendering error for part:", part, e);
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+    }
+  });
+  const finalHtml = htmlParts.join('');
+  console.log("renderStepsContent output HTML:", finalHtml);
+  return finalHtml;
+};
 
 export default function DifferentiationCalculatorPage() {
   const [functionString, setFunctionString] = useState('');
@@ -403,13 +411,9 @@ export default function DifferentiationCalculatorPage() {
                           </AccordionTrigger>
                           <AccordionContent>
                             <div 
-                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                            >
-                              {diffApiResponse.steps}
-                            </div>
-                            <p className="mt-2 text-xs text-muted-foreground italic">
-                               Steps are provided by the AI. KaTeX delimiters (if any) will appear as plain text.
-                            </p>
+                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                              dangerouslySetInnerHTML={{ __html: renderStepsContent(diffApiResponse.steps) }}
+                            />
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
@@ -599,10 +603,9 @@ export default function DifferentiationCalculatorPage() {
                             <div className="border-t pt-4 mt-4">
                                 <h3 className="text-xl font-semibold text-muted-foreground mb-2">AI Response:</h3>
                                 <div 
-                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
-                                >
-                                    {deApiResponse}
-                                </div>
+                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse) }}
+                                />
                             </div>
                              <p className="mt-4 text-xs text-muted-foreground italic">
                                 Mathematical expressions in the AI response are rendered using KaTeX if formatted with delimiters like \\(...\\). Solution quality depends on AI interpretation.
