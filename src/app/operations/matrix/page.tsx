@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import katex from 'katex';
@@ -23,22 +23,30 @@ import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/per
 // Helper function to render a single LaTeX string to HTML
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
+  let cleanLatexString = latexString.trim();
+  // Strip common outer delimiters if AI accidentally includes them
+  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
+      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
+    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
+  }
   try {
-    return katex.renderToString(latexString, {
+    return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
     });
   } catch (e) {
-    console.error("Katex rendering error:", e);
-    return latexString; // Fallback to raw string on error
+    console.error("Katex rendering error for math string:", latexString, e);
+    return cleanLatexString; // Fallback to raw string on error
   }
 };
 
-// Helper function to render content with mixed text and KaTeX (for steps)
+// Helper function to render content with mixed text and KaTeX (for steps or descriptive results)
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
+  console.log("renderStepsContent input:", stepsString);
+
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  return parts.map((part, index) => {
+  const htmlParts = parts.map((part, index) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -47,35 +55,36 @@ const renderStepsContent = (stepsString: string | undefined): string => {
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
+      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
-      console.error("KaTeX steps rendering error:", e, "Part:", part);
-      return part;
+        console.error("KaTeX steps rendering error for part:", part, e);
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
     }
-  }).join('');
+  });
+  const finalHtml = htmlParts.join('');
+  console.log("renderStepsContent output HTML:", finalHtml);
+  return finalHtml;
 };
+
 
 const initialMatrix = () => [[0, 0], [0, 0]];
 
-// Tries to parse a string like "[[1,2],[3,4]]" or "5" or "Error message"
 const parseAIResult = (resultString: string): number[][] | number | string => {
     if (!resultString) return resultString;
     try {
-        // Try to parse as JSON (for matrices like "[[1,2],[3,4]]")
         const parsed = JSON.parse(resultString);
         if (Array.isArray(parsed) && parsed.every(row => Array.isArray(row) && row.every(el => typeof el === 'number'))) {
             return parsed as number[][];
         }
     } catch (e) {
-        // Not a valid JSON, or not a matrix format
+      // Not a valid JSON matrix string
     }
-    // Try to parse as a number
     const num = parseFloat(resultString);
-    if (!isNaN(num) && isFinite(num) && num.toString() === resultString.trim()) {
+    if (!isNaN(num) && isFinite(num) && num.toString().trim() === resultString.trim()) {
         return num;
     }
-    // Otherwise, return as string (could be an error message or descriptive text)
-    return resultString;
+    return resultString; // Treat as descriptive text or error message from AI
 };
 
 
@@ -126,7 +135,7 @@ export default function MatrixOperationsPage() {
     const numValue = parseFloat(value);
     matrixSetter(prevMatrix => {
       const newMatrix = prevMatrix.map(row => [...row]);
-      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue; // Keep as number
+      newMatrix[rowIndex][colIndex] = isNaN(numValue) ? 0 : numValue;
       return newMatrix;
     });
     setError(null);
@@ -168,7 +177,7 @@ export default function MatrixOperationsPage() {
               <Input
                 key={colIndex}
                 type="number"
-                value={cell} // Directly use number
+                value={cell}
                 onChange={(e) => handleMatrixChange(setMatrix, rowIndex, colIndex, e.target.value)}
                 className="w-20 min-w-[5rem] text-center border-2 focus:border-accent focus:ring-accent"
                 aria-label={`${label} row ${rowIndex + 1} col ${colIndex + 1}`}
@@ -236,6 +245,21 @@ export default function MatrixOperationsPage() {
     const rows = matrix.map(row => row.join(' & '));
     return `\\begin{bmatrix} ${rows.join(' \\\\ ')} \\end{bmatrix}`;
   };
+
+  const renderComputedResult = (result: string) => {
+    const parsedResult = parseAIResult(result);
+
+    if (typeof parsedResult === 'number') {
+      return <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg" dangerouslySetInnerHTML={{ __html: renderMath(parsedResult.toString(), false) }} />;
+    } else if (Array.isArray(parsedResult)) {
+      return <div className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
+                  dangerouslySetInnerHTML={{ __html: renderMath(formatMatrixForKaTeX(parsedResult), true) }} />;
+    } else { // It's a descriptive string, potentially with KaTeX
+      return <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
+                  dangerouslySetInnerHTML={{ __html: renderStepsContent(parsedResult) }} />;
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -359,17 +383,7 @@ export default function MatrixOperationsPage() {
                 </div>
                 <div>
                     <h4 className="font-semibold text-muted-foreground mb-1">Computed Result:</h4>
-                    <div
-                        className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
-                        dangerouslySetInnerHTML={{ __html: renderMath(
-                            (() => {
-                                const parsed = parseAIResult(apiResponse.result);
-                                if (typeof parsed === 'number') return parsed.toString();
-                                if (Array.isArray(parsed)) return formatMatrixForKaTeX(parsed);
-                                return parsed; // string (error or descriptive text)
-                            })()
-                        , true) }} // Display mode for matrices
-                    />
+                    {renderComputedResult(apiResponse.result)}
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
@@ -380,7 +394,7 @@ export default function MatrixOperationsPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap"
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                           dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
                         />
                         <p className="mt-2 text-xs text-muted-foreground italic">
@@ -437,3 +451,4 @@ export default function MatrixOperationsPage() {
     </div>
   );
 }
+
