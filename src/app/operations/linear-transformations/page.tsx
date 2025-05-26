@@ -3,27 +3,28 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2 } from 'lucide-react';
+// import dynamic from 'next/dynamic'; // Commented out dynamic import
+import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 
-// Dynamically import the R3F canvas component
-const LinearTransformationsCanvasView = dynamic(
-  () => import('@/components/math-tools/linear-transformations-canvas'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Loading 3D Viewport...</p>
-      </div>
-    )
-  }
-);
+// Comment out the dynamic import for LinearTransformationsCanvasView
+// const LinearTransformationsCanvasView = dynamic(
+//   () => import('@/components/math-tools/linear-transformations-canvas'),
+//   {
+//     ssr: false,
+//     loading: () => (
+//       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+//         <Loader2 className="h-8 w-8 animate-spin mb-2" />
+//         <p>Loading 3D Viewport...</p>
+//       </div>
+//     )
+//   }
+// );
 
 const initialMatrix3x3 = () => [
   [1, 0, 0],
@@ -32,9 +33,9 @@ const initialMatrix3x3 = () => [
 ];
 
 export default function LinearTransformationsPage() {
-  const [isClient, setIsClient] = useState(false);
   const [matrix, setMatrix] = useState<number[][]>(initialMatrix3x3());
   const [visualizationError, setVisualizationError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function LinearTransformationsPage() {
       newMatrix[rowIndex][colIndex] = isNaN(newValue) ? 0 : newValue;
       return newMatrix;
     });
-    setVisualizationError(null); 
+    setVisualizationError(null);
   };
 
   const resetMatrix = useCallback(() => {
@@ -58,7 +59,7 @@ export default function LinearTransformationsPage() {
   }, [toast]);
 
   const randomizeMatrix = useCallback(() => {
-    const newMatrix = Array(3).fill(null).map(() => 
+    const newMatrix = Array(3).fill(null).map(() =>
       Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1)))
     );
     setMatrix(newMatrix);
@@ -107,25 +108,22 @@ export default function LinearTransformationsPage() {
                   </div>
                 ))}
                 <div className="flex gap-2 pt-2">
-                    <Button onClick={randomizeMatrix} variant="outline" className="w-full">
-                        <Zap className="mr-2" /> Randomize
-                    </Button>
-                    <Button onClick={resetMatrix} variant="destructive" className="w-full">
-                        <RotateCcw className="mr-2" /> Reset
-                    </Button>
+                  <Button onClick={randomizeMatrix} variant="outline" className="w-full">
+                    <Zap className="mr-2" /> Randomize
+                  </Button>
+                  <Button onClick={resetMatrix} variant="destructive" className="w-full">
+                    <RotateCcw className="mr-2" /> Reset
+                  </Button>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center"><InfoIcon className="mr-2"/>Legend & Info</CardTitle>
+                <CardTitle className="text-lg flex items-center"><InfoIcon className="mr-2" />Legend & Info</CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-2">
-                <p><span style={{ color: '#FF0000', fontWeight: 'bold' }}>Red</span>: Original i-vector / Transformed i' (light red)</p>
-                <p><span style={{ color: '#00FF00', fontWeight: 'bold' }}>Green</span>: Original j-vector / Transformed j' (light green)</p>
-                <p><span style={{ color: '#0000FF', fontWeight: 'bold' }}>Blue</span>: Original k-vector / Transformed k' (light blue)</p>
-                <p className="text-xs text-muted-foreground mt-2">Original vectors are darker, transformed vectors are lighter.</p>
-                 {visualizationError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{visualizationError}</AlertDescription></Alert>}
+                 <p className="text-muted-foreground">3D visualization is temporarily disabled due to library installation issues. Please ensure @react-three/fiber and related packages can be installed in your environment.</p>
+                {visualizationError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{visualizationError}</AlertDescription></Alert>}
               </CardContent>
             </Card>
           </div>
@@ -136,22 +134,22 @@ export default function LinearTransformationsPage() {
                 <CardTitle className="text-xl">3D Viewport</CardTitle>
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
-                {isClient ? (
-                  <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                    <p>Loading 3D Viewport...</p>
-                  </div>
-                )}
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                  <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+                  <p className="font-semibold">3D Visualization Temporarily Disabled</p>
+                  <p className="text-sm">
+                    The 3D visualization feature requires libraries (@react-three/fiber, @react-three/drei, three) that are currently experiencing installation issues in this environment.
+                  </p>
+                  <p className="text-xs mt-2">Please try resolving any `pnpm install` errors related to these packages.</p>
+                </div>
               </CardContent>
             </Card>
           </div>
         </CardContent>
-         <CardFooter className="p-4 bg-secondary/30 border-t">
-            <p className="text-xs text-muted-foreground">
-                This tool visualizes the transformation of standard basis vectors (i, j, k) by the entered 3x3 matrix. Use mouse to rotate, zoom, and pan the 3D view.
-            </p>
+        <CardFooter className="p-4 bg-secondary/30 border-t">
+          <p className="text-xs text-muted-foreground">
+            The 3D visualization for transformations is currently disabled. Once resolved, it will show how the matrix transforms basis vectors.
+          </p>
         </CardFooter>
       </Card>
     </div>
