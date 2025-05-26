@@ -12,18 +12,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 
-const LinearTransformationsCanvasView = dynamic(
-  () => import('@/components/math-tools/linear-transformations-canvas'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Loading 3D Viewport...</p>
-      </div>
-    )
-  }
-);
+// Dynamically import the canvas view with SSR disabled
+// const LinearTransformationsCanvasView = dynamic(
+//   () => import('@/components/math-tools/linear-transformations-canvas'),
+//   {
+//     ssr: false,
+//     loading: () => (
+//       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+//         <Loader2 className="h-8 w-8 animate-spin mb-2" />
+//         <p>Loading 3D Viewport...</p>
+//       </div>
+//     )
+//   }
+// );
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
@@ -48,7 +49,7 @@ export default function LinearTransformationsPage() {
       newMatrix[rowIndex][colIndex] = isNaN(newValue) ? 0 : newValue;
       return newMatrix;
     });
-    setVisualizationError(null); 
+    setVisualizationError(null);
   };
 
   const resetMatrix = useCallback(() => {
@@ -59,7 +60,7 @@ export default function LinearTransformationsPage() {
 
   const randomizeMatrix = useCallback(() => {
     const newMatrix = Array(3).fill(null).map(() =>
-      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) 
+      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1)))
     );
     setMatrix(newMatrix);
     setVisualizationError(null);
@@ -81,6 +82,8 @@ export default function LinearTransformationsPage() {
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
             Enter a 3x3 matrix to visualize its transformation effect on standard basis vectors in 3D space.
+            <br />
+            <span className="font-semibold text-yellow-300">Note: 3D Visualization is temporarily disabled due to library installation issues. Please resolve environment problems to re-enable.</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -144,21 +147,27 @@ export default function LinearTransformationsPage() {
                 <CardTitle className="text-xl">3D Viewport</CardTitle>
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
-                {isClient ? (
+                {/* Placeholder when visualization is disabled */}
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                  <Shapes className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                  <p className="font-semibold">3D Visualization Disabled</p>
+                  <p className="text-sm">Please resolve @react-three/fiber installation issues to enable this feature.</p>
+                </div>
+                {/* {isClient ? (
                   <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin mb-2" />
                     <p>Loading 3D Viewport...</p>
                   </div>
-                )}
+                )} */}
               </CardContent>
             </Card>
           </div>
         </CardContent>
         <CardFooter className="p-4 bg-secondary/30 border-t">
           <p className="text-xs text-muted-foreground">
-            Use the input fields to define a 3x3 matrix. The visualization shows how this matrix transforms the standard basis vectors (i, j, k) in 3D space. Use mouse controls to orbit, pan, and zoom.
+            Use the input fields to define a 3x3 matrix. The visualization (when enabled) shows how this matrix transforms the standard basis vectors (i, j, k) in 3D space.
           </p>
         </CardFooter>
       </Card>
