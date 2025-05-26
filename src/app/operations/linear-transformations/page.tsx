@@ -1,54 +1,29 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid as DreiGrid, Html, Cylinder, Cone } from '@react-three/drei';
-import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix as MathJSMatrixType, type MathJsStatic, norm } from 'mathjs';
-import * as THREE from 'three'; // Import THREE for Vector3
 
-// Initialize mathjs
-const math = create(all);
-
-interface TransformedVectorInfo {
-  original: THREE.Vector3;
-  transformed: THREE.Vector3;
-  color: string;
-  transformedColor: string;
-  label: string;
-}
-
-const ArrowHelper = ({ direction, origin, length, color, headLength = 0.2, headWidth = 0.1 }: { direction: THREE.Vector3, origin: THREE.Vector3, length: number, color: string, headLength?: number, headWidth?: number }) => {
-  const endPoint = new THREE.Vector3().copy(direction).normalize().multiplyScalar(length).add(origin);
-  const orientation = new THREE.Matrix4();
-  const up = new THREE.Vector3(0, 1, 0);
-  const D = new THREE.Vector3().copy(direction).normalize();
-  orientation.lookAt(origin, endPoint, up);
-  const quaternion = new THREE.Quaternion().setFromRotationMatrix(orientation);
-
-  return (
-    <group position={origin}>
-      {/* Shaft */}
-      <mesh>
-        <cylinderGeometry args={[headWidth * 0.25, headWidth * 0.25, length - headLength, 8]} />
-        <meshStandardMaterial color={color} />
-      </mesh>
-      {/* Head */}
-      <mesh position={[0, length - headLength / 2, 0]} quaternion={new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), Math.PI/2)} >
-        <coneGeometry args={[headWidth, headLength, 8]} />
-        <meshStandardMaterial color={color} />
-      </mesh>
-    </group>
-  );
-};
-
+// Dynamically import the R3F canvas component
+const LinearTransformationsCanvasView = dynamic(
+  () => import('@/components/math-tools/linear-transformations-canvas'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+        <p>Loading 3D Viewport...</p>
+      </div>
+    )
+  }
+);
 
 const initialMatrix3x3 = () => [
   [1, 0, 0],
@@ -59,8 +34,7 @@ const initialMatrix3x3 = () => [
 export default function LinearTransformationsPage() {
   const [isClient, setIsClient] = useState(false);
   const [matrix, setMatrix] = useState<number[][]>(initialMatrix3x3());
-  const [transformedBasisVectors, setTransformedBasisVectors] = useState<TransformedVectorInfo[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [visualizationError, setVisualizationError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,64 +48,23 @@ export default function LinearTransformationsPage() {
       newMatrix[rowIndex][colIndex] = isNaN(newValue) ? 0 : newValue;
       return newMatrix;
     });
-    setError(null); // Clear error on input change
+    setVisualizationError(null); 
   };
 
   const resetMatrix = useCallback(() => {
     setMatrix(initialMatrix3x3());
-    setError(null);
+    setVisualizationError(null);
     toast({ title: "Matrix Reset", description: "Transformation matrix reset to identity." });
   }, [toast]);
 
   const randomizeMatrix = useCallback(() => {
     const newMatrix = Array(3).fill(null).map(() => 
-      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) // Values between -2 and 2
+      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1)))
     );
     setMatrix(newMatrix);
-    setError(null);
+    setVisualizationError(null);
     toast({ title: "Matrix Randomized", description: "Transformation matrix has been randomized." });
   }, [toast]);
-
-  useEffect(() => {
-    try {
-      const mathUserMatrix: MathJSMatrixType = mathMatrix(matrix);
-      
-      if (math.size(mathUserMatrix).length !== 2 || math.size(mathUserMatrix)[0] !== 3 || math.size(mathUserMatrix)[1] !== 3) {
-        setError("Matrix must be 3x3.");
-        setTransformedBasisVectors([]);
-        return;
-      }
-
-      const basis: { vector: number[], color: string, transformedColor: string, label: string }[] = [
-        { vector: [1, 0, 0], color: "red", transformedColor: "#ff7b7b", label: "i" }, // Light red
-        { vector: [0, 1, 0], color: "green", transformedColor: "#7bff7b", label: "j" }, // Light green
-        { vector: [0, 0, 1], color: "blue", transformedColor: "#7b7bff", label: "k" },  // Light blue
-      ];
-
-      const newTransformedVectors = basis.map(b => {
-        const mathBasisVector = mathColumn(b.vector);
-        const transformed = multiply(mathUserMatrix, mathBasisVector) as MathJSMatrixType; // Explicitly cast
-        
-        const originalVec = new THREE.Vector3(...b.vector);
-        const transformedArray = transformed.toArray().flat() as number[];
-        const transformedVec = new THREE.Vector3(...transformedArray);
-        
-        return {
-          original: originalVec,
-          transformed: transformedVec,
-          color: b.color,
-          transformedColor: b.transformedColor,
-          label: b.label,
-        };
-      });
-      setTransformedBasisVectors(newTransformedVectors);
-      setError(null);
-    } catch (e) {
-      console.error("Error transforming vectors:", e);
-      setError("Error applying transformation. Check matrix values.");
-      setTransformedBasisVectors([]);
-    }
-  }, [matrix]);
 
   return (
     <div className="space-y-8">
@@ -188,11 +121,11 @@ export default function LinearTransformationsPage() {
                 <CardTitle className="text-lg flex items-center"><InfoIcon className="mr-2"/>Legend & Info</CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-2">
-                <p><span style={{ color: 'red', fontWeight: 'bold' }}>Red</span>: Original i-vector / Transformed i'</p>
-                <p><span style={{ color: 'green', fontWeight: 'bold' }}>Green</span>: Original j-vector / Transformed j'</p>
-                <p><span style={{ color: 'blue', fontWeight: 'bold' }}>Blue</span>: Original k-vector / Transformed k'</p>
+                <p><span style={{ color: '#FF0000', fontWeight: 'bold' }}>Red</span>: Original i-vector / Transformed i' (light red)</p>
+                <p><span style={{ color: '#00FF00', fontWeight: 'bold' }}>Green</span>: Original j-vector / Transformed j' (light green)</p>
+                <p><span style={{ color: '#0000FF', fontWeight: 'bold' }}>Blue</span>: Original k-vector / Transformed k' (light blue)</p>
                 <p className="text-xs text-muted-foreground mt-2">Original vectors are darker, transformed vectors are lighter.</p>
-                 {error && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{error}</AlertDescription></Alert>}
+                 {visualizationError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{visualizationError}</AlertDescription></Alert>}
               </CardContent>
             </Card>
           </div>
@@ -204,34 +137,7 @@ export default function LinearTransformationsPage() {
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
                 {isClient ? (
-                  <Canvas camera={{ position: [3, 3, 5], fov: 50 }}>
-                    <ambientLight intensity={0.8 * Math.PI} />
-                    <pointLight position={[10, 10, 10]} decay={0} intensity={Math.PI} />
-                    <primitive object={new THREE.AxesHelper(3)} />
-                    <DreiGrid infiniteGrid followCamera={false} fadeDistance={50} fadeStrength={5} cellSize={1} sectionSize={5} sectionColor={"hsl(var(--muted-foreground))"} cellColor={"hsl(var(--border))"} />
-                    
-                    {transformedBasisVectors.map((vecInfo) => {
-                        const originalLength = vecInfo.original.length();
-                        const transformedLength = vecInfo.transformed.length();
-                        return (
-                            <React.Fragment key={vecInfo.label}>
-                                {/* Original Vector */}
-                                <ArrowHelper direction={vecInfo.original} origin={new THREE.Vector3(0,0,0)} length={originalLength} color={vecInfo.color} />
-                                <Html position={vecInfo.original.clone().multiplyScalar(1.1)}>
-                                    <div style={{ color: vecInfo.color, fontSize: '12px', userSelect: 'none' }}>{vecInfo.label}</div>
-                                </Html>
-
-                                {/* Transformed Vector */}
-                                <ArrowHelper direction={vecInfo.transformed} origin={new THREE.Vector3(0,0,0)} length={transformedLength} color={vecInfo.transformedColor} />
-                                 <Html position={vecInfo.transformed.clone().multiplyScalar(1.1)}>
-                                    <div style={{ color: vecInfo.transformedColor, fontSize: '12px', userSelect: 'none' }}>{vecInfo.label + "'"}</div>
-                                </Html>
-                            </React.Fragment>
-                        );
-                    })}
-
-                    <OrbitControls />
-                  </Canvas>
+                  <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin mb-2" />
