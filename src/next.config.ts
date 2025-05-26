@@ -1,6 +1,7 @@
 
 import type { NextConfig } from 'next';
 import type { Configuration as WebpackConfiguration } from 'webpack';
+// import MiniCssExtractPlugin from 'mini-css-extract-plugin'; // Temporarily remove
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -22,8 +23,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config: WebpackConfiguration, options) => {
-    // You can add custom webpack configurations here if needed in the future
+  webpack: (
+    config: WebpackConfiguration,
+    // { isServer, dev, buildId, config: nextInstanceConfig, defaultLoaders, webpack } // Parameters can be omitted if not used
+  ) => {
+    // config.plugins = config.plugins || []; // Temporarily remove custom plugin logic
+    // if (!config.plugins.some(plugin => plugin instanceof MiniCssExtractPlugin)) {
+    //   config.plugins.push(new MiniCssExtractPlugin());
+    // }
     return config;
   },
 };
