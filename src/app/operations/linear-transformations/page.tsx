@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic'; // Commented out for now
 import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 
+/* // Commented out LinearTransformationsCanvasView import
 const LinearTransformationsCanvasView = dynamic(
   () => import('@/components/math-tools/linear-transformations-canvas'),
   {
@@ -24,6 +25,7 @@ const LinearTransformationsCanvasView = dynamic(
     )
   }
 );
+*/
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
@@ -59,7 +61,7 @@ export default function LinearTransformationsPage() {
 
   const randomizeMatrix = useCallback(() => {
     const newMatrix = Array(3).fill(null).map(() =>
-      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) // Smaller range for better visualization
+      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) 
     );
     setMatrix(newMatrix);
     setVisualizationError(null);
@@ -145,7 +147,17 @@ export default function LinearTransformationsPage() {
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
                 {isClient ? (
-                  <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
+                  // <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
+                    <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
+                    <p className="text-center font-semibold">3D Visualization Disabled</p>
+                    <p className="text-xs text-center">
+                      This feature is temporarily unavailable due to issues with graphics library installation.
+                    </p>
+                    <p className="text-xs text-center mt-1">
+                      Please ensure dependencies like <code>@react-three/fiber</code> are correctly installed.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin mb-2" />
