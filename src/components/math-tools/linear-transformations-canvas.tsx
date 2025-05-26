@@ -1,15 +1,13 @@
 
 'use client';
-/*
-// All content is commented out to prevent build errors if dependencies are missing.
 
 import React, { useEffect, useState, useMemo } from 'react';
-// import { Canvas } from '@react-three/fiber'; // Dependency removed
-// import { OrbitControls, Grid as DreiGrid, Html, Cylinder, Cone } from '@react-three/drei'; // Dependency removed
-// import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix as MathJSMatrixType, norm } from 'mathjs';
-// import * as THREE from 'three'; // Dependency removed
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Grid as DreiGrid, Html, Cylinder, Cone } from '@react-three/drei';
+import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix as MathJSMatrixType, norm } from 'mathjs';
+import * as THREE from 'three'; // Import THREE for Vector3
 
-// const math = create(all);
+const math = create(all);
 
 interface TransformedVectorInfo {
   original: THREE.Vector3;
@@ -20,8 +18,8 @@ interface TransformedVectorInfo {
 }
 
 interface ArrowHelperProps {
-  direction: THREE.Vector3;
-  origin?: THREE.Vector3;
+  direction: THREE.Vector3Tuple; // Use tuple for direct prop compatibility
+  origin?: THREE.Vector3Tuple;
   length: number;
   color: string;
   headLengthRatio?: number;
@@ -30,37 +28,40 @@ interface ArrowHelperProps {
 
 const ArrowHelper: React.FC<ArrowHelperProps> = ({
   direction,
-  origin = new THREE.Vector3(0, 0, 0),
+  origin = [0, 0, 0],
   length,
   color,
-  headLengthRatio = 0.2, 
-  headWidthRatio = 0.08,  
+  headLengthRatio = 0.2,
+  headWidthRatio = 0.08,
 }) => {
   if (length <= 0.001) return null;
 
-  const normalizedDirection = direction.clone().normalize();
-  const headLength = Math.max(0.1, length * headLengthRatio);
-  const headWidth = Math.max(0.05, length * headWidthRatio * 2);
+  const dirVec = new THREE.Vector3(...direction).normalize();
+  const headLength = Math.max(0.05, length * headLengthRatio); // Ensure headLength isn't too small
+  const headWidth = Math.max(0.025, length * headWidthRatio * 2); // Ensure headWidth isn't too small
   const shaftLength = Math.max(0, length - headLength);
-  const shaftRadius = headWidth * 0.2; 
+  const shaftRadius = Math.max(0.01, headWidth * 0.2);
 
+  // Quaternion to align the cylinder (Y-up) to the direction vector
   const quaternion = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0), 
-    normalizedDirection
+    new THREE.Vector3(0, 1, 0),
+    dirVec
   );
 
+  const shaftPosition = new THREE.Vector3(...origin).add(dirVec.clone().multiplyScalar(shaftLength / 2));
+  const headPosition = new THREE.Vector3(...origin).add(dirVec.clone().multiplyScalar(shaftLength + headLength / 2));
+
+
   return (
-    <group position={origin}>
+    <group>
       {shaftLength > 0.001 && (
-        // @ts-ignore DREI components not available
-        <mesh quaternion={quaternion} position={normalizedDirection.clone().multiplyScalar(shaftLength / 2)}>
+        <mesh position={shaftPosition} quaternion={quaternion}>
           <cylinderGeometry args={[shaftRadius, shaftRadius, shaftLength, 8]} />
           <meshStandardMaterial color={color} transparent opacity={0.8} />
         </mesh>
       )}
-      // @ts-ignore DREI components not available
-      <mesh quaternion={quaternion} position={normalizedDirection.clone().multiplyScalar(shaftLength + headLength / 2)}>
-        <coneGeometry args={[headWidth / 2, headLength, 16]} /> 
+      <mesh position={headPosition} quaternion={quaternion}>
+        <coneGeometry args={[headWidth / 2, headLength, 16]} />
         <meshStandardMaterial color={color} />
       </mesh>
     </group>
@@ -83,31 +84,29 @@ export default function LinearTransformationsCanvasView({ matrix, showError }: L
         setTransformedBasisVectors([]);
         return;
       }
-      // const mathUserMatrix = mathMatrix(matrix);
+      const mathUserMatrix = mathMatrix(matrix);
 
       const basis: { vector: [number, number, number], color: string, transformedColor: string, label: string }[] = [
-        { vector: [1, 0, 0], color: "#FF6B6B", transformedColor: "#FFBABA", label: "i" },
-        { vector: [0, 1, 0], color: "#69F0AE", transformedColor: "#B9F6CA", label: "j" },
-        { vector: [0, 0, 1], color: "#74C0FC", transformedColor: "#BBDEFB", label: "k" },
+        { vector: [1, 0, 0], color: "#FF6B6B", transformedColor: "#FFBABA", label: "i" }, // Red
+        { vector: [0, 1, 0], color: "#69F0AE", transformedColor: "#B9F6CA", label: "j" }, // Green
+        { vector: [0, 0, 1], color: "#74C0FC", transformedColor: "#BBDEFB", label: "k" }, // Blue
       ];
 
       const newTransformedVectors = basis.map(b => {
         const originalVec = new THREE.Vector3(...b.vector);
+        const mathBasisVector = mathColumn(b.vector[0], b.vector[1], b.vector[2]);
         
-        // Placeholder for actual transformation logic since mathjs might not be available
-        // or matrix multiplication code is complex to include here without full dependencies
-        const transformedVec = originalVec.clone(); // Default to original if transformation fails or is not implemented
+        const transformedMatrixResult = multiply(mathUserMatrix, mathBasisVector) as MathJSMatrixType;
         
-        // Example of how transformation might look with mathjs if it were active:
-        // const mathBasisVector = mathColumn(b.vector[0], b.vector[1], b.vector[2]);
-        // const transformedMatrixResult = multiply(mathUserMatrix, mathBasisVector) as MathJSMatrixType;
-        // const transformedArray = (transformedMatrixResult.valueOf() as number[][]).flat();
-        // transformedVec.set(...transformedArray);
+        // Ensure to extract array correctly from math.js matrix
+        const transformedArrayData = transformedMatrixResult.toArray();
+        const transformedArray = (Array.isArray(transformedArrayData[0]) ? (transformedArrayData as number[][]).flat() : transformedArrayData) as number[];
 
+        const transformedVec = new THREE.Vector3(...transformedArray);
 
         return {
           original: originalVec,
-          transformed: transformedVec, 
+          transformed: transformedVec,
           color: b.color,
           transformedColor: b.transformedColor,
           label: b.label,
@@ -132,9 +131,7 @@ export default function LinearTransformationsCanvasView({ matrix, showError }: L
       <directionalLight position={[8, 10, 5]} intensity={Math.PI * 1.5} color="#FFFFFF" castShadow />
       <pointLight position={[-8, -5, -10]} intensity={Math.PI * 0.5} color="#FFFFDD" />
       
-      // @ts-ignore THREE not fully available
       <primitive object={new THREE.AxesHelper(3)} /> 
-      // @ts-ignore DREI components not available
       <DreiGrid
         infiniteGrid
         cellSize={0.5}
@@ -154,13 +151,12 @@ export default function LinearTransformationsCanvasView({ matrix, showError }: L
           <React.Fragment key={vecInfo.label}>
             {originalLength > 0.001 && (
               <>
-                <ArrowHelper direction={vecInfo.original} length={originalLength} color={vecInfo.color} />
-                // @ts-ignore DREI components not available
+                <ArrowHelper direction={vecInfo.original.toArray()} length={originalLength} color={vecInfo.color} />
                 <Html 
                   position={vecInfo.original.clone().normalize().multiplyScalar(originalLength + labelOffset)}
                   center
                   distanceFactor={6}
-                  occlude // @ts-ignore - occlude might not be available or correctly typed
+                  // occlude // occlude might need specific setup or be a part of a different drei version/component
                 >
                   <div style={{ color: vecInfo.color, fontSize: '14px', userSelect: 'none', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label}</div>
                 </Html>
@@ -168,13 +164,12 @@ export default function LinearTransformationsCanvasView({ matrix, showError }: L
             )}
             {transformedLength > 0.001 && (
               <>
-                <ArrowHelper direction={vecInfo.transformed} length={transformedLength} color={vecInfo.transformedColor} />
-                // @ts-ignore DREI components not available
+                <ArrowHelper direction={vecInfo.transformed.toArray()} length={transformedLength} color={vecInfo.transformedColor} />
                 <Html 
                   position={vecInfo.transformed.clone().normalize().multiplyScalar(transformedLength + labelOffset)}
                   center
                   distanceFactor={6}
-                  occlude // @ts-ignore
+                  // occlude
                 >
                   <div style={{ color: vecInfo.transformedColor, fontSize: '14px', userSelect: 'none', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label + "'"}</div>
                 </Html>
@@ -183,26 +178,13 @@ export default function LinearTransformationsCanvasView({ matrix, showError }: L
           </React.Fragment>
         );
       })}
-      // @ts-ignore DREI components not available
       <OrbitControls makeDefault minDistance={1} maxDistance={20} />
     </>
   ), [transformedBasisVectors]);
   
-  // return (
-  //   <Canvas camera={{ position: [3.5, 3.5, 6], fov: 50 }} className="w-full h-full rounded-md">
-  //     {sceneElements}
-  //   </Canvas>
-  // );
-  return <div className="w-full h-full flex items-center justify-center text-muted-foreground">3D Canvas temporarily disabled.</div>;
-}
-*/
-// Placeholder to prevent build errors when dependencies are not installed.
-export default function LinearTransformationsCanvasView_Disabled() {
   return (
-    <div className="flex items-center justify-center h-full text-muted-foreground p-4">
-      <p className="text-center">
-        Linear Transformations Canvas View is temporarily disabled due to installation issues with graphics libraries.
-      </p>
-    </div>
+    <Canvas camera={{ position: [3.5, 3.5, 6], fov: 50 }} className="w-full h-full rounded-md">
+      {sceneElements}
+    </Canvas>
   );
 }
