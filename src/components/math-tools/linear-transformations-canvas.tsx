@@ -4,10 +4,10 @@
 // import React, { useEffect, useState, useMemo } from 'react';
 // import { Canvas } from '@react-three/fiber';
 // import { OrbitControls, Grid as DreiGrid, Html, Cylinder, Cone } from '@react-three/drei';
-// import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix as MathJSMatrixType } from 'mathjs';
-// import * as THREE from 'three';
+// import { create, all, matrix as mathMatrix, multiply, column as mathColumn, type Matrix as MathJSMatrixType, type MathJsStatic, norm } from 'mathjs';
+// import * as THREE from 'three'; // Import THREE for Vector3
 
-// const math = create(all);
+// const math: MathJsStatic = create(all);
 
 // interface TransformedVectorInfo {
 //   original: THREE.Vector3;
@@ -31,25 +31,25 @@
 //   origin = [0, 0, 0],
 //   length,
 //   color,
-//   headLengthRatio = 0.2,
-//   headWidthRatio = 0.08,
+//   headLengthRatio = 0.2, 
+//   headWidthRatio = 0.08, 
 // }) => {
-//   if (length <= 0.001) return null; // Avoid rendering zero-length arrows
+//   if (length <= 0.001) return null; 
 
 //   const dirVec = new THREE.Vector3(...direction).normalize();
-//   const headLength = Math.max(0.05, length * headLengthRatio);
-//   const headWidth = Math.max(0.025, length * headWidthRatio * 2);
+//   const headLength = Math.max(0.1, length * headLengthRatio); 
+//   const headWidth = Math.max(0.05, length * headWidthRatio * 2); 
 //   const shaftLength = Math.max(0, length - headLength);
 //   const shaftRadius = Math.max(0.01, headWidth * 0.2);
 
 //   const quaternion = new THREE.Quaternion().setFromUnitVectors(
-//     new THREE.Vector3(0, 1, 0),
+//     new THREE.Vector3(0, 1, 0), 
 //     dirVec
 //   );
 
-//   const shaftPosition = new THREE.Vector3(...origin).add(dirVec.clone().multiplyScalar(shaftLength / 2));
-//   const headPosition = new THREE.Vector3(...origin).add(dirVec.clone().multiplyScalar(shaftLength + headLength / 2));
-
+//   const shaftPosition = new THREE.Vector3().fromArray(origin).add(dirVec.clone().multiplyScalar(shaftLength / 2));
+//   const headPosition = new THREE.Vector3().fromArray(origin).add(dirVec.clone().multiplyScalar(shaftLength + headLength / 2));
+  
 //   return (
 //     <group>
 //       {shaftLength > 0.001 && (
@@ -91,13 +91,16 @@
 
 //       const newTransformedVectors = basis.map(b => {
 //         const originalVec = new THREE.Vector3(...b.vector);
-//         const mathBasisVector = mathColumn(b.vector[0], b.vector[1], b.vector[2]);
+//         const mathBasisVector = mathColumn(b.vector);
         
-//         const transformedMatrixResult = multiply(mathUserMatrix, mathBasisVector) as MathJSMatrixType;
+//         const transformedMatrixResult = math.multiply(mathUserMatrix, mathBasisVector) as MathJSMatrixType;
         
-//         const transformedArrayData = transformedMatrixResult.toArray();
-//         const transformedArray = (Array.isArray(transformedArrayData[0]) ? (transformedArrayData as number[][]).flat() : transformedArrayData) as number[];
+//         const rawArrayData = transformedMatrixResult.toArray();
+//         const transformedArray: number[] = (Array.isArray(rawArrayData[0]) ? (rawArrayData as number[][]).flat() : rawArrayData) as number[];
 
+//         if (transformedArray.length !== 3 || transformedArray.some(isNaN)) {
+//           throw new Error(`Transformation resulted in an invalid vector for basis ${b.label}.`);
+//         }
 //         const transformedVec = new THREE.Vector3(...transformedArray);
 
 //         return {
@@ -109,7 +112,7 @@
 //         };
 //       });
 //       setTransformedBasisVectors(newTransformedVectors);
-//       showError(null);
+//       showError(null); 
 //     } catch (e) {
 //       console.error("Error transforming vectors:", e);
 //       if (e instanceof Error) {
@@ -117,7 +120,7 @@
 //       } else {
 //         showError("An unknown error occurred during transformation.");
 //       }
-//       setTransformedBasisVectors([]);
+//       setTransformedBasisVectors([]); 
 //     }
 //   }, [matrix, showError]);
 
@@ -149,11 +152,12 @@
 //               <>
 //                 <ArrowHelper direction={vecInfo.original.toArray() as THREE.Vector3Tuple} length={originalLength} color={vecInfo.color} />
 //                 <Html 
-//                   position={vecInfo.original.clone().normalize().multiplyScalar(originalLength + labelOffset)}
+//                   position={vecInfo.original.clone().normalize().multiplyScalar(originalLength + labelOffset).toArray() as THREE.Vector3Tuple}
 //                   center
 //                   distanceFactor={6}
+//                   className="pointer-events-none select-none"
 //                 >
-//                   <div style={{ color: vecInfo.color, fontSize: '14px', userSelect: 'none', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label}</div>
+//                   <div style={{ color: vecInfo.color, fontSize: '14px', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label}</div>
 //                 </Html>
 //               </>
 //             )}
@@ -161,11 +165,12 @@
 //               <>
 //                 <ArrowHelper direction={vecInfo.transformed.toArray() as THREE.Vector3Tuple} length={transformedLength} color={vecInfo.transformedColor} />
 //                 <Html 
-//                   position={vecInfo.transformed.clone().normalize().multiplyScalar(transformedLength + labelOffset)}
+//                   position={vecInfo.transformed.clone().normalize().multiplyScalar(transformedLength + labelOffset).toArray() as THREE.Vector3Tuple}
 //                   center
 //                   distanceFactor={6}
+//                   className="pointer-events-none select-none"
 //                 >
-//                   <div style={{ color: vecInfo.transformedColor, fontSize: '14px', userSelect: 'none', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label + "'"}</div>
+//                   <div style={{ color: vecInfo.transformedColor, fontSize: '14px', fontWeight: 'bold', textShadow: '0 0 2px black' }}>{vecInfo.label + "'"}</div>
 //                 </Html>
 //               </>
 //             )}
@@ -183,16 +188,11 @@
 //   );
 // }
 
-// Placeholder component to ensure the file still exports something.
-// This will be used by the dynamic import if R3F is disabled.
+// Placeholder content to avoid build errors if R3F dependencies are missing
 export default function LinearTransformationsCanvasView_Disabled() {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-      <p className="font-semibold">3D Visualization Temporarily Disabled</p>
-      <p className="text-sm">
-        Feature requires @react-three/fiber and related libraries.
-        Please resolve installation issues to re-enable.
-      </p>
+    <div className="flex items-center justify-center h-full text-muted-foreground">
+      <p>3D Canvas View is currently disabled due to library installation issues.</p>
     </div>
   );
 }
