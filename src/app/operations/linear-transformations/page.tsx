@@ -13,18 +13,18 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 
 // Dynamically import the canvas view with SSR disabled
-// const LinearTransformationsCanvasView = dynamic(
-//   () => import('@/components/math-tools/linear-transformations-canvas'),
-//   {
-//     ssr: false,
-//     loading: () => (
-//       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-//         <Loader2 className="h-8 w-8 animate-spin mb-2" />
-//         <p>Loading 3D Viewport...</p>
-//       </div>
-//     )
-//   }
-// );
+const LinearTransformationsCanvasView = dynamic(
+  () => import('@/components/math-tools/linear-transformations-canvas'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+        <p>Loading 3D Viewport...</p>
+      </div>
+    )
+  }
+);
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
@@ -49,7 +49,7 @@ export default function LinearTransformationsPage() {
       newMatrix[rowIndex][colIndex] = isNaN(newValue) ? 0 : newValue;
       return newMatrix;
     });
-    setVisualizationError(null); // Clear previous errors on new input
+    setVisualizationError(null); 
   };
 
   const resetMatrix = useCallback(() => {
@@ -60,7 +60,7 @@ export default function LinearTransformationsPage() {
 
   const randomizeMatrix = useCallback(() => {
     const newMatrix = Array(3).fill(null).map(() =>
-      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1)))
+      Array(3).fill(null).map(() => parseFloat((Math.random() * 4 - 2).toFixed(1))) // Range -2 to 2
     );
     setMatrix(newMatrix);
     setVisualizationError(null);
@@ -81,7 +81,7 @@ export default function LinearTransformationsPage() {
             3D Linear Transformations Visualizer
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Enter a 3x3 matrix to visualize its transformation effect on standard basis vectors in 3D space.
+            Enter a 3x3 matrix to visualize its transformation effect in 3D space.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -117,18 +117,19 @@ export default function LinearTransformationsPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center"><InfoIcon className="mr-2 h-5 w-5"/>Legend & Info</CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-2">
-                <p><span className="font-semibold text-red-500">Red (i):</span> Original X-axis basis vector [1,0,0]</p>
-                <p><span className="font-semibold text-green-500">Green (j):</span> Original Y-axis basis vector [0,1,0]</p>
-                <p><span className="font-semibold text-blue-500">Blue (k):</span> Original Z-axis basis vector [0,0,1]</p>
-                <hr className="my-1"/>
-                <p><span className="font-semibold text-red-300">Light Red (i'):</span> Transformed X-axis basis vector</p>
-                <p><span className="font-semibold text-green-300">Light Green (j'):</span> Transformed Y-axis basis vector</p>
-                <p><span className="font-semibold text-blue-300">Light Blue (k'):</span> Transformed Z-axis basis vector</p>
+                 <p>Use the input fields to define a 3x3 matrix.</p>
+                <p>The 3D viewport will show how this matrix transforms the standard basis vectors (i, j, k).</p>
+                <p><span className="font-semibold text-red-500">Red (i):</span> Original X-axis</p>
+                <p><span className="font-semibold text-green-500">Green (j):</span> Original Y-axis</p>
+                <p><span className="font-semibold text-blue-500">Blue (k):</span> Original Z-axis</p>
+                <p><span className="font-semibold" style={{color: '#FFBABA'}}>Light Red (i'):</span> Transformed X-axis</p>
+                <p><span className="font-semibold" style={{color: '#B9F6CA'}}>Light Green (j'):</span> Transformed Y-axis</p>
+                <p><span className="font-semibold" style={{color: '#BBDEFB'}}>Light Blue (k'):</span> Transformed Z-axis</p>
                 {visualizationError && (
                     <Alert variant="destructive" className="mt-2 text-xs">
                         <AlertTriangle className="h-4 w-4" />
@@ -145,29 +146,21 @@ export default function LinearTransformationsPage() {
                 <CardTitle className="text-xl">3D Viewport</CardTitle>
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
-                {/* {isClient ? (
+                {isClient ? (
                   <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin mb-2" />
                     <p>Loading 3D Viewport...</p>
                   </div>
-                )} */}
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-                  <AlertTriangle className="h-10 w-10 mb-3 text-destructive" />
-                  <p className="font-semibold">3D Visualization Disabled</p>
-                  <p className="text-sm">
-                    This feature is temporarily unavailable due to issues with library installation. 
-                    Please ensure dependencies like <code>@react-three/fiber</code> are correctly installed.
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </CardContent>
         <CardFooter className="p-4 bg-secondary/30 border-t">
           <p className="text-xs text-muted-foreground">
-            Use the input fields to define a 3x3 matrix. The visualization shows how this matrix transforms the standard basis vectors (i, j, k) in 3D space. (Visualization currently disabled)
+            Interact with the 3D scene using your mouse (Orbit, Zoom, Pan). Visualization shows effect on basis vectors.
           </p>
         </CardFooter>
       </Card>
