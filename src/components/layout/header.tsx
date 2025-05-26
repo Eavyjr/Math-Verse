@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MathLogoIcon } from '@/components/icons/math-logo';
+// import { MathLogoIcon } from '@/components/icons/math-logo'; // Temporarily commented out
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,11 +15,6 @@ import {
 import { Calculator, X } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 
-// AuthProvider and related imports are currently commented out
-// import { useAuth } from '@/context/auth-context';
-// import { Skeleton } from '@/components/ui/skeleton';
-// import { LogOut, UserCircle } from 'lucide-react';
-
 declare global {
   interface Window {
     Desmos?: any;
@@ -29,7 +24,6 @@ declare global {
 type DesmosInitStatus = 'idle' | 'loading_api' | 'preparing' | 'success' | 'error';
 
 export default function Header() {
-  // const { user, isLoading: authIsLoading, signOut } = useAuth(); // Auth logic commented out
   const [isScientificCalculatorOpen, setIsScientificCalculatorOpen] = useState(false);
   const scientificCalculatorRef = useRef<HTMLDivElement>(null);
   const desmosSciInstanceRef = useRef<any>(null);
@@ -43,71 +37,75 @@ export default function Header() {
   useEffect(() => {
     let calculator: any = null;
 
-    if (isClient && isScientificCalculatorOpen) {
-      if (scientificCalculatorRef.current) {
-        if (window.Desmos) {
-          if (!desmosSciInstanceRef.current) { // Only init if no instance exists
-            setDesmosSciInitStatus('preparing');
-            try {
-              // Ensure the container is clean before Desmos tries to initialize
-              // This helps if the dialog was opened, closed, and reopened quickly.
-              while (scientificCalculatorRef.current.firstChild) {
-                scientificCalculatorRef.current.removeChild(scientificCalculatorRef.current.firstChild);
-              }
-              calculator = window.Desmos.ScientificCalculator(scientificCalculatorRef.current, {
-                // Optionally, set some Desmos options here if needed
-                // e.g., settingsMenu: false, zoomButtons: false,
-              });
-              if (calculator) {
-                desmosSciInstanceRef.current = calculator;
-                setDesmosSciInitStatus('success');
-              } else {
-                console.error("Desmos.ScientificCalculator returned a falsy value.");
-                setDesmosSciInitStatus('error');
-              }
-            } catch (e) {
-              console.error("Error initializing Desmos Scientific Calculator in header:", e);
+    if (isClient && isScientificCalculatorOpen && scientificCalculatorRef.current) {
+      if (window.Desmos) {
+        if (!desmosSciInstanceRef.current) { // Only init if no instance exists
+          setDesmosSciInitStatus('preparing');
+          try {
+            // Ensure the container is clean before Desmos tries to initialize
+            // This helps if the dialog was opened, closed, and reopened quickly.
+            // Avoid direct DOM manipulation if possible, let React/Desmos handle it.
+            // if (scientificCalculatorRef.current.firstChild) {
+            //   scientificCalculatorRef.current.innerHTML = ''; // A more forceful clear
+            // }
+            calculator = window.Desmos.ScientificCalculator(scientificCalculatorRef.current, {});
+            if (calculator) {
+              desmosSciInstanceRef.current = calculator;
+              setDesmosSciInitStatus('success');
+            } else {
+              console.error("Desmos.ScientificCalculator returned a falsy value.");
               setDesmosSciInitStatus('error');
             }
-          } else {
-             // Instance already exists, assume it's fine.
-            setDesmosSciInitStatus('success');
+          } catch (e) {
+            console.error("Error initializing Desmos Scientific Calculator in header:", e);
+            setDesmosSciInitStatus('error');
           }
         } else {
-          setDesmosSciInitStatus('loading_api');
+           // Instance already exists, assume it's fine for re-opening.
+          setDesmosSciInitStatus('success');
         }
       } else {
-        // Ref not available yet, should be rare if dialog content is mounted
-        // Set to idle or a specific 'ref_not_ready' state if needed for debugging
-        setDesmosSciInitStatus('idle');
+        setDesmosSciInitStatus('loading_api');
       }
     } else if (!isScientificCalculatorOpen) {
-      // Dialog is closed or component is not client-side ready
+      // Dialog is closed
       if (desmosSciInstanceRef.current && typeof desmosSciInstanceRef.current.destroy === 'function') {
-        desmosSciInstanceRef.current.destroy();
+        try {
+          // Check if it's a valid instance before destroying
+          if(desmosSciInstanceRef.current.HelperExpression !== undefined || desmosSciInstanceRef.current.getState !== undefined) {
+              desmosSciInstanceRef.current.destroy();
+          }
+        } catch (e) {
+          // console.error("Error trying to destroy Desmos instance on close:", e);
+          // It might have been destroyed already or was never fully initialized
+        }
         desmosSciInstanceRef.current = null;
       }
       setDesmosSciInitStatus('idle'); // Reset status when dialog is closed
     }
 
-    // Cleanup function for when the component unmounts OR dependencies change causing re-run before dialog close
+    // Cleanup function for when the component unmounts
     return () => {
       if (desmosSciInstanceRef.current && typeof desmosSciInstanceRef.current.destroy === 'function') {
-        // Check if it's a valid instance before destroying
-        if(desmosSciInstanceRef.current.HelperExpression !== undefined || desmosSciInstanceRef.current.getState !== undefined) {
+         try {
+          if (desmosSciInstanceRef.current.HelperExpression !== undefined || desmosSciInstanceRef.current.getState !== undefined) {
             desmosSciInstanceRef.current.destroy();
+          }
+        } catch (e) {
+          // console.error("Error destroying Desmos instance on unmount:", e);
         }
         desmosSciInstanceRef.current = null;
       }
     };
   }, [isScientificCalculatorOpen, isClient]);
 
+
   return (
     <header className="py-4 px-6 border-b bg-card shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary hover:text-primary/90 transition-colors">
-          <MathLogoIcon className="h-8 w-8" />
-          <span>MathVerse</span>
+          {/* <MathLogoIcon className="h-8 w-8" /> */} {/* Temporarily commented out */}
+          MathVerse {/* Simplified logo area */}
         </Link>
         <nav className="flex items-center gap-2">
           <Dialog open={isScientificCalculatorOpen} onOpenChange={setIsScientificCalculatorOpen}>
@@ -138,7 +136,7 @@ export default function Header() {
                       {desmosSciInitStatus === 'error' && (
                         <p className="text-destructive text-center p-4">Failed to load calculator. Please ensure you are online or try again.</p>
                       )}
-                      {/* If status is 'success', Desmos should have taken over this div. No explicit message here. */}
+                      {/* If status is 'success', Desmos should have taken over this div. */}
                     </>
                   )}
                 </div>
@@ -170,3 +168,5 @@ export default function Header() {
     </header>
   );
 }
+
+    
