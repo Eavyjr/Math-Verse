@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic'; // Keep commented for now
 import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,20 +11,21 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
+import ThreejsLinearTransformationsCanvas from '@/components/math-tools/threejs-linear-transformations-canvas'; // Ensure this is the plain Three.js one
 
 // Dynamically import the canvas view with SSR disabled
-const LinearTransformationsCanvasView = dynamic(
-  () => import('@/components/math-tools/linear-transformations-canvas'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p>Loading 3D Viewport...</p>
-      </div>
-    )
-  }
-);
+// const LinearTransformationsCanvasView = dynamic(
+//   () => import('@/components/math-tools/threejs-linear-transformations-canvas'), // Ensure this points to the plain Three.js one
+//   {
+//     ssr: false,
+//     loading: () => (
+//       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+//         <Loader2 className="h-8 w-8 animate-spin mb-2" />
+//         <p>Loading 3D Viewport...</p>
+//       </div>
+//     )
+//   }
+// );
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
@@ -147,7 +148,7 @@ export default function LinearTransformationsPage() {
               </CardHeader>
               <CardContent className="flex-grow flex items-center justify-center bg-muted/30 border-2 border-dashed border-border rounded-md p-0 overflow-hidden">
                 {isClient ? (
-                  <LinearTransformationsCanvasView matrix={matrix} showError={setVisualizationError} />
+                  <ThreejsLinearTransformationsCanvas matrix={matrix} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin mb-2" />
