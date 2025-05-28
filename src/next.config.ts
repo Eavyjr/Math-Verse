@@ -1,6 +1,6 @@
 
 import type { NextConfig } from 'next';
-import type { Configuration as WebpackConfiguration } from 'webpack';
+// We are removing the WebpackConfiguration import as the webpack function is being removed.
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -22,19 +22,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (
-    config: WebpackConfiguration,
-    // { isServer, dev, buildId, config: nextInstanceConfig, defaultLoaders, webpack } // Parameters can be omitted if not used
-  ) => {
-    // config.plugins = config.plugins || []; // Ensure plugins array exists
-    // const miniCssExtractPluginExists = config.plugins.some(
-    //   (plugin) => plugin && plugin.constructor && plugin.constructor.name === 'MiniCssExtractPlugin'
-    // );
-    // if (!miniCssExtractPluginExists) {
-    //   config.plugins.push(new MiniCssExtractPlugin());
-    // }
-    return config;
-  },
+  // The custom webpack function has been removed.
+  // Next.js will use its default webpack configuration.
 };
 
 export default nextConfig;
