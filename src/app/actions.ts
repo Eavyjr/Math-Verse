@@ -7,8 +7,7 @@ import { performIntegration, type IntegrationInput, type IntegrationOutput } fro
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 import { performMatrixOperation, type MatrixOperationInput, type MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
-import { getMathChatbotResponse, type MathChatbotInput, type MathChatbotOutput } from '@/ai/flows/math-chatbot-flow'; // ChatHistoryMessage removed as it's internal to the flow with the simplified setup
-
+import { getMathChatbotResponse, type MathChatbotInput } from '@/ai/flows/math-chatbot-flow'; // MathChatbotOutput is string
 
 interface ActionResult<T> {
   data: T | null;
@@ -19,6 +18,7 @@ export async function handleClassifyExpressionAction(
   expression: string
 ): Promise<ActionResult<ClassifyExpressionOutput>> {
   if (!expression || expression.trim() === '') {
+    console.log("handleClassifyExpressionAction: Expression is empty.");
     return { data: null, error: 'Expression cannot be empty.' };
   }
 
@@ -27,6 +27,12 @@ export async function handleClassifyExpressionAction(
     const input: ClassifyExpressionInput = { expression };
     const result = await classifyExpression(input);
     console.log("handleClassifyExpressionAction: Received result from flow:", result);
+    if (!result || (result.classification === "Classification not available." && result.solutionStrategies === "Solution strategies not available." && result.originalExpression === expression)) {
+      console.warn("handleClassifyExpressionAction: AI flow returned default/empty-like data.");
+      // Potentially treat as a soft error or a "nothing found" case
+      // For now, let's pass it through, but ensure client handles it.
+      // Or, return an error: return { data: null, error: "AI could not classify the expression."}
+    }
     return { data: result, error: null };
   } catch (e) {
     let errorMessage = 'An error occurred while processing your request. Please try again.';
@@ -169,9 +175,19 @@ export async function handleSolveDifferentialEquationAction(
 
   try {
     const result = await solveDifferentialEquation(input);
-     if (!result) { // Check specifically for null/undefined result from the flow if no error was thrown by the flow
+     if (!result) { 
         console.error('handleSolveDifferentialEquationAction: Flow returned null or undefined without throwing an error.');
         return { data: null, error: 'AI model did not provide a response. Please try a different query.' };
+    }
+    const allKeyFieldsEmpty = 
+      (result.classification === null || result.classification.trim() === "") &&
+      (result.solutionMethod === null || result.solutionMethod.trim() === "") &&
+      (result.generalSolution === null || result.generalSolution.trim() === "") &&
+      (result.particularSolution === null || result.particularSolution === undefined || result.particularSolution.trim() === "") &&
+      (result.steps === null || result.steps.trim() === "");
+
+    if (allKeyFieldsEmpty) {
+        return { data: null, error: 'AI model returned a response, but all key information fields were empty or null. Please try a different or more specific equation.' };
     }
     return { data: result, error: null };
   } catch (e) {
@@ -248,35 +264,37 @@ export async function handlePerformMatrixOperationAction(
   }
 }
 
-export async function handleChatbotMessageAction(
-  userInput: string
-): Promise<ActionResult<MathChatbotOutput>> {
+// Updated action for the chatbot
+export async function handleChatbotMessageAction(userInput: string): Promise<string> {
   if (!userInput || userInput.trim() === '') {
-    return { data: null, error: 'User input cannot be empty.' };
+    return 'User input cannot be empty.'; // Return error string directly
   }
 
   try {
-    const input: MathChatbotInput = { userInput };
-    const result = await getMathChatbotResponse(input);
+    const input: MathChatbotInput = { userInput }; // MathChatbotInput expects userInput
+    const botResponse = await getMathChatbotResponse(input);
 
-    if (result === null || result === undefined || result.trim() === '') {
-      console.error("handleChatbotMessageAction: AI flow returned null, undefined, or empty string.");
-      return { data: null, error: "Sorry, I couldn't get a response from the AI. It might be experiencing issues." };
+    if (!botResponse || botResponse.trim() === '') {
+      console.error("handleChatbotMessageAction: AI flow returned null, undefined, or empty string from getMathChatbotResponse.");
+      return "Sorry, I couldn't get a response from the AI. It might be experiencing issues.";
     }
 
-    return { data: result, error: null };
+    return botResponse; // Return the string directly
   } catch (e) {
     console.error('Error in chatbot message action:', e);
     let errorMessage = 'Sorry, I encountered an error trying to respond. Please try again.';
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid output') || e.message.includes('couldn\'t process that request') || e.message.includes('AI model provided no usable text response')) {
+      } else if (e.message.includes('model did not return a valid output') || 
+                 e.message.includes('couldn\'t process that request') || 
+                 e.message.includes('AI model provided no usable text response') ||
+                 e.message.includes('AI returned an empty or null response')) {
         errorMessage = "I'm sorry, I couldn't process that request right now. Could you try rephrasing?";
       } else {
         errorMessage = `An AI processing error occurred: ${e.message}`;
       }
     }
-    return { data: null, error: errorMessage };
+    return errorMessage; // Return error string directly
   }
 }
