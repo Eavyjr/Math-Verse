@@ -7,7 +7,7 @@ import { performIntegration, type IntegrationInput, type IntegrationOutput } fro
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 import { performMatrixOperation, type MatrixOperationInput, type MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
-import { getMathChatbotResponse, type MathChatbotInput, type MathChatbotOutput, type ChatHistoryMessage } from '@/ai/flows/math-chatbot-flow';
+import { getMathChatbotResponse, type MathChatbotInput, type MathChatbotOutput } from '@/ai/flows/math-chatbot-flow'; // ChatHistoryMessage removed as it's internal to the flow with the simplified setup
 
 
 interface ActionResult<T> {
@@ -31,6 +31,7 @@ export async function handleClassifyExpressionAction(
   } catch (e) {
     let errorMessage = 'An error occurred while processing your request. Please try again.';
     if (e instanceof Error) {
+        console.error("Error in handleClassifyExpressionAction (server):", e.message, e.stack);
         if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output') || e.message.includes('not available due to model error')) {
@@ -40,8 +41,11 @@ export async function handleClassifyExpressionAction(
         }
     } else if (typeof e === 'string') {
         errorMessage = e;
+        console.error("String error in handleClassifyExpressionAction (server):", e);
+    } else {
+        console.error("Unknown error type in handleClassifyExpressionAction (server):", e);
     }
-    console.error("handleClassifyExpressionAction: Returning error:", errorMessage);
+    console.error("handleClassifyExpressionAction: Returning error to client:", errorMessage);
     return { data: null, error: errorMessage };
   }
 }
@@ -165,9 +169,13 @@ export async function handleSolveDifferentialEquationAction(
 
   try {
     const result = await solveDifferentialEquation(input);
+     if (!result) { // Check specifically for null/undefined result from the flow if no error was thrown by the flow
+        console.error('handleSolveDifferentialEquationAction: Flow returned null or undefined without throwing an error.');
+        return { data: null, error: 'AI model did not provide a response. Please try a different query.' };
+    }
     return { data: result, error: null };
   } catch (e) {
-    console.error('Error solving differential equation:', e);
+    console.error('Error solving differential equation in action:', e);
     let errorMessage = 'An error occurred while solving the differential equation. Please try again.';
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
@@ -175,7 +183,7 @@ export async function handleSolveDifferentialEquationAction(
       } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only') || e.message.includes('empty or insufficient response') || e.message.includes('no substantial information')) {
         errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
       } else {
-        errorMessage = `An AI processing error occurred. Details: ${e.message}`;
+        errorMessage = `An AI processing error occurred: ${e.message}`;
       }
     } else if (typeof e === 'string') {
         errorMessage = e;
@@ -241,16 +249,21 @@ export async function handlePerformMatrixOperationAction(
 }
 
 export async function handleChatbotMessageAction(
-  userInput: string,
-  history?: ChatHistoryMessage[]
+  userInput: string
 ): Promise<ActionResult<MathChatbotOutput>> {
   if (!userInput || userInput.trim() === '') {
     return { data: null, error: 'User input cannot be empty.' };
   }
 
   try {
-    const input: MathChatbotInput = { userInput, history };
+    const input: MathChatbotInput = { userInput };
     const result = await getMathChatbotResponse(input);
+
+    if (result === null || result === undefined || result.trim() === '') {
+      console.error("handleChatbotMessageAction: AI flow returned null, undefined, or empty string.");
+      return { data: null, error: "Sorry, I couldn't get a response from the AI. It might be experiencing issues." };
+    }
+
     return { data: result, error: null };
   } catch (e) {
     console.error('Error in chatbot message action:', e);
@@ -258,7 +271,7 @@ export async function handleChatbotMessageAction(
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid output') || e.message.includes('couldn\'t process that request')) {
+      } else if (e.message.includes('model did not return a valid output') || e.message.includes('couldn\'t process that request') || e.message.includes('AI model provided no usable text response')) {
         errorMessage = "I'm sorry, I couldn't process that request right now. Could you try rephrasing?";
       } else {
         errorMessage = `An AI processing error occurred: ${e.message}`;
