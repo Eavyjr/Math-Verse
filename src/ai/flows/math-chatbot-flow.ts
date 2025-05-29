@@ -67,7 +67,7 @@ const mathChatbotPrompt = ai.definePrompt({
     return messages;
   },
   config: {
-    model: ai.getModel('googleai/gemini-2.0-flash'), // Explicitly use the default model, can be changed
+    model: 'googleai/gemini-2.0-flash', // Corrected: Use model name string directly
     temperature: 0.7,
     candidateCount: 1,
     safetySettings: [
