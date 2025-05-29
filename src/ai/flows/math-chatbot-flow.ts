@@ -45,29 +45,26 @@ export async function getMathChatbotResponse(
   return mathChatbotFlow(input);
 }
 
+const systemInstruction = "You are MathVerse AI, a friendly and helpful math assistant. Your primary goal is to assist users with their mathematical questions, explain concepts, and guide them on how to use the MathVerse application. Be concise and clear. If a user asks for a complex calculation that a dedicated workstation page can handle (like integration, matrix operations, differentiation, DEs, statistics, algebra simplification), gently guide them to that page rather than trying to perform the full calculation yourself. You can answer general math questions, trivia, or provide explanations of concepts.";
+
 const mathChatbotPrompt = ai.definePrompt({
   name: 'mathChatbotPrompt',
   input: { schema: MathChatbotInputSchema },
   output: { schema: MathChatbotOutputSchema },
+  system: systemInstruction, // System instruction moved here
   prompt: (input) => {
-    const messages: ChatHistoryMessage[] = [
-      {
-        role: 'system',
-        parts: [{ text: "You are MathVerse AI, a friendly and helpful math assistant. Your primary goal is to assist users with their mathematical questions, explain concepts, and guide them on how to use the MathVerse application. Be concise and clear. If a user asks for a complex calculation that a dedicated workstation page can handle (like integration, matrix operations, differentiation, DEs, statistics, algebra simplification), gently guide them to that page rather than trying to perform the full calculation yourself. You can answer general math questions, trivia, or provide explanations of concepts." }],
-      },
-    ];
+    const messages: ChatHistoryMessage[] = [];
     if (input.history) {
       messages.push(...input.history);
     }
     messages.push({ role: 'user', parts: [{ text: input.userInput }] });
     
-    // Construct the prompt suitable for the model.
-    // For models like Gemini, we provide a history of messages.
-    // The prompt here will be the array of messages.
+    // The prompt here will be the array of user/model messages.
+    // The system instruction is handled by the 'system' property above.
     return messages;
   },
   config: {
-    model: 'googleai/gemini-2.0-flash', // Corrected: Use model name string directly
+    model: 'googleai/gemini-2.0-flash',
     temperature: 0.7,
     candidateCount: 1,
     safetySettings: [
@@ -90,6 +87,9 @@ const mathChatbotFlow = ai.defineFlow(
     
     if (!output || !output.botResponse || output.botResponse.trim() === "") {
       console.error("MathChatbotFlow: AI model returned null, undefined, or empty response.");
+      // Consider if an error should be thrown here or if a default response is better.
+      // Throwing an error will propagate to the action handler.
+      // throw new Error("AI model provided an empty or invalid response.");
       return { botResponse: "I'm sorry, I couldn't process that request. Could you try rephrasing?" };
     }
     
