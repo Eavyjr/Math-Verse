@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatbotMessageAction } from "@/app/actions";
-import type { ChatHistoryMessage, ChatMessageRole } from "@/ai/flows/math-chatbot-flow"; // For chat history
+import type { ChatHistoryMessage, ChatMessageRole } from "@/ai/flows/math-chatbot-flow";
 
 interface DisplayMessage {
   id: string;
@@ -17,7 +17,7 @@ interface DisplayMessage {
   isLoading?: boolean;
 }
 
-const MAX_HISTORY_LENGTH = 10; // Keep last 10 messages (5 user, 5 bot) for history
+const MAX_HISTORY_LENGTH = 10; // Keep last N messages for history
 
 export default function FloatingChatbotButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function FloatingChatbotButton() {
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
     const userText = inputValue;
-    setInputValue(''); // Clear input immediately
+    setInputValue('');
 
     const newUserMessage: DisplayMessage = { 
       id: 'user-' + Date.now(), 
@@ -54,12 +54,11 @@ export default function FloatingChatbotButton() {
     setMessages(prevMessages => [...prevMessages, newUserMessage]);
     setIsBotTyping(true);
 
-    // Prepare history for Genkit flow
     const historyForAI: ChatHistoryMessage[] = messages
-      .filter(msg => msg.sender === 'user' || msg.sender === 'bot') // Only user and bot messages
-      .slice(-MAX_HISTORY_LENGTH) // Take last N messages
+      .filter(msg => msg.sender === 'user' || msg.sender === 'bot')
+      .slice(-MAX_HISTORY_LENGTH)
       .map(msg => ({
-        role: msg.sender as ChatMessageRole, // Cast sender to ChatMessageRole
+        role: (msg.sender === 'bot' ? 'model' : msg.sender) as ChatMessageRole, // Map 'bot' to 'model'
         parts: [{ text: msg.text }],
       }));
     
@@ -95,9 +94,6 @@ export default function FloatingChatbotButton() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      // The actual scrollable viewport is usually a child of the ScrollArea component.
-      // We need to query for it. ShadCN's ScrollArea typically has a div with role="presentation"
-      // or data-radix-scroll-area-viewport.
       const scrollElement = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
@@ -141,7 +137,7 @@ export default function FloatingChatbotButton() {
                       ? 'bg-primary text-primary-foreground rounded-br-none'
                       : msg.sender === 'bot'
                       ? 'bg-muted text-muted-foreground rounded-bl-none'
-                      : 'bg-destructive/20 text-destructive-foreground border border-destructive/50 rounded-md w-full' // System/Error message
+                      : 'bg-destructive/20 text-destructive-foreground border border-destructive/50 rounded-md w-full'
                   }`}
                 >
                   {msg.text}
