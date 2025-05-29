@@ -59,7 +59,7 @@ export default function FloatingChatbotButton() {
       .slice(-MAX_HISTORY_LENGTH)
       .map(msg => ({
         role: (msg.sender === 'bot' ? 'model' : msg.sender) as ChatMessageRole,
-        content: [{ text: msg.text }], // Changed from 'parts' to 'content'
+        content: [msg.text], // Content is now an array of strings
       }));
     
     const actionResult = await handleChatbotMessageAction(userText, historyForAI);
@@ -94,9 +94,6 @@ export default function FloatingChatbotButton() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      // The ScrollArea component might have its viewport in a nested div
-      // This attempts to find the actual scrollable element.
-      // Common structure is a div with attribute `data-radix-scroll-area-viewport`
       const scrollElement = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;

@@ -15,15 +15,13 @@ import {z} from 'genkit';
 const ChatMessageRoleSchema = z.enum(['user', 'model', 'system', 'tool']);
 export type ChatMessageRole = z.infer<typeof ChatMessageRoleSchema>;
 
-const ChatMessagePartSchema = z.object({
-  text: z.string(), // Made text non-optional for simplicity, assuming parts always have text for now
-  // We can add other part types like 'media' later if needed
-});
+// A part of a chat message is now just a string if it's text.
+const ChatMessagePartSchema = z.string();
 export type ChatMessagePart = z.infer<typeof ChatMessagePartSchema>;
 
 const ChatHistoryMessageSchema = z.object({
   role: ChatMessageRoleSchema,
-  content: z.array(ChatMessagePartSchema), // Changed from 'parts' to 'content'
+  content: z.array(ChatMessagePartSchema), // Now an array of strings
 });
 export type ChatHistoryMessage = z.infer<typeof ChatHistoryMessageSchema>;
 
@@ -57,8 +55,8 @@ const mathChatbotPrompt = ai.definePrompt({
     if (input.history) {
       messages.push(...input.history);
     }
-    messages.push({ role: 'user', content: [{ text: input.userInput }] }); // Changed 'parts' to 'content'
-    
+    // New user message content is now an array of strings
+    messages.push({ role: 'user', content: [input.userInput] }); 
     return messages;
   },
   config: {
