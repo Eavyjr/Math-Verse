@@ -16,14 +16,14 @@ const ChatMessageRoleSchema = z.enum(['user', 'model', 'system', 'tool']);
 export type ChatMessageRole = z.infer<typeof ChatMessageRoleSchema>;
 
 const ChatMessagePartSchema = z.object({
-  text: z.string().optional(),
+  text: z.string(), // Made text non-optional for simplicity, assuming parts always have text for now
   // We can add other part types like 'media' later if needed
 });
 export type ChatMessagePart = z.infer<typeof ChatMessagePartSchema>;
 
 const ChatHistoryMessageSchema = z.object({
   role: ChatMessageRoleSchema,
-  parts: z.array(ChatMessagePartSchema),
+  content: z.array(ChatMessagePartSchema), // Changed from 'parts' to 'content'
 });
 export type ChatHistoryMessage = z.infer<typeof ChatHistoryMessageSchema>;
 
@@ -51,16 +51,14 @@ const mathChatbotPrompt = ai.definePrompt({
   name: 'mathChatbotPrompt',
   input: { schema: MathChatbotInputSchema },
   output: { schema: MathChatbotOutputSchema },
-  system: systemInstruction, // System instruction moved here
+  system: systemInstruction,
   prompt: (input) => {
     const messages: ChatHistoryMessage[] = [];
     if (input.history) {
       messages.push(...input.history);
     }
-    messages.push({ role: 'user', parts: [{ text: input.userInput }] });
+    messages.push({ role: 'user', content: [{ text: input.userInput }] }); // Changed 'parts' to 'content'
     
-    // The prompt here will be the array of user/model messages.
-    // The system instruction is handled by the 'system' property above.
     return messages;
   },
   config: {
@@ -87,9 +85,6 @@ const mathChatbotFlow = ai.defineFlow(
     
     if (!output || !output.botResponse || output.botResponse.trim() === "") {
       console.error("MathChatbotFlow: AI model returned null, undefined, or empty response.");
-      // Consider if an error should be thrown here or if a default response is better.
-      // Throwing an error will propagate to the action handler.
-      // throw new Error("AI model provided an empty or invalid response.");
       return { botResponse: "I'm sorry, I couldn't process that request. Could you try rephrasing?" };
     }
     
