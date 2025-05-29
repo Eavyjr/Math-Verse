@@ -1,12 +1,12 @@
 
-/* @import '@xyflow/react/dist/style.css'; */ /* Import React Flow styles - Temporarily commented out due to install issues */
+/* @import '@xyflow/react/dist/style.css'; */ /* Import React Flow styles - Temporarily commented out */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
 @layer base {
@@ -113,4 +113,13 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Utility class to hide scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
