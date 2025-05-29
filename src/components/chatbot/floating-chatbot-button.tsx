@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatbotMessageAction } from "@/app/actions";
-import type { ChatHistoryMessage, ChatMessageRole } from "@/ai/flows/math-chatbot-flow";
+import type { ChatHistoryMessage, ChatMessageRole, ChatMessagePart } from "@/ai/flows/math-chatbot-flow";
 
 interface DisplayMessage {
   id: string;
@@ -59,7 +59,7 @@ export default function FloatingChatbotButton() {
       .slice(-MAX_HISTORY_LENGTH)
       .map(msg => ({
         role: (msg.sender === 'bot' ? 'model' : msg.sender) as ChatMessageRole,
-        content: [msg.text], // Content is now an array of strings
+        content: [{ text: msg.text }] as ChatMessagePart[], // Ensure content is an array of Part objects
       }));
     
     const actionResult = await handleChatbotMessageAction(userText, historyForAI);

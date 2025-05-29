@@ -15,13 +15,15 @@ import {z} from 'genkit';
 const ChatMessageRoleSchema = z.enum(['user', 'model', 'system', 'tool']);
 export type ChatMessageRole = z.infer<typeof ChatMessageRoleSchema>;
 
-// A part of a chat message is now just a string if it's text.
-const ChatMessagePartSchema = z.string();
+// A part of a chat message content, explicitly as a text object
+const ChatMessagePartSchema = z.object({
+  text: z.string(),
+});
 export type ChatMessagePart = z.infer<typeof ChatMessagePartSchema>;
 
 const ChatHistoryMessageSchema = z.object({
   role: ChatMessageRoleSchema,
-  content: z.array(ChatMessagePartSchema), // Now an array of strings
+  content: z.array(ChatMessagePartSchema), // Array of Part objects
 });
 export type ChatHistoryMessage = z.infer<typeof ChatHistoryMessageSchema>;
 
@@ -48,16 +50,16 @@ const systemInstruction = "You are MathVerse AI, a friendly and helpful math ass
 const mathChatbotPrompt = ai.definePrompt({
   name: 'mathChatbotPrompt',
   input: { schema: MathChatbotInputSchema },
-  output: { schema: MathChatbotOutputSchema },
-  system: systemInstruction,
+  output: { schema: MathChatbotOutputSchema }, // Output is a simple object with botResponse string
+  system: systemInstruction, // System instruction provided here
   prompt: (input) => {
     const messages: ChatHistoryMessage[] = [];
     if (input.history) {
       messages.push(...input.history);
     }
-    // New user message content is now an array of strings
-    messages.push({ role: 'user', content: [input.userInput] }); 
-    return messages;
+    // New user message content needs to be an array of Part objects
+    messages.push({ role: 'user', content: [{ text: input.userInput }] });
+    return messages; // Return the array of ChatMessage objects
   },
   config: {
     model: 'googleai/gemini-2.0-flash',
