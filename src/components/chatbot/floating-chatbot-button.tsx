@@ -7,17 +7,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatbotMessageAction } from "@/app/actions";
-import type { ChatHistoryMessage, ChatMessageRole, ChatMessagePart } from "@/ai/flows/math-chatbot-flow";
 
 interface DisplayMessage {
   id: string;
   sender: 'user' | 'bot' | 'system';
   text: string;
   timestamp: Date;
-  isLoading?: boolean;
 }
-
-const MAX_HISTORY_LENGTH = 10; // Keep last N messages for history
 
 export default function FloatingChatbotButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,41 +50,31 @@ export default function FloatingChatbotButton() {
     setMessages(prevMessages => [...prevMessages, newUserMessage]);
     setIsBotTyping(true);
 
-    const historyForAI: ChatHistoryMessage[] = messages
-      .filter(msg => msg.sender === 'user' || msg.sender === 'bot') 
-      .slice(-MAX_HISTORY_LENGTH)
-      .map(msg => ({
-        role: (msg.sender === 'bot' ? 'model' : msg.sender) as ChatMessageRole,
-        content: [{ text: msg.text }] as ChatMessagePart[], // Ensure content is an array of Part objects
-      }));
-    
-    const actionResult = await handleChatbotMessageAction(userText, historyForAI);
-    setIsBotTyping(false);
+    try {
+      console.log("[ChatbotUI] Sending to action:", userText);
+      const botResponseText = await handleChatbotMessageAction(userText);
+      console.log("[ChatbotUI] Received from action:", botResponseText);
 
-    if (actionResult.error) {
+      const newBotMessage: DisplayMessage = {
+        id: 'bot-' + Date.now(),
+        sender: 'bot',
+        text: botResponseText, // Directly use the string response
+        timestamp: new Date(),
+      };
+      setMessages(prevMessages => [...prevMessages, newBotMessage]);
+
+    } catch (error: any) {
+      console.error("[ChatbotUI] Error from action:", error);
       const errorMessage: DisplayMessage = {
         id: 'error-' + Date.now(),
         sender: 'system',
-        text: actionResult.error,
+        text: error.message || "An unexpected error occurred while fetching the bot's response.",
         timestamp: new Date(),
       };
       setMessages(prevMessages => [...prevMessages, errorMessage]);
-    } else if (actionResult.data) {
-      const botResponse: DisplayMessage = {
-        id: 'bot-' + (Date.now() + 1), 
-        sender: 'bot', 
-        text: actionResult.data.botResponse,
-        timestamp: new Date()
-      };
-      setMessages(prevMessages => [...prevMessages, botResponse]);
-    } else {
-      const fallbackError: DisplayMessage = {
-        id: 'error-' + Date.now(),
-        sender: 'system',
-        text: "Sorry, I couldn't get a response. Please try again.",
-        timestamp: new Date(),
-      };
-      setMessages(prevMessages => [...prevMessages, fallbackError]);
+    } finally {
+      setIsBotTyping(false);
+      console.log("[ChatbotUI] Bot finished typing.");
     }
   };
 
