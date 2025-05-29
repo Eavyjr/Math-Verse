@@ -7,6 +7,8 @@ import { performIntegration, type IntegrationInput, type IntegrationOutput } fro
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 import { performMatrixOperation, type MatrixOperationInput, type MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
+import { getMathChatbotResponse, type MathChatbotInput, type MathChatbotOutput, type ChatHistoryMessage } from '@/ai/flows/math-chatbot-flow';
+
 
 interface ActionResult<T> {
   data: T | null;
@@ -27,7 +29,6 @@ export async function handleClassifyExpressionAction(
     console.log("handleClassifyExpressionAction: Received result from flow:", result);
     return { data: result, error: null };
   } catch (e) {
-    console.error('Error in handleClassifyExpressionAction:', e);
     let errorMessage = 'An error occurred while processing your request. Please try again.';
     if (e instanceof Error) {
         if (e.message.includes('quota')) {
@@ -143,8 +144,8 @@ export async function handlePerformDifferentiationAction(
 }
 
 export async function handleSolveDifferentialEquationAction(
-  input: DESolutionInput // Input type matches the updated DESolutionInputSchema
-): Promise<ActionResult<DESolutionOutput>> { // Output type matches the updated DESolutionOutputSchema
+  input: DESolutionInput 
+): Promise<ActionResult<DESolutionOutput>> { 
   if (!input.equationString || input.equationString.trim() === '') {
     return { data: null, error: 'Differential equation cannot be empty.' };
   }
@@ -156,7 +157,7 @@ export async function handleSolveDifferentialEquationAction(
   }
   if (input.initialConditions) {
     for (const ic of input.initialConditions) {
-      if (!ic || ic.trim() === '') { // Check if individual IC string is empty
+      if (!ic || ic.trim() === '') { 
         return { data: null, error: 'Initial condition string cannot be empty if provided.' };
       }
     }
@@ -171,7 +172,7 @@ export async function handleSolveDifferentialEquationAction(
     if (e instanceof Error) {
       if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
-      } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only') || e.message.includes('empty or insufficient response')) {
+      } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only') || e.message.includes('empty or insufficient response') || e.message.includes('no substantial information')) {
         errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
       } else {
         errorMessage = `An AI processing error occurred. Details: ${e.message}`;
@@ -234,6 +235,34 @@ export async function handlePerformMatrixOperationAction(
         }
     } else if (typeof e === 'string') {
         errorMessage = e;
+    }
+    return { data: null, error: errorMessage };
+  }
+}
+
+export async function handleChatbotMessageAction(
+  userInput: string,
+  history?: ChatHistoryMessage[]
+): Promise<ActionResult<MathChatbotOutput>> {
+  if (!userInput || userInput.trim() === '') {
+    return { data: null, error: 'User input cannot be empty.' };
+  }
+
+  try {
+    const input: MathChatbotInput = { userInput, history };
+    const result = await getMathChatbotResponse(input);
+    return { data: result, error: null };
+  } catch (e) {
+    console.error('Error in chatbot message action:', e);
+    let errorMessage = 'Sorry, I encountered an error trying to respond. Please try again.';
+    if (e instanceof Error) {
+      if (e.message.includes('quota')) {
+        errorMessage = 'API quota exceeded. Please try again later.';
+      } else if (e.message.includes('model did not return a valid output') || e.message.includes('couldn\'t process that request')) {
+        errorMessage = "I'm sorry, I couldn't process that request right now. Could you try rephrasing?";
+      } else {
+        errorMessage = `An AI processing error occurred: ${e.message}`;
+      }
     }
     return { data: null, error: errorMessage };
   }

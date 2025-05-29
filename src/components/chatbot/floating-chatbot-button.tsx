@@ -2,27 +2,33 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Bot, SendHorizonal, X } from "lucide-react";
+import { Bot, SendHorizonal, X, Loader2 } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { handleChatbotMessageAction } from "@/app/actions";
+import type { ChatHistoryMessage, ChatMessageRole } from "@/ai/flows/math-chatbot-flow"; // For chat history
 
-interface ChatMessage {
+interface DisplayMessage {
   id: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'system';
   text: string;
   timestamp: Date;
+  isLoading?: boolean;
 }
+
+const MAX_HISTORY_LENGTH = 10; // Keep last 10 messages (5 user, 5 bot) for history
 
 export default function FloatingChatbotButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isBotTyping, setIsBotTyping] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
-    if (!isOpen && messages.length === 0) { // Add a welcome message when opening for the first time
+    if (!isOpen && messages.length === 0) { 
       setMessages([
         {
           id: 'welcome-' + Date.now(),
@@ -34,60 +40,71 @@ export default function FloatingChatbotButton() {
     }
   };
 
-  const getBotResponse = (userText: string): string => {
-    const lowerUserText = userText.toLowerCase();
-    if (lowerUserText.includes("hello") || lowerUserText.includes("hi")) {
-      return "Hello there! How can I help you?";
-    }
-    if (lowerUserText.includes("help")) {
-      return "Sure, I can try to help! What do you need assistance with?";
-    }
-    if (lowerUserText.includes("integral") || lowerUserText.includes("derivative") || lowerUserText.includes("algebra")) {
-      return `Ah, ${lowerUserText.match(/integral|derivative|algebra/)?.[0]}! You can explore these topics in our workstation pages.`;
-    }
-    if (lowerUserText.includes("thank")) {
-      return "You're welcome!";
-    }
-    // Fallback responses
-    const responses = [
-      `I received your message: "${userText}". I'm still learning!`,
-      "That's an interesting point!",
-      "Could you tell me more?",
-      "I'm processing that. Ask me another question in the meantime!",
-      "For complex queries, try our dedicated operation pages!"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
-    const newUserMessage: ChatMessage = { 
+    const userText = inputValue;
+    setInputValue(''); // Clear input immediately
+
+    const newUserMessage: DisplayMessage = { 
       id: 'user-' + Date.now(), 
       sender: 'user', 
-      text: inputValue,
+      text: userText,
       timestamp: new Date() 
     };
+    setMessages(prevMessages => [...prevMessages, newUserMessage]);
+    setIsBotTyping(true);
+
+    // Prepare history for Genkit flow
+    const historyForAI: ChatHistoryMessage[] = messages
+      .filter(msg => msg.sender === 'user' || msg.sender === 'bot') // Only user and bot messages
+      .slice(-MAX_HISTORY_LENGTH) // Take last N messages
+      .map(msg => ({
+        role: msg.sender as ChatMessageRole, // Cast sender to ChatMessageRole
+        parts: [{ text: msg.text }],
+      }));
     
-    const botText = getBotResponse(inputValue);
-    const botResponse: ChatMessage = {
-      id: 'bot-' + (Date.now() + 1), 
-      sender: 'bot', 
-      text: botText,
-      timestamp: new Date()
-    };
-    
-    setMessages(prevMessages => [...prevMessages, newUserMessage, botResponse]);
-    setInputValue('');
+    const actionResult = await handleChatbotMessageAction(userText, historyForAI);
+    setIsBotTyping(false);
+
+    if (actionResult.error) {
+      const errorMessage: DisplayMessage = {
+        id: 'error-' + Date.now(),
+        sender: 'system',
+        text: actionResult.error,
+        timestamp: new Date(),
+      };
+      setMessages(prevMessages => [...prevMessages, errorMessage]);
+    } else if (actionResult.data) {
+      const botResponse: DisplayMessage = {
+        id: 'bot-' + (Date.now() + 1), 
+        sender: 'bot', 
+        text: actionResult.data.botResponse,
+        timestamp: new Date()
+      };
+      setMessages(prevMessages => [...prevMessages, botResponse]);
+    } else {
+      const fallbackError: DisplayMessage = {
+        id: 'error-' + Date.now(),
+        sender: 'system',
+        text: "Sorry, I couldn't get a response. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prevMessages => [...prevMessages, fallbackError]);
+    }
   };
 
   useEffect(() => {
     if (scrollAreaRef.current) {
+      // The actual scrollable viewport is usually a child of the ScrollArea component.
+      // We need to query for it. ShadCN's ScrollArea typically has a div with role="presentation"
+      // or data-radix-scroll-area-viewport.
       const scrollElement = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, isBotTyping]);
+
 
   return (
     <>
@@ -122,16 +139,30 @@ export default function FloatingChatbotButton() {
                   className={`p-3 rounded-lg max-w-[85%] text-sm shadow ${
                     msg.sender === 'user'
                       ? 'bg-primary text-primary-foreground rounded-br-none'
-                      : 'bg-muted text-muted-foreground rounded-bl-none'
+                      : msg.sender === 'bot'
+                      ? 'bg-muted text-muted-foreground rounded-bl-none'
+                      : 'bg-destructive/20 text-destructive-foreground border border-destructive/50 rounded-md w-full' // System/Error message
                   }`}
                 >
                   {msg.text}
-                  <div className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70'}`}>
+                  <div className={`text-xs mt-1 ${
+                    msg.sender === 'user' ? 'text-primary-foreground/70 text-right' 
+                    : msg.sender === 'bot' ? 'text-muted-foreground/70' 
+                    : 'text-destructive-foreground/70' 
+                  }`}>
                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>
             ))}
+            {isBotTyping && (
+              <div className="flex justify-start mb-3">
+                <div className="p-3 rounded-lg max-w-[85%] text-sm shadow bg-muted text-muted-foreground rounded-bl-none flex items-center">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Bot is typing...
+                </div>
+              </div>
+            )}
           </ScrollArea>
           
           <div className="p-3 border-t border-border flex gap-2 items-center bg-card rounded-b-lg">
@@ -139,12 +170,13 @@ export default function FloatingChatbotButton() {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyPress={(e) => e.key === 'Enter' && !isBotTyping && handleSendMessage()}
               placeholder="Ask something..."
               className="flex-grow p-2 border-input focus:ring-ring focus:ring-1"
               aria-label="Chat input"
+              disabled={isBotTyping}
             />
-            <Button onClick={handleSendMessage} size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 w-10" aria-label="Send message">
+            <Button onClick={handleSendMessage} size="icon" className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 w-10" aria-label="Send message" disabled={isBotTyping || inputValue.trim() === ''}>
               <SendHorizonal className="h-5 w-5" />
             </Button>
           </div>
