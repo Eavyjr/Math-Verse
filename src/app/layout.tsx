@@ -25,6 +25,25 @@ export const metadata: Metadata = {
   description: 'MathVerse: Your Universe for Mathematical Exploration and AI Assistance.',
 };
 
+// Function to handle KaTeX auto-render script load
+// This function is defined globally or passed appropriately if KatexLoader needs it.
+// For this setup, KatexLoader handles its own script loading.
+// const handleKatexAutoRenderLoad = () => {
+//   if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+//     document.body.querySelectorAll('.render-math').forEach(el => {
+//       (window as any).renderMathInElement(el, {
+//         delimiters: [
+//           {left: '$$', right: '$$', display: true},
+//           {left: '$', right: '$', display: false},
+//           {left: '\\\[', right: '\\\]', display: true},
+//           {left: '\\\(', right: '\\\)', display: false}
+//         ]
+//       });
+//     });
+//   }
+// };
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,11 +65,11 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
-          <Toaster />
+          <Toaster /> {/* Re-enabled for auth notifications */}
           <FloatingChatbotButton />
           <KatexLoader /> 
         </AuthProvider>
-        {/* Vercel Analytics can be here if re-enabled - currently commented out */}
+        {/* Vercel Analytics can be here if re-enabled */}
         {/* <Analytics /> */}
       </body>
     </html>
