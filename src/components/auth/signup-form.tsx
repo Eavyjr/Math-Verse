@@ -10,11 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { useState } from 'react';
+import React, { useState } from 'react'; // Ensure React is imported
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type AuthError } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // auth is now Auth | null
+import { auth } from '@/lib/firebase';
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px" className="mr-2">
@@ -26,8 +26,8 @@ const GoogleIcon = () => (
 );
 
 export default function SignUpForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
