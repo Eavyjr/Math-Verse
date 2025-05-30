@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, List, LineChart } from 'lucide-react';
+import { ArrowLeft, BarChart3, Sigma, Percent, Calculator, FileText, UploadCloud, ClipboardPaste, Download, Loader2, XCircle, Info, List, LineChart, Brain, Equal, Variable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -70,7 +70,10 @@ interface ScatterPlotDataItem {
 // Custom shape component for the whiskers in the box plot
 const WhiskerBarShape = (props: any) => {
   const { x, y, height, fill } = props;
-  return <rect x={x} y={y} width={2} height={height} fill={fill} />;
+  // Recharts passes a payload that includes many things; we only care about layout props here.
+  // Extract only valid SVG props for a rect to avoid warnings.
+  const validRectProps = { x, y, height, fill, width: 2 };
+  return <rect {...validRectProps} />;
 };
 
 
@@ -385,10 +388,10 @@ export default function BasicStatisticsPage() {
            return;
       }
       let binIndex = Math.floor((val - minVal) / binWidth);
-      if (val === maxVal) binIndex = numBins - 1;
+      if (val === maxVal) binIndex = numBins - 1; // Ensure maxVal goes into the last bin
       if (binIndex >= 0 && binIndex < numBins) {
         bins[binIndex].count++;
-      } else if (binIndex === -1 && val === minVal) {
+      } else if (binIndex === -1 && val === minVal) { // Handles potential floating point issue for minVal
         bins[0].count++;
       }
     });
@@ -397,7 +400,7 @@ export default function BasicStatisticsPage() {
   
   const prepareBoxPlotData = (s: DescriptiveStats | null): BoxPlotChartDataItem[] => {
     if (!s || s.min === null || s.q1 === null || s.median === null || s.q3 === null || s.max === null) return [];
-    return [{ name: "Dataset", min: s.min, q1: s.q1, median: s.median, q3: s.q3, max: s.max, box: [s.q1, s.q3] }];
+    return [{ name: "Dataset X", min: s.min, q1: s.q1, median: s.median, q3: s.q3, max: s.max, box: [s.q1, s.q3] }];
   };
 
   const handleClearData = () => {
@@ -568,7 +571,7 @@ export default function BasicStatisticsPage() {
 
           { (statsX || statsY || regressionResults) && !isLoading && (
             <Tabs defaultValue="descriptive" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 <TabsTrigger value="descriptive" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
                     <BarChart3 className="mr-2 h-5 w-5"/>Descriptive Stats
                 </TabsTrigger>
@@ -577,6 +580,9 @@ export default function BasicStatisticsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="regression" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
                     <Percent className="mr-2 h-5 w-5"/>Regression Analysis
+                </TabsTrigger>
+                <TabsTrigger value="probability" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
+                    <Brain className="mr-2 h-5 w-5"/>Probability Tools
                 </TabsTrigger>
               </TabsList>
 
@@ -735,6 +741,34 @@ export default function BasicStatisticsPage() {
                     )}
                      <p className="text-xs text-muted-foreground mt-4">Multiple linear regression and more detailed analysis coming soon.</p>
                   </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="probability" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-xl">Probability Tools</CardTitle>
+                        <CardDescription>Explore various probability distributions and calculations. (Coming Soon)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Alert>
+                            <Brain className="h-4 w-4" />
+                            <AlertTitle>Under Development</AlertTitle>
+                            <AlertDescription>
+                                This section will allow you to work with distributions like Normal, Binomial, and Poisson.
+                                You'll be able to compute probabilities, view PDF/PMF, and CDF visualizations.
+                            </AlertDescription>
+                        </Alert>
+                        {/* Placeholder for future inputs for distributions */}
+                        <div className="p-4 border rounded-md space-y-2 bg-muted/30">
+                            <h4 className="font-semibold">Example: Normal Distribution</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input type="number" placeholder="Mean (μ)" disabled />
+                                <Input type="number" placeholder="Std Dev (σ)" disabled />
+                            </div>
+                            <Button disabled className="w-full">Calculate & Visualize (Soon)</Button>
+                        </div>
+                    </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
