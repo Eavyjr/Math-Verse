@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Plus, Minus, Divide, Percent, SquareRoot, Sigma, MoreHorizontal, RotateCcw, Binary, FunctionSquare, XIcon as MultiplyIcon } from 'lucide-react';
 
-// console.log('SquareRoot icon:', SquareRoot); // For debugging if needed
+const MAX_DIGITS = 11; // Changed from 12 to 11
 
 const CalculatorButton = ({
   onClick,
@@ -16,7 +16,7 @@ const CalculatorButton = ({
   children,
 }: {
   onClick: () => void;
-  label?: string | number;
+  label?: string | number | React.ReactNode; // Updated to allow ReactNode
   className?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
   size?: "default" | "sm" | "lg" | "icon" | null | undefined;
@@ -34,11 +34,42 @@ const CalculatorButton = ({
 
 export default function PopupCalculator() {
   const [displayValue, setDisplayValue] = useState('0');
-  const [currentOperand, setCurrentOperand] = useState<string | null>(null);
+  const [currentOperand, setCurrentOperand] = useState<string | null>(null); // Not actively used in current simplified logic but good for future
   const [previousOperand, setPreviousOperand] = useState<string | null>(null);
   const [operation, setOperation] = useState<string | null>(null);
   const [waitingForSecondOperand, setWaitingForSecondOperand] = useState(false);
   const [isRadians, setIsRadians] = useState(true);
+
+  const formatDisplayValue = (num: number | string): string => {
+    let numStr = String(num);
+    if (numStr.length > MAX_DIGITS) {
+      const n = Number(num);
+      if (Math.abs(n) > 1e11 || (Math.abs(n) < 1e-5 && Math.abs(n) > 0)) { // Adjust thresholds for scientific notation if needed
+        numStr = n.toExponential(MAX_DIGITS - 6); // e.g. for 11 digits, 11-6 = 5 for precision
+        if (numStr.length > MAX_DIGITS) { // toExponential can sometimes exceed with sign/e+XX
+            numStr = n.toExponential(MAX_DIGITS - 7);
+        }
+      } else {
+        // Truncate, try to keep decimal if possible
+        if (numStr.includes('.')) {
+            const decimalPointIndex = numStr.indexOf('.');
+            if (decimalPointIndex < MAX_DIGITS -1) { // if decimal point is within limit
+                 numStr = numStr.substring(0, MAX_DIGITS);
+            } else { // decimal point itself is too far, just truncate integer part
+                 numStr = numStr.substring(0, MAX_DIGITS);
+            }
+        } else {
+            numStr = numStr.substring(0, MAX_DIGITS);
+        }
+      }
+    }
+    // Ensure it still doesn't exceed due to formatting like -1.23e+10
+    if (numStr.length > MAX_DIGITS) {
+        return Number(num).toPrecision(MAX_DIGITS - (numStr.startsWith('-') ? 1 : 0) - (numStr.includes('e') ? 4 : 0) - (numStr.includes('.')? 1:0) );
+    }
+    return numStr;
+  };
+
 
   const inputDigit = (digit: string) => {
     if (displayValue === 'Error') {
@@ -46,6 +77,12 @@ export default function PopupCalculator() {
       setWaitingForSecondOperand(false);
       return;
     }
+
+    const currentLength = displayValue.replace(/^-/, '').replace(/\./, '').length;
+    if (currentLength >= MAX_DIGITS && !waitingForSecondOperand) {
+        return; // Max digits reached for current number input
+    }
+
     if (waitingForSecondOperand) {
       setDisplayValue(digit);
       setWaitingForSecondOperand(false);
@@ -66,7 +103,9 @@ export default function PopupCalculator() {
       return;
     }
     if (!displayValue.includes('.')) {
-      setDisplayValue(displayValue + '.');
+      if (displayValue.replace(/^-/, '').length < MAX_DIGITS) {
+        setDisplayValue(displayValue + '.');
+      }
     }
   };
 
@@ -80,18 +119,25 @@ export default function PopupCalculator() {
 
   const clearEntry = () => {
     setDisplayValue('0');
-    if (operation && previousOperand !== null) {
-      setWaitingForSecondOperand(false);
+    if (operation && previousOperand !== null && waitingForSecondOperand) {
+      // If an operation was pending and we were waiting for the second operand,
+      // clearing entry effectively cancels the second operand input.
+      // The display is reset to 0, ready for new input for the second operand.
+      // The previousOperand and operation remain.
     } else {
-      setPreviousOperand(null);
-      setOperation(null);
-      setWaitingForSecondOperand(false);
+      // If it's the first operand, or after an equals, clear everything like AC
+      // Or, if we just finished an operation and result is shown (waitingForSecondOperand is true, but operation just completed)
+      // This logic might need refinement based on desired CE behavior in all states.
+      // For now, a simple CE just resets the current display.
+      // A more robust CE might revert to the previous operand if an operation was active.
     }
   };
 
   const backspace = () => {
-    if (displayValue === 'Error') {
-      clearAll();
+    if (displayValue === 'Error' || waitingForSecondOperand) {
+      // Don't allow backspace if error or if result of an operation is shown
+      // and we are waiting for a new number.
+      // To edit the result, user should start typing a new number.
       return;
     }
     if (displayValue.length > 1) {
@@ -128,7 +174,7 @@ export default function PopupCalculator() {
           break;
         default: return;
       }
-      const resultString = String(parseFloat(result.toPrecision(12)));
+      const resultString = formatDisplayValue(result);
       setDisplayValue(resultString);
       setPreviousOperand(resultString);
     }
@@ -160,25 +206,25 @@ export default function PopupCalculator() {
         break;
       default: return;
     }
-    setDisplayValue(String(parseFloat(result.toPrecision(12))));
-    setPreviousOperand(null);
+    setDisplayValue(formatDisplayValue(result));
+    setPreviousOperand(null); // Reset for new calculation sequence
     setOperation(null);
-    setWaitingForSecondOperand(true);
+    setWaitingForSecondOperand(true); // Ready for a new calculation starting with this result
   };
 
   const handleUnaryOperation = (unaryOp: string) => {
     if (displayValue === 'Error' && unaryOp !== 'π' && unaryOp !== 'e') return;
 
     let value = parseFloat(displayValue);
-    let result = 0;
+    let result: number | string = 0;
 
     if (unaryOp === 'π') {
-      setDisplayValue(String(Math.PI));
-      setWaitingForSecondOperand(true);
+      setDisplayValue(formatDisplayValue(Math.PI));
+      setWaitingForSecondOperand(true); 
       return;
     }
     if (unaryOp === 'e') {
-      setDisplayValue(String(Math.E));
+      setDisplayValue(formatDisplayValue(Math.E));
       setWaitingForSecondOperand(true);
       return;
     }
@@ -189,17 +235,31 @@ export default function PopupCalculator() {
     }
 
     switch (unaryOp) {
-      case 'sqrt': result = Math.sqrt(value); break;
+      case 'sqrt': 
+        if (value < 0) { setDisplayValue("Error"); return; }
+        result = Math.sqrt(value); 
+        break;
       case 'x²': result = value * value; break;
       case 'sin': result = isRadians ? Math.sin(value) : Math.sin(value * Math.PI / 180); break;
       case 'cos': result = isRadians ? Math.cos(value) : Math.cos(value * Math.PI / 180); break;
-      case 'tan': result = isRadians ? Math.tan(value) : Math.tan(value * Math.PI / 180); break;
-      case 'log': result = Math.log10(value); break;
-      case 'ln': result = Math.log(value); break;
+      case 'tan': 
+        const angleRad = isRadians ? value : value * Math.PI / 180;
+        // Check for tan of 90 degrees / 270 degrees etc. (where cos is 0)
+        if (Math.abs(Math.cos(angleRad)) < 1e-12) { setDisplayValue("Error"); return; }
+        result = Math.tan(angleRad); 
+        break;
+      case 'log': // base 10
+        if (value <= 0) { setDisplayValue("Error"); return; }
+        result = Math.log10(value); 
+        break;
+      case 'ln': // natural log
+        if (value <= 0) { setDisplayValue("Error"); return; }
+        result = Math.log(value); 
+        break;
       case '±': result = value * -1; break;
       case '%': result = value / 100; break;
       case 'x!':
-        if (value < 0 || !Number.isInteger(value) || value > 20) {
+        if (value < 0 || !Number.isInteger(value) || value > 20) { // Factorial limit for typical display
             setDisplayValue('Error'); return;
         }
         if (value === 0) { result = 1; break; }
@@ -209,25 +269,36 @@ export default function PopupCalculator() {
       default: return;
     }
 
-    if (isNaN(result) || !isFinite(result)) {
+    if (isNaN(result as number) || !isFinite(result as number)) {
       setDisplayValue("Error");
     } else {
-      setDisplayValue(String(parseFloat(result.toPrecision(12))));
+      setDisplayValue(formatDisplayValue(result));
     }
-    setWaitingForSecondOperand(true);
+    setWaitingForSecondOperand(true); // Result of unary op can be start of new binary op
   };
 
   const handleParenthesis = (p: string) => {
+    // Basic parenthesis handling: just append. Full parsing is complex.
     if (displayValue === 'Error' && p === '(') {
       setDisplayValue(p);
       setWaitingForSecondOperand(false);
       return;
     }
-    setDisplayValue(prev => (prev === '0' && p === '(') || waitingForSecondOperand ? p : prev + p);
-    setWaitingForSecondOperand(false);
+    // If waiting for an operand (after an operator was pressed), start new number with parenthesis
+    if (waitingForSecondOperand && p === '(') {
+      setDisplayValue(p);
+      setWaitingForSecondOperand(false);
+      return;
+    }
+    
+    const currentLength = displayValue.replace(/^-/, '').replace(/\./, '').length;
+    if (currentLength < MAX_DIGITS || p === ')' ) { // Allow closing parenthesis even if near limit
+       setDisplayValue(prev => (prev === '0' && p === '(') ? p : prev + p);
+    }
+    setWaitingForSecondOperand(false); // Typing parenthesis means we are actively editing/forming a number
   };
 
-  // Prepare icon content with fallbacks
+  // Icon definitions with fallbacks
   const sqrtIcon = typeof SquareRoot === 'function' ? <SquareRoot size={24} /> : '√';
   const divideIcon = typeof Divide === 'function' ? <Divide size={24} /> : '/';
   const multiplyIconContent = typeof MultiplyIcon === 'function' ? <MultiplyIcon size={24} /> : '*';
@@ -237,7 +308,7 @@ export default function PopupCalculator() {
 
 
   const buttonLayout = [
-    { label: isRadians ? 'Rad' : 'Deg', action: () => setIsRadians(!isRadians), className: 'bg-muted/50 hover:bg-muted text-xs col-span-1' },
+    { children: isRadians ? 'Rad' : 'Deg', action: () => setIsRadians(!isRadians), className: 'bg-muted/50 hover:bg-muted text-xs col-span-1' },
     { label: 'x!', action: () => handleUnaryOperation('x!'), className: 'bg-muted/50 hover:bg-muted' },
     { label: '(', action: () => handleParenthesis('('), className: 'bg-muted/50 hover:bg-muted' },
     { label: ')', action: () => handleParenthesis(')'), className: 'bg-muted/50 hover:bg-muted' },
@@ -293,8 +364,8 @@ export default function PopupCalculator() {
           <CalculatorButton
             key={index}
             onClick={btn.action}
-            label={btn.label as string | number | undefined} // Cast label, children will take precedence for icons
-            className={btn.className || (typeof btn.label === 'string' && /^[0-9.]$/.test(btn.label) ? 'bg-secondary hover:bg-secondary/80' : 'bg-muted hover:bg-muted/80')}
+            label={btn.label} 
+            className={btn.className || ''}
           >
             {btn.children} 
           </CalculatorButton>
@@ -303,3 +374,4 @@ export default function PopupCalculator() {
     </div>
   );
 }
+
