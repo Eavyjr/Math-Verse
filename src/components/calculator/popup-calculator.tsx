@@ -3,7 +3,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Plus, Minus, XIcon, Divide, Percent, SquareRoot, Sigma, MoreHorizontal, RotateCcw, Binary, FunctionSquare } from 'lucide-react'; // Using XIcon for multiply
+import { X, Plus, Minus, Divide, Percent, SquareRoot, Sigma, MoreHorizontal, RotateCcw, Binary, FunctionSquare, XIcon as MultiplyIcon } from 'lucide-react';
+
+// console.log('SquareRoot icon:', SquareRoot); // For debugging if needed
 
 const CalculatorButton = ({
   onClick,
@@ -14,7 +16,7 @@ const CalculatorButton = ({
   children,
 }: {
   onClick: () => void;
-  label?: string | number | React.ReactNode;
+  label?: string | number;
   className?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | null | undefined;
   size?: "default" | "sm" | "lg" | "icon" | null | undefined;
@@ -32,11 +34,11 @@ const CalculatorButton = ({
 
 export default function PopupCalculator() {
   const [displayValue, setDisplayValue] = useState('0');
-  const [currentOperand, setCurrentOperand] = useState<string | null>(null); // Not actively used in this simplified version but kept for potential future expansion
+  const [currentOperand, setCurrentOperand] = useState<string | null>(null);
   const [previousOperand, setPreviousOperand] = useState<string | null>(null);
   const [operation, setOperation] = useState<string | null>(null);
   const [waitingForSecondOperand, setWaitingForSecondOperand] = useState(false);
-  const [isRadians, setIsRadians] = useState(true); // Default to Radians
+  const [isRadians, setIsRadians] = useState(true);
 
   const inputDigit = (digit: string) => {
     if (displayValue === 'Error') {
@@ -78,12 +80,9 @@ export default function PopupCalculator() {
 
   const clearEntry = () => {
     setDisplayValue('0');
-    // This simplified CE resets the current display. 
-    // If an operation was pending, the user can type the new second operand.
     if (operation && previousOperand !== null) {
-      setWaitingForSecondOperand(false); // Allow new number input for the second operand
+      setWaitingForSecondOperand(false);
     } else {
-      // If no operation pending, or it's a fresh start, reset more fully
       setPreviousOperand(null);
       setOperation(null);
       setWaitingForSecondOperand(false);
@@ -117,7 +116,7 @@ export default function PopupCalculator() {
         case '+': result = prevValue + inputValue; break;
         case '-': result = prevValue - inputValue; break;
         case '*': result = prevValue * inputValue; break;
-        case '/': 
+        case '/':
           if (inputValue === 0) {
             setDisplayValue('Error');
             setPreviousOperand(null);
@@ -125,7 +124,7 @@ export default function PopupCalculator() {
             setWaitingForSecondOperand(false);
             return;
           }
-          result = prevValue / inputValue; 
+          result = prevValue / inputValue;
           break;
         default: return;
       }
@@ -140,7 +139,7 @@ export default function PopupCalculator() {
 
   const handleEquals = () => {
     if (displayValue === 'Error' || !operation || previousOperand === null) return;
-    
+
     const prevValue = parseFloat(previousOperand);
     const currentValue = parseFloat(displayValue);
     let result = 0;
@@ -162,18 +161,17 @@ export default function PopupCalculator() {
       default: return;
     }
     setDisplayValue(String(parseFloat(result.toPrecision(12))));
-    setPreviousOperand(null); 
+    setPreviousOperand(null);
     setOperation(null);
-    setWaitingForSecondOperand(true); 
+    setWaitingForSecondOperand(true);
   };
-  
+
   const handleUnaryOperation = (unaryOp: string) => {
     if (displayValue === 'Error' && unaryOp !== 'π' && unaryOp !== 'e') return;
-    
+
     let value = parseFloat(displayValue);
     let result = 0;
-    
-    // For π and e, we set displayValue directly
+
     if (unaryOp === 'π') {
       setDisplayValue(String(Math.PI));
       setWaitingForSecondOperand(true);
@@ -185,7 +183,7 @@ export default function PopupCalculator() {
       return;
     }
 
-    if (isNaN(value)) {
+    if (isNaN(value) && !['π', 'e'].includes(unaryOp)) {
       setDisplayValue("Error");
       return;
     }
@@ -201,8 +199,8 @@ export default function PopupCalculator() {
       case '±': result = value * -1; break;
       case '%': result = value / 100; break;
       case 'x!':
-        if (value < 0 || !Number.isInteger(value) || value > 20) { // Added upper limit for practical factorial
-            setDisplayValue('Error'); return; 
+        if (value < 0 || !Number.isInteger(value) || value > 20) {
+            setDisplayValue('Error'); return;
         }
         if (value === 0) { result = 1; break; }
         result = 1;
@@ -216,7 +214,7 @@ export default function PopupCalculator() {
     } else {
       setDisplayValue(String(parseFloat(result.toPrecision(12))));
     }
-    setWaitingForSecondOperand(true); 
+    setWaitingForSecondOperand(true);
   };
 
   const handleParenthesis = (p: string) => {
@@ -225,11 +223,18 @@ export default function PopupCalculator() {
       setWaitingForSecondOperand(false);
       return;
     }
-    // This is a simplified parenthesis handling: just appends.
-    // True order of operations requires a proper parsing engine (e.g., shunting-yard or math.js).
     setDisplayValue(prev => (prev === '0' && p === '(') || waitingForSecondOperand ? p : prev + p);
     setWaitingForSecondOperand(false);
   };
+
+  // Prepare icon content with fallbacks
+  const sqrtIcon = typeof SquareRoot === 'function' ? <SquareRoot size={24} /> : '√';
+  const divideIcon = typeof Divide === 'function' ? <Divide size={24} /> : '/';
+  const multiplyIconContent = typeof MultiplyIcon === 'function' ? <MultiplyIcon size={24} /> : '*';
+  const minusIcon = typeof Minus === 'function' ? <Minus size={24} /> : '-';
+  const plusIcon = typeof Plus === 'function' ? <Plus size={24} /> : '+';
+  const backspaceIcon = typeof RotateCcw === 'function' ? <RotateCcw size={20} className="mx-auto"/> : 'Bksp';
+
 
   const buttonLayout = [
     { label: isRadians ? 'Rad' : 'Deg', action: () => setIsRadians(!isRadians), className: 'bg-muted/50 hover:bg-muted text-xs col-span-1' },
@@ -244,32 +249,32 @@ export default function PopupCalculator() {
     { label: '7', action: () => inputDigit('7'), className:'bg-card hover:bg-card/90' },
     { label: '8', action: () => inputDigit('8'), className:'bg-card hover:bg-card/90' },
     { label: '9', action: () => inputDigit('9'), className:'bg-card hover:bg-card/90' },
-    { icon: <Divide size={24} />, action: () => performOperation('/'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { children: divideIcon, action: () => performOperation('/'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
 
     { label: 'cos', action: () => handleUnaryOperation('cos'), className: 'bg-muted/50 hover:bg-muted' },
     { label: 'log', action: () => handleUnaryOperation('log'), className: 'bg-muted/50 hover:bg-muted' },
     { label: '4', action: () => inputDigit('4'), className:'bg-card hover:bg-card/90' },
     { label: '5', action: () => inputDigit('5'), className:'bg-card hover:bg-card/90' },
     { label: '6', action: () => inputDigit('6'), className:'bg-card hover:bg-card/90' },
-    { icon: <XIcon size={24} />, action: () => performOperation('*'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { children: multiplyIconContent, action: () => performOperation('*'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
 
     { label: 'tan', action: () => handleUnaryOperation('tan'), className: 'bg-muted/50 hover:bg-muted' },
-    { label: <SquareRoot size={24} />, action: () => handleUnaryOperation('sqrt'), className: 'bg-muted/50 hover:bg-muted' },
+    { children: sqrtIcon, action: () => handleUnaryOperation('sqrt'), className: 'bg-muted/50 hover:bg-muted' },
     { label: '1', action: () => inputDigit('1'), className:'bg-card hover:bg-card/90' },
     { label: '2', action: () => inputDigit('2'), className:'bg-card hover:bg-card/90' },
     { label: '3', action: () => inputDigit('3'), className:'bg-card hover:bg-card/90' },
-    { icon: <Minus size={24} />, action: () => performOperation('-'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { children: minusIcon, action: () => performOperation('-'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
     
     { label: 'e', action: () => handleUnaryOperation('e'), className: 'bg-muted/50 hover:bg-muted' },
     { label: 'x²', action: () => handleUnaryOperation('x²'), className: 'bg-muted/50 hover:bg-muted' },
     { label: '0', action: () => inputDigit('0'), className:'bg-card hover:bg-card/90' },
     { label: '.', action: inputDecimal, className:'bg-card hover:bg-card/90' },
     { label: 'π', action: () => handleUnaryOperation('π'), className: 'bg-muted/50 hover:bg-muted'},
-    { icon: <Plus size={24} />, action: () => performOperation('+'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { children: plusIcon, action: () => performOperation('+'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
 
     { label: 'C', action: clearEntry, className: 'col-span-2 bg-destructive/60 hover:bg-destructive/80 text-destructive-foreground'},
     { label: '±', action: () => handleUnaryOperation('±'), className:'bg-card hover:bg-card/90' },
-    { label: <RotateCcw size={20} className="mx-auto"/> , action: backspace, className:'bg-card hover:bg-card/90' }, // Backspace
+    { children: backspaceIcon, action: backspace, className:'bg-card hover:bg-card/90' },
     { label: '=', action: handleEquals, className: 'col-span-2 bg-primary hover:bg-primary/90 text-primary-foreground text-2xl' },
   ];
 
@@ -278,7 +283,7 @@ export default function PopupCalculator() {
       <div className="bg-background text-foreground text-right p-4 rounded-md mb-4 shadow-inner min-h-[70px] flex flex-col justify-end">
         <div 
           className="text-4xl font-mono font-semibold overflow-x-auto overflow-y-hidden no-scrollbar" 
-          style={{ wordBreak: 'break-all', whiteSpace: 'nowrap', direction: 'rtl' }} // Ensure scroll happens from right
+          style={{ wordBreak: 'break-all', whiteSpace: 'nowrap', direction: 'rtl' }}
         >
           {displayValue}
         </div>
@@ -288,9 +293,10 @@ export default function PopupCalculator() {
           <CalculatorButton
             key={index}
             onClick={btn.action}
+            label={btn.label as string | number | undefined} // Cast label, children will take precedence for icons
             className={btn.className || (typeof btn.label === 'string' && /^[0-9.]$/.test(btn.label) ? 'bg-secondary hover:bg-secondary/80' : 'bg-muted hover:bg-muted/80')}
           >
-            {btn.icon || btn.label}
+            {btn.children} 
           </CalculatorButton>
         ))}
       </div>
