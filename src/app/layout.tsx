@@ -4,10 +4,10 @@ import { Inter, Fira_Code } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import { AuthProvider } from '@/context/auth-context'; // Re-enabled
-import { Toaster } from '@/components/ui/toaster'; // Re-enabled
+import { AuthProvider } from '@/context/auth-context';
+import { Toaster } from '@/components/ui/toaster';
 // import { Analytics } from "@vercel/analytics/next"; // Vercel Analytics currently commented out
-import "katex/dist/katex.min.css";
+// KaTeX CSS is imported globally in globals.css or directly via CDN link below
 import FloatingChatbotButton from '@/components/chatbot/floating-chatbot-button';
 
 const inter = Inter({
@@ -31,32 +31,42 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const handleKatexAutoRenderLoad = () => {
+    if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+      document.body.querySelectorAll('.render-math').forEach(el => {
+        (window as any).renderMathInElement(el, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\\\[', right: '\\\\]', display: true },
+            { left: '\\\\(', right: '\\\\)', display: false }
+          ]
+        });
+      });
+    }
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossOrigin="anonymous" />
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmFGEkkP2" crossOrigin="anonymous"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44SU3AYYGpArKGYrSqsTnJ5TTd3FSEE5ADZslDxXm" crossOrigin="anonymous"
-          onLoad={
-            // Using an IIFE to ensure this runs after the script loads
-            // and to avoid polluting the global scope if not necessary.
-            // Directly embedding function calls in onLoad can sometimes be tricky.
-            "(() => { if (window.renderMathInElement) { document.body.querySelectorAll('.render-math').forEach(el => window.renderMathInElement(el, { delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\\\[', right: '\\\\]', display: true}, {left: '\\\\(', right: '\\\\)', display: false} ]})); } })()"
-          }
+          onLoad={handleKatexAutoRenderLoad}
         ></script>
         <script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
       </head>
       <body className={`${inter.variable} ${firaCode.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
-        <AuthProvider> {/* Re-enabled AuthProvider */}
+        <AuthProvider>
           <Header />
           <main className="flex-grow container mx-auto px-4 py-8">
             {children}
           </main>
           <Footer />
-          <Toaster /> {/* Re-enabled Toaster */}
+          <Toaster />
           <FloatingChatbotButton />
         </AuthProvider>
-        {/* <Analytics /> */} {/* Vercel Analytics currently commented out */}
+        {/* <Analytics /> */}
       </body>
     </html>
   );
