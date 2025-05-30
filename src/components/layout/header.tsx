@@ -8,7 +8,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -20,10 +19,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calculator as CalculatorIconLucide, X, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare } from 'lucide-react'; // Renamed Calculator to CalculatorIconLucide
+import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context'; 
-import { Skeleton } from '../ui/skeleton'; 
+import { useAuth } from '@/context/auth-context';
+import { Skeleton } from '../ui/skeleton';
 import PopupCalculator from '@/components/calculator/popup-calculator';
 
 // Helper function to get initials
@@ -43,7 +42,7 @@ const getInitials = (name?: string | null, email?: string | null): string => {
 
 
 export default function Header() {
-  const { user, isLoading: authIsLoading, signOut } = useAuth(); 
+  const { user, isLoading: authIsLoading, signOut } = useAuth();
   const [isCalculatorDialogOpen, setIsCalculatorDialogOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -56,7 +55,7 @@ export default function Header() {
     <header className="py-4 px-6 border-b bg-card shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary hover:text-primary/90 transition-colors">
-          <BotMessageSquare className="h-8 w-8" /> 
+           <BotMessageSquare className="h-8 w-8" />
           <span>MathVerse</span>
         </Link>
         <nav className="flex items-center gap-3">
@@ -66,9 +65,12 @@ export default function Header() {
                 <CalculatorIconLucide className="h-5 w-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xs p-0 border-0 shadow-2xl rounded-xl bg-transparent">
-              {/* The PopupCalculator component includes its own close functionality implicitly via Dialog behavior */}
-              {/* No explicit DialogHeader or DialogClose needed here if PopupCalculator is self-contained visually */}
+            <DialogContent className="sm:max-w-xs p-4 border shadow-2xl rounded-xl bg-popover">
+              <DialogHeader>
+                <DialogTitle>Scientific Calculator</DialogTitle>
+                {/* DialogDescription can be added here if needed */}
+              </DialogHeader>
+              {/* The PopupCalculator component is rendered here */}
               {isClient && isCalculatorDialogOpen && <PopupCalculator />}
             </DialogContent>
           </Dialog>
@@ -76,7 +78,7 @@ export default function Header() {
           {authIsLoading ? (
             <div className="flex items-center gap-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                <Skeleton className="h-4 w-20" />
+                {/* <Skeleton className="h-4 w-20" /> */}
             </div>
           ) : user ? (
             <DropdownMenu>
