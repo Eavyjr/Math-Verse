@@ -10,10 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import React, { useState } from 'react'; // Ensure React is imported
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type AuthError } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, type AuthError } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 const GoogleIcon = () => (
@@ -88,8 +88,12 @@ export default function SignUpForm() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      // Here you might want to also update the user's profile with `fullName`
-      // await updateProfile(userCredential.user, { displayName: data.fullName });
+      // Set display name
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: data.fullName,
+        });
+      }
       console.log('Firebase Sign Up Success:', userCredential.user);
       toast({
         title: "Sign Up Successful!",
@@ -118,6 +122,7 @@ export default function SignUpForm() {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
+      // Firebase handles setting displayName from Google profile automatically
       console.log('Google Sign Up/In Success:', result.user);
       toast({
         title: "Google Sign Up Successful!",
@@ -147,7 +152,7 @@ export default function SignUpForm() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Full Name (Username)</FormLabel>
                   <FormControl>
                     <Input placeholder="John Doe" {...field} />
                   </FormControl>
