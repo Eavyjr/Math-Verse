@@ -17,10 +17,10 @@ importers:
     dependencies:
       '@genkit-ai/googleai':
         specifier: ^1.8.0
-        version: 1.10.0(genkit@1.10.0)
+        version: 1.11.0(genkit@1.11.0)
       '@genkit-ai/next':
         specifier: ^1.8.0
-        version: 1.10.0(genkit@1.10.0)(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(zod@3.25.41)
+        version: 1.11.0(genkit@1.11.0)(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(zod@3.25.42)
       '@hookform/resolvers':
         specifier: ^4.1.3
         version: 4.1.3(react-hook-form@7.56.4(react@18.2.0))
@@ -93,6 +93,9 @@ importers:
       '@vercel/analytics':
         specifier: ^1.3.1
         version: 1.5.0(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0)
+      '@xyflow/react':
+        specifier: 12.6.4
+        version: 12.6.4(@types/react@18.2.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -110,7 +113,7 @@ importers:
         version: 11.8.1
       genkit:
         specifier: ^1.8.0
-        version: 1.10.0
+        version: 1.11.0
       katex:
         specifier: ^0.16.10
         version: 0.16.22
@@ -152,14 +155,14 @@ importers:
         version: 0.160.1
       zod:
         specifier: ^3.24.2
-        version: 3.25.41
+        version: 3.25.42
     devDependencies:
       '@types/katex':
         specifier: ^0.16.7
         version: 0.16.7
       '@types/node':
         specifier: ^20
-        version: 20.17.54
+        version: 20.17.57
       '@types/react':
         specifier: 18.2.0
         version: 18.2.0
@@ -171,7 +174,7 @@ importers:
         version: 0.160.0
       genkit-cli:
         specifier: ^1.8.0
-        version: 1.10.0
+        version: 1.11.0
       postcss:
         specifier: ^8
         version: 8.5.4
@@ -193,8 +196,8 @@ packages:
     peerDependencies:
       zod: ^3.20.2
 
-  '@babel/runtime@7.27.3':
-    resolution: {integrity: sha512-7EYtGezsdiDMyY80+65EzwiGmcJqpmcZCojSXaRgdrBaGtWTgDZKq69cPIVped6MkIM78cTQ2GOiEYjwOlG4xw==}
+  '@babel/runtime@7.27.4':
+    resolution: {integrity: sha512-t3yaEOuGu9NlIZ+hIeGbBjFtZT7j2cb2tg0fuaJKeGotchRjjLfrBA9Kwf8quhpP1EUuxModQg04q/mBwyg8uA==}
     engines: {node: '>=6.9.0'}
 
   '@colors/colors@1.6.0':
@@ -582,29 +585,29 @@ packages:
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
 
-  '@genkit-ai/ai@1.10.0':
-    resolution: {integrity: sha512-1Ql7jlIA02UsWIiH9xJ4LKKerho1iP2J/x23nls4m6V9HXn5APUEseCWPDKs9eYBDa2WWxvYYNS975KDai1hnw==}
+  '@genkit-ai/ai@1.11.0':
+    resolution: {integrity: sha512-gPk/NUxJRkiefNfFh8dgg3rH8AU7qiecKg/fv7lNTN9L7cIDkQtuG8zT96DHMDLfrybK485F8QIgiXYebYhMdA==}
 
-  '@genkit-ai/core@1.10.0':
-    resolution: {integrity: sha512-aySikAJEfCIFXskrp5xy+GjGa4lF4Y/pR4LUNxVVYEHFqI3cU5gXqa09vQvfTWYVKIe5IXW0fVMas4B6vPAw+Q==}
+  '@genkit-ai/core@1.11.0':
+    resolution: {integrity: sha512-76J6fcAFVQCqqJErND2NdE0qTx2mEp/574cYBW59BQLRYaD8YtBj1CTQXhO/bxYRtSDlUvGJjF2xX0yfUmIMtA==}
 
-  '@genkit-ai/googleai@1.10.0':
-    resolution: {integrity: sha512-k7yTIBbII9W63cIc5dc3ndJxDDb4ZAyj+C+1KX2yHBqcFX3vNXSC755emzhj3Cb+tp+F7H4Q3a9UwHKwAEe0hQ==}
+  '@genkit-ai/googleai@1.11.0':
+    resolution: {integrity: sha512-p7EsOk8BwkvuO8tVyZ4gLCGPgOp8ewSasoHXStpA/FzeIDfkgT6Y8fAtxR9D9z7t3xJJwMGoO6yoZL7pOGdy0A==}
     peerDependencies:
-      genkit: ^1.10.0
+      genkit: ^1.11.0
 
-  '@genkit-ai/next@1.10.0':
-    resolution: {integrity: sha512-6hpUHWZDuf+6OLM+P+0HTGc2tlBCiIPB6iys5hjRc7WddJgDMNEHObb0STWTLyKXzPOLHr2qxD1gwMuiIcP76g==}
+  '@genkit-ai/next@1.11.0':
+    resolution: {integrity: sha512-vpcTNQP/c5Af4J1gPny0AIvo2lonEJIyDmgrH4VkJD9lEbRiD86/BMhjK9Nk6rZkyEgUQvla94+gfFIG46yB7Q==}
     peerDependencies:
-      genkit: 1.10.0
+      genkit: 1.11.0
       next: ^15.0.0
       zod: ^3.24.1
 
-  '@genkit-ai/telemetry-server@1.10.0':
-    resolution: {integrity: sha512-cgycjmOrMZxHdQp3NiDGb7ctP557EseXmarfizBPVJVtNRJH3KECu7X2v4t5Mn71MD18udjI9h85yeYRDbLkRw==}
+  '@genkit-ai/telemetry-server@1.11.0':
+    resolution: {integrity: sha512-PNJnj98OoX9VdV9KZbFZY1wAs4NEB09jaVuNoExqEEIu+VXiPymyQAoUMscPypOa5O70LfZHrtK90vM3mqu6jw==}
 
-  '@genkit-ai/tools-common@1.10.0':
-    resolution: {integrity: sha512-MRsa5bQY2QU1/B5TzpRiK8j5rp0jGgFQKjvMS/Yhuu+0BfFuMP5zSqkR9x3I+uWOp/aWlpvA3WEc1EJEfPP2Wg==}
+  '@genkit-ai/tools-common@1.11.0':
+    resolution: {integrity: sha512-+Mq0MY0S/3fXrxaoXJWqNmw5QivOfE/MzlQAbph9EYw1bLJG4URWhXESX1R/mXpziIS7P6V6hWQ/yX9bRsILRQ==}
 
   '@google-cloud/firestore@7.11.1':
     resolution: {integrity: sha512-ZxOdH8Wr01hBDvKCQfMWqwUcfNcN3JY19k1LtS1fTFhEyorYPLsbWN+VxIRL46pOYGHTPkU3Or5HbT/SLQM5nA==}
@@ -1610,6 +1613,9 @@ packages:
   '@types/d3-color@3.1.3':
     resolution: {integrity: sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==}
 
+  '@types/d3-drag@3.0.7':
+    resolution: {integrity: sha512-HE3jVKlzU9AaMazNufooRJ5ZpWmLIoc90A37WU2JMmeq28w1FQqCZswHZ3xR+SuxYftzHq6WU6KJHvqxKzTxxQ==}
+
   '@types/d3-ease@3.0.2':
     resolution: {integrity: sha512-NcV1JjO5oDzoK26oMzbILE6HW7uVXOHLQvHshBUW4UMdZGfiY6v5BeQwh9a9tCzv+CeefZQHJt5SRgK154RtiA==}
 
@@ -1622,6 +1628,9 @@ packages:
   '@types/d3-scale@4.0.9':
     resolution: {integrity: sha512-dLmtwB8zkAeO/juAMfnV+sItKjlsw2lKdZVVy6LRr0cBmegxSABiLEpGVmSJJ8O08i4+sGR6qQtb6WtuwJdvVw==}
 
+  '@types/d3-selection@3.0.11':
+    resolution: {integrity: sha512-bhAXu23DJWsrI45xafYpkQ4NtcKMwWnAC/vKrd2l+nxMFuvOT3XMYTIj2opv8vq8AO5Yh7Qac/nSeP/3zjTK0w==}
+
   '@types/d3-shape@3.1.7':
     resolution: {integrity: sha512-VLvUQ33C+3J+8p+Daf+nYSOsjB4GXp19/S/aGo60m9h1v6XaxjiT82lKVWJCfzhtuZ3yD7i/TPeC/fuKLLOSmg==}
 
@@ -1630,6 +1639,12 @@ packages:
 
   '@types/d3-timer@3.0.2':
     resolution: {integrity: sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==}
+
+  '@types/d3-transition@3.0.9':
+    resolution: {integrity: sha512-uZS5shfxzO3rGlu0cC3bjmMFKsXv+SmZZcgp0KD22ts4uGXp5EVYGzu/0YdwZeKmddhcAccYtREJKkPfXkZuCg==}
+
+  '@types/d3-zoom@3.0.8':
+    resolution: {integrity: sha512-iqMC4/YlFCSlO8+2Ii1GGGliCAY4XdeG748w5vQUbevlbDu0zSjH/+jojorQVBK/se0j6DUFNPBGSqD3YWYnDw==}
 
   '@types/handlebars@4.1.0':
     resolution: {integrity: sha512-gq9YweFKNNB1uFK71eRqsd4niVkXrxHugqWFQkeLRJvGjnxsLr16bYtcsG4tOFwmYi0Bax+wCkbf1reUfdl4kA==}
@@ -1644,8 +1659,8 @@ packages:
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
 
-  '@types/node@20.17.54':
-    resolution: {integrity: sha512-aD9UeDW/GV8H54ESLKuvBHslOzXIKF4XTgHxvlCqUr7AsY9wnHFQQO3TrrAoaLmC113xe002YFFU8WCscD9W7g==}
+  '@types/node@20.17.57':
+    resolution: {integrity: sha512-f3T4y6VU4fVQDKVqJV4Uppy8c1p/sVvS3peyqxyWnzkqXFJLRU7Y1Bl7rMS1Qe9z0v4M6McY0Fp9yBsgHJUsWQ==}
 
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
@@ -1708,6 +1723,15 @@ packages:
         optional: true
       vue-router:
         optional: true
+
+  '@xyflow/react@12.6.4':
+    resolution: {integrity: sha512-/dOQ43Nu217cwHzy7f8kNUrFMeJJENzftVgT2VdFFHi6fHlG83pF+gLmvkRW9Be7alCsR6G+LFxxCdsQQbazHg==}
+    peerDependencies:
+      react: 18.2.0
+      react-dom: 18.2.0
+
+  '@xyflow/system@0.0.61':
+    resolution: {integrity: sha512-TsZG/Ez8dzxX6/Ol44LvFqVZsYvyz6dpDlAQZZk6hTL7JLGO5vN3dboRJqMwU8/Qtr5IEv5YBzojjAwIqW1HCA==}
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
@@ -1896,6 +1920,9 @@ packages:
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
 
+  classcat@5.0.5:
+    resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==}
+
   cli-cursor@3.1.0:
     resolution: {integrity: sha512-I/zHAwsKf9FqGoXM4WWRACob9+SNukZTd94DWF57E4toouRulbCxcUh6RKUEOQlYTHJnzkPMySvPNaaSLNfLZw==}
     engines: {node: '>=8'}
@@ -2021,6 +2048,14 @@ packages:
     resolution: {integrity: sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==}
     engines: {node: '>=12'}
 
+  d3-dispatch@3.0.1:
+    resolution: {integrity: sha512-rzUyPU/S7rwUflMyLc1ETDeBj0NRuHKKAcvukozwhshr6g6c5d8zh4c2gQjY2bZ0dXeGLWc1PF174P2tVvKhfg==}
+    engines: {node: '>=12'}
+
+  d3-drag@3.0.0:
+    resolution: {integrity: sha512-pWbUJLdETVA8lQNJecMxoXfH6x+mO2UQo8rSmZ+QqxcbyA3hfeprFgIT//HW2nlHChWeIIMwS2Fq+gEARkhTkg==}
+    engines: {node: '>=12'}
+
   d3-ease@3.0.1:
     resolution: {integrity: sha512-wR/XK3D3XcLIZwpbvQwQ5fK+8Ykds1ip7A2Txe0yxncXSdq1L9skcG7blcedkOX+ZcgxGAmLX1FrRGbADwzi0w==}
     engines: {node: '>=12'}
@@ -2041,6 +2076,10 @@ packages:
     resolution: {integrity: sha512-GZW464g1SH7ag3Y7hXjf8RoUuAFIqklOAq3MRl4OaWabTFJY9PN/E1YklhXLh+OQ3fM9yS2nOkCoS+WLZ6kvxQ==}
     engines: {node: '>=12'}
 
+  d3-selection@3.0.0:
+    resolution: {integrity: sha512-fmTRWbNMmsmWq6xJV8D19U/gw/bwrHfNXxrIN+HfZgnzqTHp9jOmKMhsTUjXOJnZOdZY9Q28y4yebKzqDKlxlQ==}
+    engines: {node: '>=12'}
+
   d3-shape@3.2.0:
     resolution: {integrity: sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA==}
     engines: {node: '>=12'}
@@ -2055,6 +2094,16 @@ packages:
 
   d3-timer@3.0.1:
     resolution: {integrity: sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==}
+    engines: {node: '>=12'}
+
+  d3-transition@3.0.1:
+    resolution: {integrity: sha512-ApKvfjsSR6tg06xrL434C0WydLr7JewBB3V+/39RMHsaXTOG0zmt/OAXeng5M5LBm0ojmxJrpomQVZ1aPvBL4w==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      d3-selection: 2 - 3
+
+  d3-zoom@3.0.0:
+    resolution: {integrity: sha512-b8AmV3kfQaqWAuacbPuNbL6vahnOJflOhexLzMMNLga62+/nh0JzvJ0aO/5a5MVgUFGS7Hu1P9P03o3fJkDCyw==}
     engines: {node: '>=12'}
 
   data-uri-to-buffer@4.0.1:
@@ -2365,12 +2414,12 @@ packages:
     resolution: {integrity: sha512-a4tiq7E0/5fTjxPAaH4jpjkSv/uCaU2p5KC6HVGrvl0cDjA8iBZv4vv1gyzlmK0ZUKqwpOyQMKzZQe3lTit77A==}
     engines: {node: '>=14'}
 
-  genkit-cli@1.10.0:
-    resolution: {integrity: sha512-YynRkaZlw6P7Bi17DsuJwYGYA46GCtf88Tvoop/0QxNfuwY61bBeKMSDsfqjx8Q1HbAgb0g0GPf+nITQfq3vkQ==}
+  genkit-cli@1.11.0:
+    resolution: {integrity: sha512-aBjenr54ediQigiumgbvilnkFS106Q2kZNSWQVi+cNE0403WcbeMfQvyEBfROx96qbwX1Uc4fNLnEmeSt6d2mQ==}
     hasBin: true
 
-  genkit@1.10.0:
-    resolution: {integrity: sha512-YiGnUxbf6+t7dgQFb40ZUkwTKJfCNm4B4xltD5WkH3ddmP9hO08s7ZHVYyvggQNEWNxhcCPsxzWEMyWrBLIwgg==}
+  genkit@1.11.0:
+    resolution: {integrity: sha512-cp7wFVF5YbyuQLUpii3lfAVXe+XjAsgTTG1mZkGz0dylfrSL2C5ikyjEi8QEJr6nOLrWJ+5jFTiYE5WlMe2X2A==}
 
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
@@ -3561,19 +3610,34 @@ packages:
     peerDependencies:
       zod: ^3.24.1
 
-  zod@3.25.41:
-    resolution: {integrity: sha512-8+sDJTGtCYIDBhdqDygp0ffj8kzziRKqAJPhpYObbElJ+3TRe/mnlnwH+/OMa3kKhueS4Drm5UMW00/u1p07zA==}
+  zod@3.25.42:
+    resolution: {integrity: sha512-PcALTLskaucbeHc41tU/xfjfhcz8z0GdhhDcSgrCTmSazUuqnYqiXO63M0QUBVwpBlsLsNVn5qHSC5Dw3KZvaQ==}
+
+  zustand@4.5.7:
+    resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
+    engines: {node: '>=12.7.0'}
+    peerDependencies:
+      '@types/react': 18.2.0
+      immer: '>=9.0.6'
+      react: 18.2.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
 
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@asteasolutions/zod-to-openapi@7.3.2(zod@3.25.41)':
+  '@asteasolutions/zod-to-openapi@7.3.2(zod@3.25.42)':
     dependencies:
       openapi3-ts: 4.4.0
-      zod: 3.25.41
+      zod: 3.25.42
 
-  '@babel/runtime@7.27.3': {}
+  '@babel/runtime@7.27.4': {}
 
   '@colors/colors@1.6.0': {}
 
@@ -3998,11 +4062,11 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@genkit-ai/ai@1.10.0':
+  '@genkit-ai/ai@1.11.0':
     dependencies:
-      '@genkit-ai/core': 1.10.0
+      '@genkit-ai/core': 1.11.0
       '@opentelemetry/api': 1.9.0
-      '@types/node': 20.17.54
+      '@types/node': 20.17.57
       colorette: 2.0.20
       dotprompt: 1.1.1
       json5: 2.2.3
@@ -4012,7 +4076,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@genkit-ai/core@1.10.0':
+  '@genkit-ai/core@1.11.0':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/context-async-hooks': 1.30.1(@opentelemetry/api@1.9.0)
@@ -4030,31 +4094,31 @@ snapshots:
       express: 4.21.2
       get-port: 5.1.1
       json-schema: 0.4.0
-      zod: 3.25.41
-      zod-to-json-schema: 3.24.5(zod@3.25.41)
+      zod: 3.25.42
+      zod-to-json-schema: 3.24.5(zod@3.25.42)
     transitivePeerDependencies:
       - supports-color
 
-  '@genkit-ai/googleai@1.10.0(genkit@1.10.0)':
+  '@genkit-ai/googleai@1.11.0(genkit@1.11.0)':
     dependencies:
       '@google/generative-ai': 0.24.1
-      genkit: 1.10.0
+      genkit: 1.11.0
       google-auth-library: 9.15.1
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - encoding
       - supports-color
 
-  '@genkit-ai/next@1.10.0(genkit@1.10.0)(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(zod@3.25.41)':
+  '@genkit-ai/next@1.11.0(genkit@1.11.0)(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(zod@3.25.42)':
     dependencies:
-      genkit: 1.10.0
+      genkit: 1.11.0
       next: 15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      zod: 3.25.41
+      zod: 3.25.42
 
-  '@genkit-ai/telemetry-server@1.10.0':
+  '@genkit-ai/telemetry-server@1.11.0':
     dependencies:
-      '@asteasolutions/zod-to-openapi': 7.3.2(zod@3.25.41)
-      '@genkit-ai/tools-common': 1.10.0
+      '@asteasolutions/zod-to-openapi': 7.3.2(zod@3.25.42)
+      '@genkit-ai/tools-common': 1.11.0
       '@google-cloud/firestore': 7.11.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/context-async-hooks': 1.30.1(@opentelemetry/api@1.9.0)
@@ -4065,15 +4129,15 @@ snapshots:
       async-mutex: 0.5.0
       express: 4.21.2
       lockfile: 1.0.4
-      zod: 3.25.41
+      zod: 3.25.42
     transitivePeerDependencies:
       - debug
       - encoding
       - supports-color
 
-  '@genkit-ai/tools-common@1.10.0':
+  '@genkit-ai/tools-common@1.11.0':
     dependencies:
-      '@asteasolutions/zod-to-openapi': 7.3.2(zod@3.25.41)
+      '@asteasolutions/zod-to-openapi': 7.3.2(zod@3.25.42)
       '@trpc/server': 10.45.2
       adm-zip: 0.5.16
       ajv: 8.17.1
@@ -4096,8 +4160,8 @@ snapshots:
       uuid: 9.0.1
       winston: 3.17.0
       yaml: 2.8.0
-      zod: 3.25.41
-      zod-to-json-schema: 3.24.5(zod@3.25.41)
+      zod: 3.25.42
+      zod-to-json-schema: 3.24.5(zod@3.25.42)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -4123,7 +4187,7 @@ snapshots:
   '@grpc/grpc-js@1.9.15':
     dependencies:
       '@grpc/proto-loader': 0.7.15
-      '@types/node': 20.17.54
+      '@types/node': 20.17.57
 
   '@grpc/proto-loader@0.7.15':
     dependencies:
@@ -5111,6 +5175,10 @@ snapshots:
 
   '@types/d3-color@3.1.3': {}
 
+  '@types/d3-drag@3.0.7':
+    dependencies:
+      '@types/d3-selection': 3.0.11
+
   '@types/d3-ease@3.0.2': {}
 
   '@types/d3-interpolate@3.0.4':
@@ -5123,6 +5191,8 @@ snapshots:
     dependencies:
       '@types/d3-time': 3.0.4
 
+  '@types/d3-selection@3.0.11': {}
+
   '@types/d3-shape@3.1.7':
     dependencies:
       '@types/d3-path': 3.1.1
@@ -5130,6 +5200,15 @@ snapshots:
   '@types/d3-time@3.0.4': {}
 
   '@types/d3-timer@3.0.2': {}
+
+  '@types/d3-transition@3.0.9':
+    dependencies:
+      '@types/d3-selection': 3.0.11
+
+  '@types/d3-zoom@3.0.8':
+    dependencies:
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-selection': 3.0.11
 
   '@types/handlebars@4.1.0':
     dependencies:
@@ -5141,7 +5220,7 @@ snapshots:
 
   '@types/long@4.0.2': {}
 
-  '@types/node@20.17.54':
+  '@types/node@20.17.57':
     dependencies:
       undici-types: 6.19.8
 
@@ -5160,7 +5239,7 @@ snapshots:
   '@types/request@2.48.12':
     dependencies:
       '@types/caseless': 0.12.5
-      '@types/node': 20.17.54
+      '@types/node': 20.17.57
       '@types/tough-cookie': 4.0.5
       form-data: 2.5.3
 
@@ -5185,13 +5264,34 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 20.17.54
+      '@types/node': 20.17.57
     optional: true
 
   '@vercel/analytics@1.5.0(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react@18.2.0)':
     optionalDependencies:
       next: 15.3.3(@opentelemetry/api@1.9.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react: 18.2.0
+
+  '@xyflow/react@12.6.4(@types/react@18.2.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+    dependencies:
+      '@xyflow/system': 0.0.61
+      classcat: 5.0.5
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      zustand: 4.5.7(@types/react@18.2.0)(react@18.2.0)
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+
+  '@xyflow/system@0.0.61':
+    dependencies:
+      '@types/d3-drag': 3.0.7
+      '@types/d3-selection': 3.0.11
+      '@types/d3-transition': 3.0.9
+      '@types/d3-zoom': 3.0.8
+      d3-drag: 3.0.0
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
 
   '@yarnpkg/lockfile@1.1.0': {}
 
@@ -5387,6 +5487,8 @@ snapshots:
     dependencies:
       clsx: 2.1.1
 
+  classcat@5.0.5: {}
+
   cli-cursor@3.1.0:
     dependencies:
       restore-cursor: 3.1.0
@@ -5498,6 +5600,13 @@ snapshots:
 
   d3-color@3.1.0: {}
 
+  d3-dispatch@3.0.1: {}
+
+  d3-drag@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-selection: 3.0.0
+
   d3-ease@3.0.1: {}
 
   d3-format@3.1.0: {}
@@ -5516,6 +5625,8 @@ snapshots:
       d3-time: 3.1.0
       d3-time-format: 4.1.0
 
+  d3-selection@3.0.0: {}
+
   d3-shape@3.2.0:
     dependencies:
       d3-path: 3.1.0
@@ -5529,6 +5640,23 @@ snapshots:
       d3-array: 3.2.4
 
   d3-timer@3.0.1: {}
+
+  d3-transition@3.0.1(d3-selection@3.0.0):
+    dependencies:
+      d3-color: 3.1.0
+      d3-dispatch: 3.0.1
+      d3-ease: 3.0.1
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-timer: 3.0.1
+
+  d3-zoom@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-transition: 3.0.1(d3-selection@3.0.0)
 
   data-uri-to-buffer@4.0.1: {}
 
@@ -5577,7 +5705,7 @@ snapshots:
 
   dom-helpers@5.2.1:
     dependencies:
-      '@babel/runtime': 7.27.3
+      '@babel/runtime': 7.27.4
       csstype: 3.1.3
 
   dot-prop@5.3.0:
@@ -5914,10 +6042,10 @@ snapshots:
       - encoding
       - supports-color
 
-  genkit-cli@1.10.0:
+  genkit-cli@1.11.0:
     dependencies:
-      '@genkit-ai/telemetry-server': 1.10.0
-      '@genkit-ai/tools-common': 1.10.0
+      '@genkit-ai/telemetry-server': 1.11.0
+      '@genkit-ai/tools-common': 1.11.0
       axios: 1.9.0
       colorette: 2.0.20
       commander: 11.1.0
@@ -5931,10 +6059,10 @@ snapshots:
       - encoding
       - supports-color
 
-  genkit@1.10.0:
+  genkit@1.11.0:
     dependencies:
-      '@genkit-ai/ai': 1.10.0
-      '@genkit-ai/core': 1.10.0
+      '@genkit-ai/ai': 1.11.0
+      '@genkit-ai/core': 1.11.0
       uuid: 10.0.0
     transitivePeerDependencies:
       - supports-color
@@ -6304,7 +6432,7 @@ snapshots:
 
   mathjs@13.2.3:
     dependencies:
-      '@babel/runtime': 7.27.3
+      '@babel/runtime': 7.27.4
       complex.js: 2.4.2
       decimal.js: 10.5.0
       escape-latex: 1.2.0
@@ -6578,7 +6706,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 20.17.54
+      '@types/node': 20.17.57
       long: 5.3.2
 
   proxy-addr@2.0.7:
@@ -6668,7 +6796,7 @@ snapshots:
 
   react-transition-group@4.4.5(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
-      '@babel/runtime': 7.27.3
+      '@babel/runtime': 7.27.4
       dom-helpers: 5.2.1
       loose-envify: 1.4.0
       prop-types: 15.8.1
@@ -7224,8 +7352,15 @@ snapshots:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
 
-  zod-to-json-schema@3.24.5(zod@3.25.41):
+  zod-to-json-schema@3.24.5(zod@3.25.42):
     dependencies:
-      zod: 3.25.41
+      zod: 3.25.42
 
-  zod@3.25.41: {}
+  zod@3.25.42: {}
+
+  zustand@4.5.7(@types/react@18.2.0)(react@18.2.0):
+    dependencies:
+      use-sync-external-store: 1.5.0(react@18.2.0)
+    optionalDependencies:
+      '@types/react': 18.2.0
+      react: 18.2.0
