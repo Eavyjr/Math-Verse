@@ -4,8 +4,8 @@ import { Inter, Fira_Code } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import { AuthProvider } from '@/context/auth-context'; // Ensure this is uncommented
-import { Toaster } from '@/components/ui/toaster'; // Ensure this is uncommented
+import { AuthProvider } from '@/context/auth-context'; 
+import { Toaster } from '@/components/ui/toaster'; 
 import FloatingChatbotButton from '@/components/chatbot/floating-chatbot-button';
 import KatexLoader from '@/components/layout/katex-loader';
 
@@ -25,25 +25,6 @@ export const metadata: Metadata = {
   description: 'MathVerse: Your Universe for Mathematical Exploration and AI Assistance.',
 };
 
-// Function to handle KaTeX auto-render script load
-// This function is defined globally or passed appropriately if KatexLoader needs it.
-// For this setup, KatexLoader handles its own script loading.
-// const handleKatexAutoRenderLoad = () => {
-//   if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-//     document.body.querySelectorAll('.render-math').forEach(el => {
-//       (window as any).renderMathInElement(el, {
-//         delimiters: [
-//           {left: '$$', right: '$$', display: true},
-//           {left: '$', right: '$', display: false},
-//           {left: '\\\[', right: '\\\]', display: true},
-//           {left: '\\\(', right: '\\\)', display: false}
-//         ]
-//       });
-//     });
-//   }
-// };
-
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,18 +40,17 @@ export default function RootLayout({
         <script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
       </head>
       <body className={`${inter.variable} ${firaCode.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
-        <AuthProvider> {/* Ensure AuthProvider wraps components that need auth context */}
+        <AuthProvider>
+          <div className="page-loading-bar" /> {/* Added page loading bar */}
           <Header />
           <main className="flex-grow container mx-auto px-4 py-8">
             {children}
           </main>
           <Footer />
-          <Toaster /> {/* Re-enabled for auth notifications */}
+          <Toaster /> 
           <FloatingChatbotButton />
           <KatexLoader /> 
         </AuthProvider>
-        {/* Vercel Analytics can be here if re-enabled */}
-        {/* <Analytics /> */}
       </body>
     </html>
   );

@@ -123,3 +123,26 @@ body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Simple Page Load Indicator */
+@keyframes pageload-progress {
+  0% { width: 0%; opacity: 1; }
+  80% { width: 90%; opacity: 1; } /* Simulate a realistic loading pattern */
+  100% { width: 100%; opacity: 0; }
+}
+
+.page-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px; /* Can be adjusted */
+  background-color: hsl(var(--accent)); /* Use accent color from theme */
+  width: 0%; /* Start with 0 width */
+  z-index: 9999; /* Ensure it's on top */
+  animation: pageload-progress 1.5s ease-out forwards; /* Adjust duration as needed */
+}
+
+/* Fade-in animation using Tailwind's animate-in and utility classes */
+.fade-in-content {
+  @apply animate-in fade-in duration-500 ease-out;
+}

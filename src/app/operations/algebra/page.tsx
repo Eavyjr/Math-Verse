@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info } from 'lucide-react';
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
+import { cn } from '@/lib/utils';
 
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
@@ -227,7 +228,7 @@ export default function BasicAlgebraCalculatorPage() {
           )}
 
           {error && !isLoading && (
-            <Alert variant="destructive" className="mt-6">
+            <Alert variant="destructive" className={cn("mt-6", error ? 'fade-in-content' : '')}>
               <AlertTriangle className="h-5 w-5" />
               <AlertTitle className="font-semibold">Processing Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
@@ -235,7 +236,7 @@ export default function BasicAlgebraCalculatorPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <Card className="mt-6 border-accent border-t-4 shadow-md">
+            <Card className={cn("mt-6 border-accent border-t-4 shadow-md", apiResponse ? 'fade-in-content' : '')}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />

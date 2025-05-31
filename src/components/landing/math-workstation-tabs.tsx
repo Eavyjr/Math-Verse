@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 const workstations = [
   {
@@ -96,7 +97,7 @@ export default function MathWorkstationTabs() {
         </div>
         {workstations.map((ws) => (
           <TabsContent key={ws.value} value={ws.value}>
-            <Card className="shadow-xl border-t-4 border-primary mt-2">
+            <Card className={cn("shadow-xl border-t-4 border-primary mt-2 transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-1", ws.value === workstations[0].value ? 'fade-in-content' : '')}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center">
                   {ws.icon} {ws.title}

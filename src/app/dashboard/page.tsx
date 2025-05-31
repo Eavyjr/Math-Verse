@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Loader2, LogOut, Settings, UserCircle } from 'lucide-react'; // Added icons
+import { Loader2, LogOut, Settings, UserCircle } from 'lucide-react'; 
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user, isLoading, signOut } = useAuth();
@@ -29,8 +30,6 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    // This state should ideally not be reached due to the redirect,
-    // but it's a fallback or for the brief moment before redirection.
     return (
       <div className="flex min-h-[calc(100vh-var(--header-height,100px)-var(--footer-height,80px))] flex-col items-center justify-center">
         <p className="text-muted-foreground">Redirecting to sign-in...</p>
@@ -58,7 +57,7 @@ export default function DashboardPage() {
           <CardDescription>Here's a summary of your activity and quick links.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">My Workstations</CardTitle>
               <UserCircle className="h-5 w-5 text-muted-foreground" />
@@ -73,7 +72,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Account Settings</CardTitle>
               <Settings className="h-5 w-5 text-muted-foreground" />
@@ -88,8 +87,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          {/* Add more summary cards here as features get built (e.g., saved graphs, history) */}
-          <Card className="hover:shadow-md transition-shadow md:col-span-2 lg:col-span-1">
+          <Card className="transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 md:col-span-2 lg:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" className="h-5 w-5 text-muted-foreground"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>

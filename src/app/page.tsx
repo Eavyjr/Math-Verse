@@ -12,6 +12,7 @@ import FunTriviaSection from '@/components/landing/fun-trivia-section';
 import NewsletterForm from '@/components/landing/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Brain } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function HomePage() {
   const [aiResponse, setAiResponse] = useState<ClassifyExpressionOutput | null>(null);
@@ -24,11 +25,8 @@ export default function HomePage() {
       setAiResponse(data);
       setError(null);
     } else {
-      // This case could happen if the action returned { data: null, error: null }
-      // or if data was somehow cleared before reaching here.
       console.log("HomePage received null data for AI result. Clearing previous response.");
       setAiResponse(null); 
-      // setError might have been set by handleAiError already if the action returned an error.
     }
   };
 
@@ -85,15 +83,14 @@ export default function HomePage() {
             </div>
           )}
           {error && !isLoading && (
-            <Alert variant="destructive" className="mt-4">
+            <Alert variant="destructive" className={cn("mt-4", error ? 'fade-in-content' : '')}>
               <AlertCircle className="h-5 w-5" />
               <AlertTitle>Classifier Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {/* Render AiGuidance and VisualizationPlaceholder only if there's a valid aiResponse */}
           {aiResponse && !isLoading && !error && (
-            <div className="mt-6 space-y-6">
+            <div className={cn("mt-6 space-y-6", aiResponse ? 'fade-in-content' : '')}>
               <AiGuidance 
                 classification={aiResponse.classification} 
                 solutionStrategies={aiResponse.solutionStrategies} 

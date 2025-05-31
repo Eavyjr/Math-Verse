@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { generateMathTrivia, type GenerateMathTriviaOutput } from '@/ai/flows/generate-math-trivia';
 import { Lightbulb, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export default function FunTriviaSection() {
   const [trivia, setTrivia] = useState<GenerateMathTriviaOutput | null>(null);
@@ -16,8 +17,9 @@ export default function FunTriviaSection() {
   const fetchTrivia = async () => {
     setIsLoading(true);
     setError(null);
+    setTrivia(null); // Clear previous trivia before fetching new one
     try {
-      const result = await generateMathTrivia({ topic: 'general' }); // Or allow topic selection
+      const result = await generateMathTrivia({ topic: 'general' }); 
       setTrivia(result);
     } catch (e) {
       console.error("Error fetching trivia:", e);
@@ -28,13 +30,13 @@ export default function FunTriviaSection() {
   };
 
   useEffect(() => {
-    fetchTrivia(); // Initial fetch
+    fetchTrivia(); 
 
     const intervalId = setInterval(() => {
       fetchTrivia();
-    }, 60000); // Refresh every 60 seconds
+    }, 60000); 
 
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    return () => clearInterval(intervalId); 
   }, []);
 
   return (
@@ -50,20 +52,20 @@ export default function FunTriviaSection() {
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading && (
-          <div className="space-y-2">
+          <div className="space-y-2 min-h-[60px]">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-2/3" />
           </div>
         )}
         {error && !isLoading && (
-          <div className="text-destructive flex items-center gap-2">
+          <div className={cn("text-destructive flex items-center gap-2 min-h-[60px]", error ? 'fade-in-content' : '')}>
             <AlertTriangle className="h-5 w-5" />
             <p>{error}</p>
           </div>
         )}
         {!isLoading && !error && trivia && (
-          <p className="text-md text-foreground/90 p-4 bg-secondary rounded-md min-h-[60px]">
+          <p className={cn("text-md text-foreground/90 p-4 bg-secondary rounded-md min-h-[60px]", trivia ? 'fade-in-content' : '')}>
             {trivia.trivia}
           </p>
         )}
