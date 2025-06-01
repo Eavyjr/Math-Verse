@@ -21,8 +21,9 @@ import {
   Waypoints,
   Loader2,
   AlertTriangle,
-  SearchCheck, // For DFS
-  Route, // For Dijkstra
+  SearchCheck, 
+  Route, 
+  MousePointerSquare, // For visual editor tab
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -34,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertTitle, AlertDescription as AlertDescUI } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
+import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange, type OnNodesDelete, Panel } from '@xyflow/react';
 
 interface Node {
   id: string;
@@ -134,13 +135,17 @@ export default function GraphTheoryPage() {
   const highlightedEdgeStyle = { ...defaultEdgeStyle, stroke: 'hsl(var(--accent))', strokeWidth: 4 };
 
   useEffect(() => {
-    const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
-      id: node.id,
-      data: { label: node.label },
-      position: { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 }, 
-      type: 'default', 
-      style: defaultNodeStyle,
-    }));
+    const newRfNodesData: RFNode[] = nodes.map((node, index) => {
+      // Try to preserve existing positions if node already in rfNodes
+      const existingRfNode = rfNodes.find(rfn => rfn.id === node.id);
+      return {
+        id: node.id,
+        data: { label: node.label },
+        position: existingRfNode?.position || { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 }, 
+        type: 'default', 
+        style: defaultNodeStyle,
+      };
+    });
 
     const newRfEdgesData: RFEdge[] = edges.map(edge => ({
       id: edge.id,
@@ -158,7 +163,7 @@ export default function GraphTheoryPage() {
     
     setRfNodesState(newRfNodesData);
     setRfEdgesState(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
+  }, [nodes, edges, isDirected, isWeighted]); // Removed setRfNodesState, setRfEdgesState from deps as they are stable
 
   useEffect(() => {
     if (nodes.length === 0) { setAdjacencyMatrix([]); return; }
@@ -296,7 +301,7 @@ export default function GraphTheoryPage() {
   const findPathDFSLogic = (startId: string, endId: string): string[] | null => {
     if (!nodes.find(n => n.id === startId) || !nodes.find(n => n.id === endId)) return null;
     const stack: { nodeId: string, path: string[] }[] = [{ nodeId: startId, path: [startId] }];
-    const visitedInCurrentPath = new Set<string>(); // To avoid cycles in path
+    const visitedInCurrentPath = new Set<string>(); 
     while (stack.length > 0) {
         const { nodeId, path } = stack.pop()!;
         if (nodeId === endId) return path;
@@ -307,8 +312,8 @@ export default function GraphTheoryPage() {
             .concat(!isDirected ? edges.filter(edge => edge.target === nodeId).map(edge => edge.source) : []);
         const uniqueNeighbors = Array.from(new Set(neighbors));
 
-        for (const neighborId of uniqueNeighbors.reverse()) { // Process in reverse to mimic typical recursive DFS order from some textbooks
-            if (!path.includes(neighborId)) { // Check if neighbor is already in current path to avoid cycles
+        for (const neighborId of uniqueNeighbors.reverse()) { 
+            if (!path.includes(neighborId)) { 
                 stack.push({ nodeId: neighborId, path: [...path, neighborId] });
             }
         }
@@ -330,16 +335,15 @@ export default function GraphTheoryPage() {
     }, 300);
   };
   
-  // Dijkstra's Algorithm
   const findShortestPathDijkstraLogic = (startId: string, endId: string): { path: string[] | null, cost: number | null } => {
-    if (!isWeighted) return { path: null, cost: null }; // Dijkstra requires weights
+    if (!isWeighted) return { path: null, cost: null }; 
     const startNodeExists = nodes.some(n => n.id === startId);
     const endNodeExists = nodes.some(n => n.id === endId);
     if (!startNodeExists || !endNodeExists) return { path: null, cost: null };
 
     const distances: Record<string, number> = {};
     const predecessors: Record<string, string | null> = {};
-    const pq: Set<string> = new Set(); // Using Set as a simple priority queue substitute
+    const pq: Set<string> = new Set(); 
 
     nodes.forEach(node => {
         distances[node.id] = Infinity;
@@ -350,40 +354,25 @@ export default function GraphTheoryPage() {
 
     while (pq.size > 0) {
         let u: string | null = null;
-        // Find node in pq with smallest distance
         pq.forEach(nodeId => {
-            if (u === null || distances[nodeId] < distances[u]) {
-                u = nodeId;
-            }
+            if (u === null || distances[nodeId] < distances[u!]) { u = nodeId; }
         });
-
-        if (u === null || distances[u] === Infinity) break; // All remaining nodes are inaccessible
+        if (u === null || distances[u] === Infinity) break; 
         pq.delete(u);
-
-        if (u === endId) break; // Reached destination
+        if (u === endId) break; 
 
         edges.filter(edge => edge.source === u || (!isDirected && edge.target === u))
             .forEach(edge => {
                 const v = edge.source === u ? edge.target : edge.source;
-                const weight = edge.weight === undefined ? 1 : edge.weight; // Assume 1 if unweighted edge in weighted graph context
+                const weight = edge.weight === undefined ? 1 : edge.weight; 
                 if (weight < 0) throw new Error("Dijkstra's algorithm does not support negative edge weights.");
-
                 const alt = distances[u!] + weight;
-                if (alt < distances[v]) {
-                    distances[v] = alt;
-                    predecessors[v] = u;
-                }
+                if (alt < distances[v]) { distances[v] = alt; predecessors[v] = u; }
             });
     }
-    
-    if (distances[endId] === Infinity) return { path: null, cost: null }; // No path
-
-    const path: string[] = [];
-    let current: string | null = endId;
-    while (current) {
-        path.unshift(current);
-        current = predecessors[current];
-    }
+    if (distances[endId] === Infinity) return { path: null, cost: null }; 
+    const path: string[] = []; let current: string | null = endId;
+    while (current) { path.unshift(current); current = predecessors[current]; }
     return (path[0] === startId) ? { path, cost: distances[endId] } : { path: null, cost: null };
   };
 
@@ -393,7 +382,6 @@ export default function GraphTheoryPage() {
     if (!isWeighted) { setErrorDijkstra("Dijkstra's algorithm requires a weighted graph. Please enable weights."); return; }
     if (!start || !end) { setErrorDijkstra("Please enter both Start and End node IDs."); return; }
     if (!nodes.find(n => n.id === start) || !nodes.find(n => n.id === end)) { setErrorDijkstra("One or both specified nodes do not exist."); return; }
-    
     setIsRunningDijkstra(true); setErrorDijkstra(null); setFoundPathDijkstra(null); setCostDijkstra(null);
     setTimeout(() => {
         try {
@@ -401,17 +389,36 @@ export default function GraphTheoryPage() {
             if (result.path && result.cost !== null) {
                 setFoundPathDijkstra(result.path); setCostDijkstra(result.cost); highlightPathOnGraph(result.path);
                 toast({title: "Dijkstra's Path Found!", description: `Shortest path from ${start} to ${end} (Cost: ${result.cost}): ${result.path.join(' → ')}`});
-            } else {
-                setErrorDijkstra(`No path found from ${start} to ${end} using Dijkstra's algorithm.`);
-                toast({title: "Dijkstra's Path Not Found", variant: "destructive"});
-            }
-        } catch (e: any) {
-            setErrorDijkstra(e.message || "An error occurred during Dijkstra's calculation.");
-            toast({title: "Dijkstra's Error", description: e.message, variant: "destructive"});
-        }
+            } else { setErrorDijkstra(`No path found from ${start} to ${end} using Dijkstra's algorithm.`); toast({title: "Dijkstra's Path Not Found", variant: "destructive"}); }
+        } catch (e: any) { setErrorDijkstra(e.message || "An error occurred during Dijkstra's calculation."); toast({title: "Dijkstra's Error", description: e.message, variant: "destructive"}); }
         setIsRunningDijkstra(false);
     }, 300);
   };
+
+  const handleAddNodeVisual = () => {
+    const existingNodeIds = new Set(nodes.map(n => n.id));
+    let newNodeId = '';
+    let counter = nodes.length + 1;
+    do {
+        newNodeId = `N${counter}`;
+        counter++;
+    } while (existingNodeIds.has(newNodeId));
+    const newNodeData: Node = { id: newNodeId, label: newNodeId };
+    setNodes(prevNodes => [...prevNodes, newNodeData]);
+    toast({ title: "Node Added", description: `Node ${newNodeId} added.` });
+  };
+
+  const onNodesDeleteFromVisual: OnNodesDelete = useCallback(
+    (deletedRfNodes) => {
+      if (deletedRfNodes.length > 0) {
+        const deletedNodeIds = new Set(deletedRfNodes.map(n => n.id));
+        setNodes(prevNodes => prevNodes.filter(node => !deletedNodeIds.has(node.id)));
+        setEdges(prevEdges => prevEdges.filter(edge => !deletedNodeIds.has(edge.source) && !deletedNodeIds.has(edge.target)));
+        toast({ title: "Node(s) Deleted", description: `${deletedRfNodes.length} node(s) and associated edges removed from the graph via visual editor.` });
+      }
+    },
+    [setNodes, setEdges, toast]
+  );
 
   const renderEdgeInputTable = () => (
     <Card className="h-full flex flex-col">
@@ -434,6 +441,48 @@ export default function GraphTheoryPage() {
       </CardContent>
     </Card>
   );
+
+  const renderVisualEditorTab = () => (
+    <Card className="h-full flex flex-col">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="text-lg">Visual Graph Editor</CardTitle>
+            <CardDescription>Drag nodes, add new ones, or delete nodes. Edges are managed in the Grid Editor.</CardDescription>
+          </div>
+          <Button onClick={handleAddNodeVisual} size="sm">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Node
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow relative flex items-center justify-center bg-muted/30 rounded-md min-h-[500px]">
+        <ReactFlow
+          nodes={rfNodes}
+          edges={rfEdges}
+          onNodesChange={onRfNodesChange}
+          onEdgesChange={onRfEdgesChange}
+          onNodesDelete={onNodesDeleteFromVisual}
+          fitView
+          deleteKeyCode={['Backspace', 'Delete']}
+          attributionPosition="bottom-right"
+          className="bg-muted/30 rounded-md"
+        >
+          <Controls />
+          <MiniMap nodeStrokeWidth={3} zoomable pannable />
+          <Background gap={16} color="hsl(var(--border))" />
+          <Panel position="top-left" className="p-2 bg-card border rounded-md shadow">
+             <p className="text-xs text-muted-foreground">Select nodes and press Delete/Backspace to remove.</p>
+          </Panel>
+        </ReactFlow>
+      </CardContent>
+      <CardFooter className="p-2 bg-secondary/30 border-t">
+        <p className="text-xs text-muted-foreground">
+          Nodes added here will appear in the Grid Editor. Edge creation/weight editing via Grid Editor.
+        </p>
+      </CardFooter>
+    </Card>
+  );
+
 
   const renderAdjacencyMatrix = () => (
     <Card className="h-full flex flex-col">
@@ -458,8 +507,6 @@ export default function GraphTheoryPage() {
   const renderAlgorithmsTab = () => (
     <div className="space-y-6">
       <Button onClick={clearAllAlgorithmVisuals} variant="outline" className="w-full sm:w-auto"><Trash2 className="mr-2 h-4 w-4"/> Clear All Algorithm Results & Highlights</Button>
-      
-      {/* BFS Section */}
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary" />Breadth-First Search (BFS) Pathfinding</CardTitle><CardDescription>Finds the shortest path in terms of number of edges.</CardDescription></CardHeader>
         <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-bfs">Start Node ID</Label><Input id="start-node-bfs" placeholder="e.g., A" value={startNodeBFS} onChange={e => setStartNodeBFS(e.target.value.toUpperCase())} className="uppercase"/></div><div><Label htmlFor="end-node-bfs">End Node ID</Label><Input id="end-node-bfs" placeholder="e.g., Z" value={endNodeBFS} onChange={e => setEndNodeBFS(e.target.value.toUpperCase())} className="uppercase"/></div></div>
@@ -468,8 +515,6 @@ export default function GraphTheoryPage() {
           {foundPathBFS && !errorBFS && (<Alert variant="default" className="border-green-500"><Waypoints className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">BFS Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">{foundPathBFS.join(' → ')}</AlertDescUI></Alert>)}
         </CardContent>
       </Card>
-
-      {/* DFS Section */}
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><SearchCheck className="mr-2 h-5 w-5 text-primary" />Depth-First Search (DFS) Pathfinding</CardTitle><CardDescription>Finds a path between two nodes (not necessarily the shortest).</CardDescription></CardHeader>
         <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-dfs">Start Node ID</Label><Input id="start-node-dfs" placeholder="e.g., A" value={startNodeDFS} onChange={e => setStartNodeDFS(e.target.value.toUpperCase())} className="uppercase"/></div><div><Label htmlFor="end-node-dfs">End Node ID</Label><Input id="end-node-dfs" placeholder="e.g., Z" value={endNodeDFS} onChange={e => setEndNodeDFS(e.target.value.toUpperCase())} className="uppercase"/></div></div>
@@ -478,8 +523,6 @@ export default function GraphTheoryPage() {
           {foundPathDFS && !errorDFS && (<Alert variant="default" className="border-green-500"><SearchCheck className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">DFS Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">{foundPathDFS.join(' → ')}</AlertDescUI></Alert>)}
         </CardContent>
       </Card>
-      
-      {/* Dijkstra's Section */}
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><Route className="mr-2 h-5 w-5 text-primary" />Dijkstra's Shortest Path</CardTitle><CardDescription>Finds the shortest path in a weighted graph. Requires 'Weighted' graph type to be enabled.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
@@ -501,9 +544,9 @@ export default function GraphTheoryPage() {
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 border rounded-md bg-secondary/30"><div><Label className="block text-md font-semibold text-foreground mb-1">Graph Type</Label><Select value={isDirected ? "directed" : "undirected"} onValueChange={(val) => setIsDirected(val === "directed")}><SelectTrigger className="w-full"><SelectValue placeholder="Select graph directionality" /></SelectTrigger><SelectContent><SelectItem value="undirected">Undirected</SelectItem><SelectItem value="directed">Directed</SelectItem></SelectContent></Select></div><div><Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label><Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => { setIsWeighted(val === "weighted"); if (val === "unweighted") setNewEdgeWeight(''); }}><SelectTrigger className="w-full"><SelectValue placeholder="Select edge weight type" /></SelectTrigger><SelectContent><SelectItem value="unweighted">Unweighted</SelectItem><SelectItem value="weighted">Weighted</SelectItem></SelectContent></Select></div></div>
           <Tabs defaultValue="grid-editor" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><TableIcon className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Projector className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><TableIcon className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><MousePointerSquare className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
             <TabsContent value="grid-editor" className="mt-4 min-h-[600px] space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderEdgeInputTable()}</div><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderGraphVisualization()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderAdjacencyMatrix()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderIncidenceMatrix()}</div></div>{renderGraphProperties()}</TabsContent>
-            <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]"><Card className="h-full"><CardHeader><CardTitle>Visual Graph Builder</CardTitle><CardDescription>Interactive graph creation tools are under development.</CardDescription></CardHeader><CardContent className="flex items-center justify-center h-[500px] border-2 border-dashed border-border rounded-md bg-muted/30"><div className="text-center text-muted-foreground"><Projector className="h-24 w-24 mx-auto mb-4 opacity-50" /><p className="text-lg">Our interactive visual graph builder is coming soon!</p><p>You'll be able to drag, drop, and design your graphs with ease. For now, please use the "Grid Editor" tab.</p></div></CardContent></Card></TabsContent>
+            <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]">{renderVisualEditorTab()}</TabsContent>
             <TabsContent value="algorithms" className="mt-4 min-h-[600px]">{renderAlgorithmsTab()}</TabsContent>
             <TabsContent value="properties" className="mt-4 min-h-[600px]"><Card><CardHeader><CardTitle className="flex items-center"><BookOpen className="mr-2 h-6 w-6" /> Graph Theory Concepts & Learning</CardTitle><CardDescription>Explore fundamental concepts in graph theory.</CardDescription></CardHeader><CardContent className="space-y-4 text-sm"><p className="text-base text-foreground/90 leading-relaxed">Graph theory is the study of graphs, which are mathematical structures used to model pairwise relations between objects. A graph in this context is made up of <em>vertices</em> (also called nodes or points) which are connected by <em>edges</em> (also called links or lines).</p><Accordion type="multiple" className="w-full"><AccordionItem value="item-1"><AccordionTrigger className="text-md font-semibold">What is a Graph?</AccordionTrigger><AccordionContent className="space-y-2 p-2"><p>A graph G = (V, E) consists of:</p><ul className="list-disc pl-5 space-y-1"><li><strong>V (Vertices):</strong> A finite set of points or nodes. These represent the objects in our model.</li><li><strong>E (Edges):</strong> A set of pairs of vertices, representing connections or relationships between them. An edge e = (u, v) connects vertex u to vertex v.</li></ul><p>Graphs are incredibly versatile and can represent many real-world scenarios, like social networks, road systems, computer networks, and molecular structures.</p></AccordionContent></AccordionItem><AccordionItem value="item-2"><AccordionTrigger className="text-md font-semibold">Types of Graphs</AccordionTrigger><AccordionContent className="space-y-2 p-2"><ul className="list-disc pl-5 space-y-1"><li><strong>Directed Graph (Digraph):</strong> Edges have a direction (e.g., a one-way street). An edge (u,v) is different from (v,u).</li><li><strong>Undirected Graph:</strong> Edges have no direction (e.g., a friendship connection). An edge (u,v) is the same as (v,u).</li><li><strong>Weighted Graph:</strong> Each edge has an associated numerical value, called a weight or cost (e.g., distance between cities).</li><li><strong>Unweighted Graph:</strong> Edges do not have weights, or all weights are implicitly 1.</li><li><strong>Simple Graph:</strong> An unweighted, undirected graph with no loops (edges connecting a vertex to itself) and no multiple edges between the same pair of vertices.</li><li><strong>Multigraph:</strong> Allows multiple edges between the same pair of vertices.</li><li><strong>Loop:</strong> An edge that connects a vertex to itself.</li></ul><p>This explorer allows you to specify if your graph is directed and/or weighted via the controls above the editor.</p></AccordionContent></AccordionItem><AccordionItem value="item-3"><AccordionTrigger className="text-md font-semibold">Degree of a Vertex</AccordionTrigger><AccordionContent className="space-y-2 p-2"><ul className="list-disc pl-5 space-y-1"><li><strong>Degree (Undirected):</strong> The number of edges incident to a vertex. A loop usually contributes 2 to the degree.</li><li><strong>In-degree (Directed):</strong> The number of edges pointing <em>into</em> a vertex.</li><li><strong>Out-degree (Directed):</strong> The number of edges pointing <em>out from*</em> a vertex.</li></ul><p>The sum of degrees in an undirected graph is always twice the number of edges (Handshaking Lemma).</p></AccordionContent></AccordionItem><AccordionItem value="item-4"><AccordionTrigger className="text-md font-semibold">Paths, Cycles, and Connectivity</AccordionTrigger><AccordionContent className="space-y-2 p-2"><ul className="list-disc pl-5 space-y-1"><li><strong>Path:</strong> A sequence of vertices where each adjacent pair in the sequence is connected by an edge.</li><li><strong>Simple Path:</strong> A path that does not revisit any vertex.</li><li><strong>Cycle:</strong> A path that starts and ends at the same vertex and does not revisit other vertices (except the start/end).</li><li><strong>Connected Graph (Undirected):</strong> There is a path between every pair of distinct vertices.</li><li><strong>Strongly Connected Graph (Directed):</strong> There is a directed path from u to v and from v to u for every pair of distinct vertices u, v.</li><li><strong>Connected Components:</strong> The maximal connected subgraphs of an undirected graph.</li></ul></AccordionContent></AccordionItem><AccordionItem value="item-5"><AccordionTrigger className="text-md font-semibold">Common Graph Representations</AccordionTrigger><AccordionContent className="space-y-2 p-2"><p>Graphs can be represented in several ways for computational purposes:</p><ul className="list-disc pl-5 space-y-1"><li><strong>Adjacency Matrix:</strong> A |V| x |V| matrix where A[i][j] = 1 (or weight) if there is an edge from vertex i to vertex j, and 0 otherwise.</li><li><strong>Adjacency List:</strong> For each vertex, a list of its adjacent vertices. More space-efficient for sparse graphs.</li><li><strong>Incidence Matrix:</strong> A |V| x |E| matrix where M[v][e] = 1 if vertex v is an endpoint of edge e (or +1/-1 for directed graphs), and 0 otherwise.</li></ul><p>This explorer visualizes Adjacency and Incidence matrices for your graph in the "Grid Editor" tab.</p></AccordionContent></AccordionItem><AccordionItem value="item-6"><AccordionTrigger className="text-md font-semibold">Explore Further: Algorithms</AccordionTrigger><AccordionContent className="space-y-2 p-2"><p>Graph theory is fundamental to many algorithms, including:</p><ul className="list-disc pl-5 space-y-1"><li><strong>Graph Traversal:</strong> Depth-First Search (DFS), Breadth-First Search (BFS).</li><li><strong>Shortest Path Algorithms:</strong> Dijkstra's Algorithm, Bellman-Ford Algorithm, Floyd-Warshall Algorithm.</li><li><strong>Minimum Spanning Tree (MST):</strong> Prim's Algorithm, Kruskal's Algorithm.</li><li><strong>Network Flow:</strong> Max-Flow Min-Cut Theorem, Ford-Fulkerson Algorithm.</li><li><strong>Topological Sorting</strong> (for Directed Acyclic Graphs - DAGs).</li></ul><p>The "Algorithms" tab in this explorer provides implementations for some of these pathfinding algorithms!</p></AccordionContent></AccordionItem></Accordion></CardContent></Card></TabsContent>
           </Tabs>
