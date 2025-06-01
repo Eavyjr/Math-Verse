@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
-import "katex/dist/katex.min.css";
+import "katex/dist/katex.min.css"; 
 import { create, all, type MathJsStatic, type EvalFunction } from 'mathjs';
 
 import { Button } from '@/components/ui/button';
@@ -73,25 +73,35 @@ interface PlotDataItem {
   x: number;
   original?: number;
   derivative?: number;
+  deSolution?: number; 
 }
 
-const stripLatexDelimiters = (latexStr: string | null | undefined): string => {
+const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undefined): string => {
   if (!latexStr) return "";
   let str = latexStr.trim();
   if ((str.startsWith('\\(') && str.endsWith('\\)')) || (str.startsWith('\\[') && str.endsWith('\\]'))) {
     str = str.substring(2, str.length - 2).trim();
   }
-  // Replace common LaTeX functions with math.js compatible syntax if necessary
-  // This is a basic replacement, more complex LaTeX would need a proper parser
+  
+  // Remove common dependent variable notation like y(x)= or f(x)=
+  str = str.replace(/^[a-zA-Z]\((?:[a-zA-Z])\)\s*=\s*/, '');
+  str = str.replace(/^[a-zA-Z]\s*=\s*/, '');
+
+
   str = str.replace(/\\sin/g, 'sin')
            .replace(/\\cos/g, 'cos')
            .replace(/\\tan/g, 'tan')
-           .replace(/\\ln/g, 'log') // math.js uses log for natural log
+           .replace(/\\ln/g, 'log')
            .replace(/\\log_{10}/g, 'log10')
            .replace(/\\exp/g, 'exp')
            .replace(/\\sqrt{(.*?)}/g, 'sqrt($1)')
            .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
-           .replace(/\^/g, '^');
+           .replace(/\\cdot/g, '*')
+           .replace(/\^/g, '^')
+           .replace(/\\pi/g, 'pi');
+  // Attempt to handle constants like C, C1, C_1 for plotting purposes
+  // For plotting, we'll assume C=0 or C=1 if not specified
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[1-9])?(?![a-zA-Z0-9_])/g, '(0)'); // Default C to 0 for plotting
   return str;
 };
 
@@ -103,8 +113,8 @@ export default function DifferentiationCalculatorPage() {
   const [isDiffLoading, setIsDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffPreviewHtml, setDiffPreviewHtml] = useState<string>('');
-  const [chartData, setChartData] = useState<PlotDataItem[] | null>(null);
-  const [plotError, setPlotError] = useState<string | null>(null);
+  const [diffChartData, setDiffChartData] = useState<PlotDataItem[] | null>(null);
+  const [diffPlotError, setDiffPlotError] = useState<string | null>(null);
 
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
@@ -115,7 +125,8 @@ export default function DifferentiationCalculatorPage() {
   const [isDeLoading, setIsDeLoading] = useState(false);
   const [deError, setDeError] = useState<string | null>(null);
   const [dePreviewHtml, setDePreviewHtml] = useState<string>('');
-
+  const [dePlotData, setDePlotData] = useState<PlotDataItem[] | null>(null);
+  const [dePlotError, setDePlotError] = useState<string | null>(null);
 
   const derivativeOrders = [
     { label: '1st Derivative', value: 1 },
@@ -148,16 +159,17 @@ export default function DifferentiationCalculatorPage() {
     }
   }, [deString, deDependentVar, deIndependentVar, initialConditions]);
 
+  // Plotting for Differentiation
   useEffect(() => {
     if (diffApiResponse?.originalQuery?.functionString && diffApiResponse?.derivativeResult) {
-      setPlotError(null);
-      const originalFuncStr = stripLatexDelimiters(diffApiResponse.originalQuery.functionString);
-      const derivativeFuncStr = stripLatexDelimiters(diffApiResponse.derivativeResult);
+      setDiffPlotError(null);
+      const originalFuncStr = stripLatexDelimitersAndPrepareForMathJS(diffApiResponse.originalQuery.functionString);
+      const derivativeFuncStr = stripLatexDelimitersAndPrepareForMathJS(diffApiResponse.derivativeResult);
       const plotVar = diffApiResponse.originalQuery.variable || 'x';
 
       if (!originalFuncStr || !derivativeFuncStr) {
-        setPlotError("Function strings are missing for plotting.");
-        setChartData(null);
+        setDiffPlotError("Function strings are missing for plotting.");
+        setDiffChartData(null);
         return;
       }
       
@@ -189,23 +201,82 @@ export default function DifferentiationCalculatorPage() {
             data.push({ x: parseFloat(xVal.toFixed(3)), original: originalY, derivative: derivativeY });
           }
         }
-        if (data.length > 1) { // Need at least 2 points to draw a line
-          setChartData(data);
+        if (data.length > 1) {
+          setDiffChartData(data);
         } else {
-          setPlotError("Not enough valid data points to generate a plot.");
-          setChartData(null);
+          setDiffPlotError("Not enough valid data points to generate a plot.");
+          setDiffChartData(null);
         }
 
       } catch (e: any) {
-        console.error("Error compiling/evaluating for plot:", e);
-        setPlotError(`Could not plot functions: ${e.message}. Ensure functions use standard notation (e.g. x^2, sin(x)).`);
-        setChartData(null);
+        console.error("Error compiling/evaluating for diff plot:", e);
+        setDiffPlotError(`Could not plot functions: ${e.message}. Ensure functions use standard notation (e.g. x^2, sin(x)).`);
+        setDiffChartData(null);
       }
     } else {
-      setChartData(null);
-      setPlotError(null);
+      setDiffChartData(null);
+      setDiffPlotError(null);
     }
   }, [diffApiResponse]);
+
+  // Plotting for Differential Equations
+  useEffect(() => {
+    if (deApiResponse?.originalQuery) {
+      setDePlotError(null);
+      const solutionToPlot = deApiResponse.particularSolution || deApiResponse.generalSolution;
+      if (!solutionToPlot) {
+        setDePlotError("No solution available to plot.");
+        setDePlotData(null);
+        return;
+      }
+
+      const solutionFuncStr = stripLatexDelimitersAndPrepareForMathJS(solutionToPlot);
+      const plotVar = deApiResponse.originalQuery.independentVariable || 'x';
+
+      if (!solutionFuncStr) {
+        setDePlotError("Solution string is missing or invalid for plotting.");
+        setDePlotData(null);
+        return;
+      }
+      
+      try {
+        const compiledSolution = math.compile(solutionFuncStr);
+        
+        const data: PlotDataItem[] = [];
+        const xMin = -5; const xMax = 5; const points = 100;
+        const step = (xMax - xMin) / (points - 1);
+
+        for (let i = 0; i < points; i++) {
+          const xVal = xMin + i * step;
+          let solutionY: number | undefined = undefined;
+          const scope = { [plotVar]: xVal, C: 0, C1: 0, C2: 0 }; // Assume C=0 for general solutions
+          
+          try {
+            solutionY = compiledSolution.evaluate(scope);
+            if (typeof solutionY !== 'number' || isNaN(solutionY) || !isFinite(solutionY)) solutionY = undefined;
+          } catch (e) { /* ignore eval error for this point */ }
+          
+          if (solutionY !== undefined) {
+            data.push({ x: parseFloat(xVal.toFixed(3)), deSolution: solutionY });
+          }
+        }
+        if (data.length > 1) {
+          setDePlotData(data);
+        } else {
+          setDePlotError("Not enough valid data points to generate a plot for the DE solution.");
+          setDePlotData(null);
+        }
+
+      } catch (e: any) {
+        console.error("Error compiling/evaluating DE solution for plot:", e);
+        setDePlotError(`Could not plot DE solution: ${e.message}. Ensure solution uses standard notation.`);
+        setDePlotData(null);
+      }
+    } else {
+      setDePlotData(null);
+      setDePlotError(null);
+    }
+  }, [deApiResponse]);
 
 
   const handleDiffSubmit = async () => {
@@ -223,8 +294,8 @@ export default function DifferentiationCalculatorPage() {
     setIsDiffLoading(true);
     setDiffError(null);
     setDiffApiResponse(null);
-    setChartData(null);
-    setPlotError(null);
+    setDiffChartData(null);
+    setDiffPlotError(null);
     
     const input: DifferentiationInput = {
       functionString,
@@ -254,8 +325,8 @@ export default function DifferentiationCalculatorPage() {
     setOrder(1);
     setDiffApiResponse(null);
     setDiffError(null);
-    setChartData(null);
-    setPlotError(null);
+    setDiffChartData(null);
+    setDiffPlotError(null);
   };
   
   const getOriginalQueryAsLatex = (query: DifferentiationInput | undefined): string => {
@@ -274,6 +345,8 @@ export default function DifferentiationCalculatorPage() {
     setIsDeLoading(true);
     setDeError(null);
     setDeApiResponse(null);
+    setDePlotData(null);
+    setDePlotError(null);
 
     const input: DESolutionInput = {
         equationString: deString,
@@ -309,6 +382,8 @@ export default function DifferentiationCalculatorPage() {
     setCurrentIcInput('');
     setDeApiResponse(null);
     setDeError(null);
+    setDePlotData(null);
+    setDePlotError(null);
   };
 
   const addInitialCondition = () => {
@@ -331,9 +406,13 @@ export default function DifferentiationCalculatorPage() {
     return latex;
   };
 
-  const chartConfig = {
+  const diffChartConfig = {
     original: { label: `f(${variable})`, color: "hsl(var(--chart-1))" },
     derivative: { label: `f'(${variable})`, color: "hsl(var(--chart-2))" },
+  } satisfies Record<string, any>;
+
+  const deChartConfig = {
+    deSolution: { label: `${deDependentVar}(${deIndependentVar})`, color: "hsl(var(--chart-3))" },
   } satisfies Record<string, any>;
 
 
@@ -387,7 +466,7 @@ export default function DifferentiationCalculatorPage() {
                     value={functionString}
                     onChange={(e) => {
                       setFunctionString(e.target.value);
-                      setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
+                      setDiffError(null); setDiffApiResponse(null); setDiffChartData(null); setDiffPlotError(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
@@ -403,7 +482,7 @@ export default function DifferentiationCalculatorPage() {
                     value={variable}
                     onChange={(e) => {
                       setVariable(e.target.value || 'x'); 
-                      setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
+                      setDiffError(null); setDiffApiResponse(null); setDiffChartData(null); setDiffPlotError(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
@@ -418,7 +497,7 @@ export default function DifferentiationCalculatorPage() {
                   value={order.toString()} 
                   onValueChange={(value) => {
                     setOrder(parseInt(value, 10));
-                    setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
+                    setDiffError(null); setDiffApiResponse(null); setDiffChartData(null); setDiffPlotError(null);
                   }}
                 >
                   <SelectTrigger id="order-select" className="text-lg p-3 h-auto">
@@ -516,11 +595,11 @@ export default function DifferentiationCalculatorPage() {
                       </Accordion>
                     )}
 
-                    {(chartData || plotError || diffApiResponse.plotHint) && (
+                    {(diffChartData || diffPlotError || diffApiResponse.plotHint) && (
                       <Accordion type="single" collapsible className="w-full mt-4" defaultValue='plot-info'>
                         <AccordionItem value="plot-info">
                           <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                            <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
+                            <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information (Derivative)
                           </AccordionTrigger>
                           <AccordionContent>
                             <Card className="shadow-none">
@@ -529,30 +608,30 @@ export default function DifferentiationCalculatorPage() {
                                     {diffApiResponse.plotHint && <CardDescription>{diffApiResponse.plotHint}</CardDescription>}
                                 </CardHeader>
                                 <CardContent>
-                                  {plotError && (
+                                  {diffPlotError && (
                                     <Alert variant="destructive" className="mb-4">
                                       <AlertTriangle className="h-4 w-4" />
                                       <AlertTitle>Plotting Error</AlertTitle>
-                                      <AlertDescription>{plotError}</AlertDescription>
+                                      <AlertDescription>{diffPlotError}</AlertDescription>
                                     </Alert>
                                   )}
-                                  {chartData && chartData.length > 0 && !plotError ? (
+                                  {diffChartData && diffChartData.length > 0 && !diffPlotError ? (
                                     <div className="h-[400px] w-full">
-                                      <ChartContainer config={chartConfig} className="h-full w-full">
+                                      <ChartContainer config={diffChartConfig} className="h-full w-full">
                                         <ResponsiveContainer width="100%" height="100%">
-                                          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                                          <LineChart data={diffChartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
                                             <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
                                             <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
                                             <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                            <Line type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
-                                            <Line type="monotone" dataKey="derivative" stroke={chartConfig.derivative.color} strokeWidth={2} dot={false} name={chartConfig.derivative.label} connectNulls />
+                                            <Line type="monotone" dataKey="original" stroke={diffChartConfig.original.color} strokeWidth={2} dot={false} name={diffChartConfig.original.label} connectNulls />
+                                            <Line type="monotone" dataKey="derivative" stroke={diffChartConfig.derivative.color} strokeWidth={2} dot={false} name={diffChartConfig.derivative.label} connectNulls />
                                           </LineChart>
                                         </ResponsiveContainer>
                                       </ChartContainer>
                                     </div>
-                                  ) : !plotError && (
+                                  ) : !diffPlotError && (
                                     <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
                                        <p className="text-sm text-muted-foreground">No plot data available or expression could not be plotted.</p>
                                     </div>
@@ -598,7 +677,7 @@ export default function DifferentiationCalculatorPage() {
                         value={deString}
                         onChange={(e) => {
                             setDeString(e.target.value);
-                            setDeError(null); setDeApiResponse(null);
+                            setDeError(null); setDeApiResponse(null); setDePlotData(null); setDePlotError(null);
                         }}
                         className="text-lg p-3 min-h-[100px] border-2 focus:border-accent focus:ring-accent"
                     />
@@ -758,27 +837,46 @@ export default function DifferentiationCalculatorPage() {
                             </Accordion>
                             )}
 
-                            {deApiResponse.plotHint && (
-                            <Accordion type="single" collapsible className="w-full mt-4">
+                            {(dePlotData || dePlotError || deApiResponse.plotHint) && (
+                            <Accordion type="single" collapsible className="w-full mt-4" defaultValue='plot-info'>
                                 <AccordionItem value="plot-info">
                                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                    <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
+                                    <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information (DE Solution)
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <Card className="shadow-none">
                                         <CardHeader>
                                             <CardTitle className="text-lg">Visualizing the Solution</CardTitle>
-                                            <CardDescription>{deApiResponse.plotHint}</CardDescription>
+                                            {deApiResponse.plotHint && <CardDescription>{deApiResponse.plotHint}</CardDescription>}
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                                                <LineChartIconLucide 
-                                                    className="h-16 w-16 text-muted-foreground opacity-50 mb-2"
-                                                />
-                                                <p className="text-sm text-muted-foreground">
-                                                    Interactive plot generation for DE solutions coming soon.
-                                                </p>
+                                          {dePlotError && (
+                                            <Alert variant="destructive" className="mb-4">
+                                              <AlertTriangle className="h-4 w-4" />
+                                              <AlertTitle>DE Plotting Error</AlertTitle>
+                                              <AlertDescription>{dePlotError}</AlertDescription>
+                                            </Alert>
+                                          )}
+                                          {dePlotData && dePlotData.length > 0 && !dePlotError ? (
+                                            <div className="h-[400px] w-full">
+                                              <ChartContainer config={deChartConfig} className="h-full w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                  <LineChart data={dePlotData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="x" type="number" label={{ value: deApiResponse.originalQuery?.independentVariable || 'x', position: 'insideBottomRight', offset: -10 }} />
+                                                    <YAxis label={{ value: deApiResponse.originalQuery?.dependentVariable || 'y', angle: -90, position: 'insideLeft' }} />
+                                                    <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                                                    <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
+                                                    <Line type="monotone" dataKey="deSolution" stroke={deChartConfig.deSolution.color} strokeWidth={2} dot={false} name={deChartConfig.deSolution.label} connectNulls />
+                                                  </LineChart>
+                                                </ResponsiveContainer>
+                                              </ChartContainer>
                                             </div>
+                                          ) : !dePlotError && (
+                                            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
+                                               <p className="text-sm text-muted-foreground">No plot data available or solution could not be plotted.</p>
+                                            </div>
+                                          )}
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
@@ -805,3 +903,4 @@ export default function DifferentiationCalculatorPage() {
   );
 }
 
+    
