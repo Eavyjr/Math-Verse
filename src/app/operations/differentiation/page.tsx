@@ -101,7 +101,7 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
            .replace(/\\pi/g, 'pi');
   // Attempt to handle constants like C, C1, C_1 for plotting purposes
   // For plotting, we'll assume C=0 or C=1 if not specified
-  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[1-9])?(?![a-zA-Z0-9_])/g, '(0)'); // Default C to 0 for plotting
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)'); // Default C, C1, C_2 etc. to 0 for plotting
   return str;
 };
 
@@ -249,7 +249,8 @@ export default function DifferentiationCalculatorPage() {
         for (let i = 0; i < points; i++) {
           const xVal = xMin + i * step;
           let solutionY: number | undefined = undefined;
-          const scope = { [plotVar]: xVal, C: 0, C1: 0, C2: 0 }; // Assume C=0 for general solutions
+          // Pass common constant names to scope, defaulting to 0 or 1 for plotting
+          const scope = { [plotVar]: xVal, C: 0, C1: 0, C2: 0, c:0, c1:0, c2:0 }; 
           
           try {
             solutionY = compiledSolution.evaluate(scope);
@@ -269,7 +270,7 @@ export default function DifferentiationCalculatorPage() {
 
       } catch (e: any) {
         console.error("Error compiling/evaluating DE solution for plot:", e);
-        setDePlotError(`Could not plot DE solution: ${e.message}. Ensure solution uses standard notation.`);
+        setDePlotError(`Could not plot DE solution: ${e.message}. Ensure solution uses standard notation and constants (C, C1) are handled.`);
         setDePlotData(null);
       }
     } else {
@@ -427,7 +428,7 @@ export default function DifferentiationCalculatorPage() {
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
             <Ratio className="h-8 w-8 mr-3" /> 
-            Calculus Engine: Derivatives & DEs
+            Calculus Engine: Derivatives &amp; DEs
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
             Calculate function derivatives or explore solutions to differential equations with AI assistance.
@@ -564,7 +565,7 @@ export default function DifferentiationCalculatorPage() {
                   </CardHeader>
                   <CardContent className="space-y-6 p-6 text-lg">
                     <div>
-                      <span className="font-semibold text-muted-foreground">Original Query: </span>
+                      <span className="font-semibold text-muted-foreground">Original Query: </span> 
                       <span 
                         className="font-mono p-1 rounded-sm bg-muted text-sm block overflow-x-auto"
                         dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(diffApiResponse.originalQuery), true) }}
