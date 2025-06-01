@@ -18,6 +18,9 @@ import {
   PlusCircle,
   Activity,
   BookOpen,
+  Waypoints, // Added for pathfinding
+  Loader2, // Added for loading state
+  AlertTriangle, // Added for errors
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -27,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertTitle, AlertDescription as AlertDescUI } from "@/components/ui/alert"; // Renamed to avoid conflict
 import { useToast } from "@/hooks/use-toast";
 import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
 
@@ -79,6 +83,13 @@ export default function GraphTheoryPage() {
   const [rfNodes, setRfNodesState, onRfNodesChange]: [RFNode[], any, OnNodesChange] = useNodesState(initialRfNodes);
   const [rfEdges, setRfEdgesState, onRfEdgesChange]: [RFEdge[], any, OnEdgesChange] = useEdgesState(initialRfEdges);
 
+  // Algorithm state
+  const [startNodeInput, setStartNodeInput] = useState('');
+  const [endNodeInput, setEndNodeInput] = useState('');
+  const [foundPath, setFoundPath] = useState<string[] | null>(null);
+  const [algorithmError, setAlgorithmError] = useState<string | null>(null);
+  const [isAlgorithmRunning, setIsAlgorithmRunning] = useState(false);
+
 
   // Effect to derive internal 'nodes' state from 'edges'
   useEffect(() => {
@@ -91,6 +102,28 @@ export default function GraphTheoryPage() {
     setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
   }, [edges]);
 
+  // Base styles for React Flow elements
+  const defaultNodeStyle = { 
+    background: 'hsl(var(--primary-foreground))', 
+    color: 'hsl(var(--primary))', 
+    border: '2px solid hsl(var(--primary))',
+    borderRadius: '0.375rem', 
+    padding: '0.5rem 1rem',
+    width: 'auto',
+    minWidth: '60px',
+    textAlign: 'center',
+  };
+  const defaultEdgeStyle = { stroke: 'hsl(var(--primary))', strokeWidth: 2 };
+  
+  const highlightedNodeStyle = { 
+    ...defaultNodeStyle, 
+    background: 'hsl(var(--accent))', 
+    color: 'hsl(var(--accent-foreground))', 
+    border: '2px solid hsl(var(--accent))' 
+  };
+  const highlightedEdgeStyle = { ...defaultEdgeStyle, stroke: 'hsl(var(--accent))', strokeWidth: 3 };
+
+
   // Effect to transform internal 'nodes' and 'edges' to React Flow format
   useEffect(() => {
     const newRfNodesData: RFNode[] = nodes.map((node, index) => ({
@@ -98,16 +131,7 @@ export default function GraphTheoryPage() {
       data: { label: node.label },
       position: { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 }, 
       type: 'default', 
-      style: { 
-        background: 'hsl(var(--primary-foreground))', 
-        color: 'hsl(var(--primary))', 
-        border: '2px solid hsl(var(--primary))',
-        borderRadius: '0.375rem', 
-        padding: '0.5rem 1rem',
-        width: 'auto',
-        minWidth: '60px',
-        textAlign: 'center',
-      },
+      style: defaultNodeStyle,
     }));
 
     const newRfEdgesData: RFEdge[] = edges.map(edge => ({
@@ -115,9 +139,9 @@ export default function GraphTheoryPage() {
       source: edge.source,
       target: edge.target,
       label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
-      animated: isDirected,
+      animated: isDirected && edge.source !== edge.target, // Animate directed non-loop edges
       markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
-      style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+      style: defaultEdgeStyle,
       labelStyle: { fill: 'hsl(var(--foreground))', fontWeight: 600 },
       labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.7 },
       labelBgPadding: [4, 2] as [number, number],
@@ -126,7 +150,7 @@ export default function GraphTheoryPage() {
     
     setRfNodesState(newRfNodesData);
     setRfEdgesState(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
+  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]); // defaultNodeStyle removed as it's constant within this scope
 
 
   // Effect to compute Adjacency Matrix
@@ -219,9 +243,6 @@ export default function GraphTheoryPage() {
         if (edge.source !== edge.target && targetDegree && targetDegree.degree !== undefined) { 
           targetDegree.degree++;
         } else if (edge.source === edge.target && sourceDegree && sourceDegree.degree !== undefined && newProperties.loops.find(l => l.id === edge.id)) {
-           // For undirected loops, degree is typically counted as 2.
-           // Since it's already counted once for the source, add one more.
-           // This check ensures it's only for loops to avoid double counting non-loop edges.
            sourceDegree.degree++;
         }
       }
@@ -274,6 +295,100 @@ export default function GraphTheoryPage() {
       variant: "destructive"
     });
   };
+
+  const findPathBFS = (startId: string, endId: string): string[] | null => {
+    if (!nodes.find(n => n.id === startId) || !nodes.find(n => n.id === endId)) {
+      return null; 
+    }
+    const queue: string[][] = [[startId]]; 
+    const visited = new Set<string>([startId]);
+    while (queue.length > 0) {
+      const currentPath = queue.shift()!;
+      const currentNodeId = currentPath[currentPath.length - 1];
+      if (currentNodeId === endId) return currentPath;
+      
+      const neighbors = edges
+        .filter(edge => edge.source === currentNodeId)
+        .map(edge => edge.target)
+        .concat(
+          !isDirected
+            ? edges
+                .filter(edge => edge.target === currentNodeId)
+                .map(edge => edge.source)
+            : []
+        );
+      const uniqueNeighbors = Array.from(new Set(neighbors));
+
+      for (const neighborId of uniqueNeighbors) {
+        if (!visited.has(neighborId)) {
+          visited.add(neighborId);
+          const newPath = [...currentPath, neighborId];
+          queue.push(newPath);
+        }
+      }
+    }
+    return null; 
+  };
+
+  const handleFindPath = () => {
+    const start = startNodeInput.trim().toUpperCase();
+    const end = endNodeInput.trim().toUpperCase();
+
+    if (!start || !end) {
+      setAlgorithmError("Please enter both Start and End node IDs.");
+      setFoundPath(null);
+      return;
+    }
+    if (!nodes.find(n => n.id === start) || !nodes.find(n => n.id === end)) {
+      setAlgorithmError("One or both specified nodes do not exist in the graph.");
+      setFoundPath(null);
+      return;
+    }
+
+    setIsAlgorithmRunning(true);
+    setAlgorithmError(null);
+    setFoundPath(null);
+
+    // Reset previous highlights
+    setRfNodesState(prev => prev.map(n => ({ ...n, style: defaultNodeStyle })));
+    setRfEdgesState(prev => prev.map(e => ({ ...e, style: defaultEdgeStyle, animated: isDirected && e.source !== e.target })));
+
+    setTimeout(() => { // Simulate async for loader
+      const path = findPathBFS(start, end);
+      if (path) {
+        setFoundPath(path);
+        setRfNodesState(prevNodes => 
+          prevNodes.map(n => path.includes(n.id) ? { ...n, style: highlightedNodeStyle } : n)
+        );
+        setRfEdgesState(prevEdges => 
+          prevEdges.map(e => {
+            for (let i = 0; i < path.length - 1; i++) {
+              if ((e.source === path[i] && e.target === path[i+1]) || (!isDirected && e.target === path[i] && e.source === path[i+1])) {
+                return { ...e, style: highlightedEdgeStyle, animated: true };
+              }
+            }
+            return e;
+          })
+        );
+        toast({title: "Path Found!", description: `Path from ${start} to ${end}: ${path.join(' → ')}`});
+      } else {
+        setAlgorithmError(`No path found from ${start} to ${end}.`);
+        toast({title: "Path Not Found", description: `Could not find a path from ${start} to ${end}.`, variant: "destructive"});
+      }
+      setIsAlgorithmRunning(false);
+    }, 300); 
+  };
+  
+  const clearHighlightsAndPath = () => {
+    setFoundPath(null);
+    setAlgorithmError(null);
+    setStartNodeInput('');
+    setEndNodeInput('');
+    setRfNodesState(prev => prev.map(n => ({ ...n, style: defaultNodeStyle })));
+    setRfEdgesState(prev => prev.map(e => ({ ...e, style: defaultEdgeStyle, animated: isDirected && e.source !== e.target })));
+    toast({ title: "Algorithm Cleared", description: "Path and highlights have been removed." });
+  };
+
 
   const renderEdgeInputTable = () => (
     <Card className="h-full flex flex-col">
@@ -494,6 +609,73 @@ export default function GraphTheoryPage() {
     </Card>
   );
 
+  const renderAlgorithmsTab = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center">
+          <Waypoints className="mr-2 h-5 w-5 text-primary" />
+          Pathfinding Algorithm (BFS)
+        </CardTitle>
+        <CardDescription>Find the shortest path between two nodes using Breadth-First Search.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="start-node-input">Start Node ID</Label>
+            <Input 
+              id="start-node-input" 
+              placeholder="e.g., A" 
+              value={startNodeInput} 
+              onChange={e => setStartNodeInput(e.target.value.toUpperCase())}
+              className="uppercase"
+            />
+          </div>
+          <div>
+            <Label htmlFor="end-node-input">End Node ID</Label>
+            <Input 
+              id="end-node-input" 
+              placeholder="e.g., Z" 
+              value={endNodeInput} 
+              onChange={e => setEndNodeInput(e.target.value.toUpperCase())} 
+              className="uppercase"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button onClick={handleFindPath} disabled={isAlgorithmRunning} className="flex-grow">
+            {isAlgorithmRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Waypoints className="mr-2 h-4 w-4"/>}
+            {isAlgorithmRunning ? "Searching..." : "Find Path"}
+          </Button>
+           <Button onClick={clearHighlightsAndPath} variant="outline" disabled={!foundPath && !algorithmError} className="flex-grow sm:flex-grow-0">
+            <Trash2 className="mr-2 h-4 w-4"/> Clear Path & Highlights
+          </Button>
+        </div>
+        {algorithmError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescUI>{algorithmError}</AlertDescUI>
+          </Alert>
+        )}
+        {foundPath && !algorithmError && (
+          <Alert variant="default" className="border-green-500">
+            <Waypoints className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-700">Path Found!</AlertTitle>
+            <AlertDescUI className="font-mono text-sm">
+              {foundPath.join(' → ')}
+            </AlertDescUI>
+          </Alert>
+        )}
+        {!foundPath && !algorithmError && !isAlgorithmRunning && (
+           <p className="text-sm text-muted-foreground">Enter start and end nodes to find a path.</p>
+        )}
+      </CardContent>
+      <CardFooter>
+          <p className="text-xs text-muted-foreground">More algorithms (DFS, Dijkstra's, etc.) coming soon!</p>
+      </CardFooter>
+    </Card>
+  );
+
 
   return (
     <div className="space-y-8">
@@ -509,7 +691,7 @@ export default function GraphTheoryPage() {
             Graph Theory Explorer
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Interactively build graphs, visualize them, and explore their properties through matrices.
+            Interactively build graphs, visualize them, and explore their properties through matrices and algorithms.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -586,34 +768,15 @@ export default function GraphTheoryPage() {
                 <CardContent className="flex items-center justify-center h-[500px] border-2 border-dashed border-border rounded-md bg-muted/30">
                    <div className="text-center text-muted-foreground">
                     <Projector className="h-24 w-24 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">Our interactive visual graph builder is under construction!</p>
-                    <p>Soon, you'll be able to drag and drop nodes, draw edges, and design your graphs with ease right here.</p>
+                    <p className="text-lg">Our interactive visual graph builder is coming soon!</p>
+                    <p>You'll be able to drag, drop, and design your graphs with ease. For now, please use the "Grid Editor" tab.</p>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
             
             <TabsContent value="algorithms" className="mt-4 min-h-[600px]">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Algorithm Visualizations</CardTitle>
-                  <CardDescription>Select an algorithm to visualize on your current graph. (Coming Soon)</CardDescription>
-                </CardHeader>
-                <CardContent className="text-muted-foreground">
-                  <p>Visualizations for DFS, BFS, Dijkstra's, etc., will be available here.</p>
-                   <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4 mt-4 bg-muted/30">
-                        <Image 
-                            src="https://placehold.co/300x150.png" 
-                            alt="Algorithm placeholder" 
-                            data-ai-hint="algorithm flowchart"
-                            width={300} 
-                            height={150}
-                            className="opacity-50 mb-2 rounded"
-                        />
-                        <p className="text-sm text-muted-foreground">Algorithm controls and animation.</p>
-                    </div>
-                </CardContent>
-              </Card>
+              {renderAlgorithmsTab()}
             </TabsContent>
 
             <TabsContent value="properties" className="mt-4 min-h-[600px]">
@@ -702,7 +865,7 @@ export default function GraphTheoryPage() {
                           <li><strong>Network Flow:</strong> Max-Flow Min-Cut Theorem, Ford-Fulkerson Algorithm.</li>
                           <li><strong>Topological Sorting</strong> (for Directed Acyclic Graphs - DAGs).</li>
                         </ul>
-                        <p>Visualizations for some of these algorithms are planned for the "Algorithms" tab of this explorer!</p>
+                        <p>The "Algorithms" tab in this explorer provides a Breadth-First Search (BFS) implementation for pathfinding!</p>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -730,6 +893,3 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
-
-
-    
