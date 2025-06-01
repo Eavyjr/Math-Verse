@@ -45,12 +45,12 @@ Given a function, a variable of integration, and optionally bounds for a definit
 - For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the 'integralResult' string (e.g., "x^3/3 + C").
 - For definite integrals (when isDefinite is true), evaluate the integral from the lowerBound to the upperBound.
 - If possible and applicable, provide a detailed and COMPLETE step-by-step explanation of how you arrived at the result in the 'steps' field, ensuring the derivation is carried through to the final answer. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method", "Evaluating at bounds"). Format these steps clearly for readability.
-  **Crucially, ALL mathematical notation within the 'steps' field must be enclosed in inline LaTeX delimiters `\\(...\\)`**. This includes, but is not limited to:
-    - Variables (e.g., `\(x\)`, `\(u\)`, `\(dv\)`).
-    - Numbers that are part of a mathematical context (e.g., coefficients like `\(2\)` in `\(2x\)`).
-    - Operators and symbols (e.g., `\(+\)`, `\(-\)`, `\(\int\)`, `\(\frac{d}{dx}\)`).
-    - Full expressions (e.g., `\(x^2 + C\)`, `\(\frac{1}{2} \ln|u|\)`).
-    - Constants of integration (e.g., `\(C\)`).
+  **Crucially, ALL mathematical notation within the 'steps' field must be enclosed in the standard inline LaTeX delimiters (e.g., \\(your-expression-here\\) as shown in the examples below)**. This includes, but is not limited to:
+    - Variables (e.g., \\(x\\), \\(u\\), \\(dv\\)).
+    - Numbers that are part of a mathematical context (e.g., coefficients like \\(2\\) in \\(2x\\)).
+    - Operators and symbols (e.g., \\(+\\), \\(-\\), \\(\\int\\), \\(\\frac{d}{dx}\\)).
+    - Full expressions (e.g., \\(x^2 + C\\), \\(\\frac{1}{2} \\ln|u|\\)).
+    - Constants of integration (e.g., \\(C\\)).
   Do not leave any mathematical symbol or expression outside of these delimiters within the steps.
   Ensure the steps are not truncated or abbreviated.
 - Provide a brief 'plotHint' describing what a visualization of the function and its integral might look like (e.g., "A parabola and its cubic antiderivative"). This is for a textual description, not for generating an actual plot.
