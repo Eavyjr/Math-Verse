@@ -17,6 +17,7 @@ import {
   HelpCircle,
   PlusCircle,
   Activity,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { ReactFlow, Controls, Background, MiniMap, useNodesState, useEdgesState, MarkerType, type Node as RFNode, type Edge as RFEdge, type OnNodesChange, type OnEdgesChange } from '@xyflow/react';
 
@@ -553,7 +555,7 @@ export default function GraphTheoryPage() {
                  <Settings2 className="mr-2 h-5 w-5" /> Algorithms
               </TabsTrigger>
               <TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
-                 <HelpCircle className="mr-2 h-5 w-5" /> Properties & Learn
+                 <BookOpen className="mr-2 h-5 w-5" /> Properties & Learn
               </TabsTrigger>
             </TabsList>
 
@@ -579,13 +581,13 @@ export default function GraphTheoryPage() {
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>Visual Graph Builder</CardTitle>
-                  <CardDescription>Click and drag to create nodes and edges. More features coming soon!</CardDescription>
+                  <CardDescription>Interactive graph creation tools are under development.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center h-[500px] border-2 border-dashed border-border rounded-md bg-muted/30">
                    <div className="text-center text-muted-foreground">
                     <Projector className="h-24 w-24 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">Interactive graph canvas will be here.</p>
-                    <p>(Drag & drop nodes, create edges)</p>
+                    <p className="text-lg">Our interactive visual graph builder is under construction!</p>
+                    <p>Soon, you'll be able to drag and drop nodes, draw edges, and design your graphs with ease right here.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -617,22 +619,93 @@ export default function GraphTheoryPage() {
             <TabsContent value="properties" className="mt-4 min-h-[600px]">
               <Card>
                 <CardHeader>
-                  <CardTitle>Graph Properties & Learning</CardTitle>
-                  <CardDescription>Analyze graph properties and access learning materials. (Coming Soon)</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="mr-2 h-6 w-6" /> Graph Theory Concepts & Learning
+                  </CardTitle>
+                  <CardDescription>Explore fundamental concepts in graph theory.</CardDescription>
                 </CardHeader>
-                <CardContent className="text-muted-foreground">
-                  <p>Information like vertex/edge counts, degree, paths, cycles, connectivity, and learning tutorials will be here.</p>
-                   <div className="flex flex-col items-center justify-center h-60 border-2 border-dashed border-border rounded-md p-4 mt-4 bg-muted/30">
-                        <Image 
-                            src="https://placehold.co/300x150.png" 
-                            alt="Properties placeholder" 
-                            data-ai-hint="data chart"
-                            width={300} 
-                            height={150}
-                            className="opacity-50 mb-2 rounded"
-                        />
-                        <p className="text-sm text-muted-foreground">Display of graph metrics.</p>
-                    </div>
+                 <CardContent className="space-y-4 text-sm">
+                  <p className="text-base text-foreground/90 leading-relaxed">
+                    Graph theory is the study of graphs, which are mathematical structures used to model pairwise relations between objects. A graph in this context is made up of <em>vertices</em> (also called nodes or points) which are connected by <em>edges</em> (also called links or lines).
+                  </p>
+                  <Accordion type="multiple" className="w-full">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger className="text-md font-semibold">What is a Graph?</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <p>A graph G = (V, E) consists of:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>V (Vertices):</strong> A finite set of points or nodes. These represent the objects in our model.</li>
+                          <li><strong>E (Edges):</strong> A set of pairs of vertices, representing connections or relationships between them. An edge e = (u, v) connects vertex u to vertex v.</li>
+                        </ul>
+                        <p>Graphs are incredibly versatile and can represent many real-world scenarios, like social networks, road systems, computer networks, and molecular structures.</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-2">
+                      <AccordionTrigger className="text-md font-semibold">Types of Graphs</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Directed Graph (Digraph):</strong> Edges have a direction (e.g., a one-way street). An edge (u,v) is different from (v,u).</li>
+                          <li><strong>Undirected Graph:</strong> Edges have no direction (e.g., a friendship connection). An edge (u,v) is the same as (v,u).</li>
+                          <li><strong>Weighted Graph:</strong> Each edge has an associated numerical value, called a weight or cost (e.g., distance between cities).</li>
+                          <li><strong>Unweighted Graph:</strong> Edges do not have weights, or all weights are implicitly 1.</li>
+                          <li><strong>Simple Graph:</strong> An unweighted, undirected graph with no loops (edges connecting a vertex to itself) and no multiple edges between the same pair of vertices.</li>
+                          <li><strong>Multigraph:</strong> Allows multiple edges between the same pair of vertices.</li>
+                          <li><strong>Loop:</strong> An edge that connects a vertex to itself.</li>
+                        </ul>
+                        <p>This explorer allows you to specify if your graph is directed and/or weighted via the controls above the editor.</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-3">
+                      <AccordionTrigger className="text-md font-semibold">Degree of a Vertex</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Degree (Undirected):</strong> The number of edges incident to a vertex. A loop usually contributes 2 to the degree.</li>
+                          <li><strong>In-degree (Directed):</strong> The number of edges pointing <em>into</em> a vertex.</li>
+                          <li><strong>Out-degree (Directed):</strong> The number of edges pointing <em>out from*</em> a vertex.</li>
+                        </ul>
+                        <p>The sum of degrees in an undirected graph is always twice the number of edges (Handshaking Lemma).</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-4">
+                      <AccordionTrigger className="text-md font-semibold">Paths, Cycles, and Connectivity</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Path:</strong> A sequence of vertices where each adjacent pair in the sequence is connected by an edge.</li>
+                          <li><strong>Simple Path:</strong> A path that does not revisit any vertex.</li>
+                          <li><strong>Cycle:</strong> A path that starts and ends at the same vertex and does not revisit other vertices (except the start/end).</li>
+                          <li><strong>Connected Graph (Undirected):</strong> There is a path between every pair of distinct vertices.</li>
+                          <li><strong>Strongly Connected Graph (Directed):</strong> There is a directed path from u to v and from v to u for every pair of distinct vertices u, v.</li>
+                          <li><strong>Connected Components:</strong> The maximal connected subgraphs of an undirected graph.</li>
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-5">
+                      <AccordionTrigger className="text-md font-semibold">Common Graph Representations</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <p>Graphs can be represented in several ways for computational purposes:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Adjacency Matrix:</strong> A |V| x |V| matrix where A[i][j] = 1 (or weight) if there is an edge from vertex i to vertex j, and 0 otherwise.</li>
+                          <li><strong>Adjacency List:</strong> For each vertex, a list of its adjacent vertices. More space-efficient for sparse graphs.</li>
+                          <li><strong>Incidence Matrix:</strong> A |V| x |E| matrix where M[v][e] = 1 if vertex v is an endpoint of edge e (or +1/-1 for directed graphs), and 0 otherwise.</li>
+                        </ul>
+                        <p>This explorer visualizes Adjacency and Incidence matrices for your graph in the "Grid Editor" tab.</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-6">
+                      <AccordionTrigger className="text-md font-semibold">Explore Further: Algorithms</AccordionTrigger>
+                      <AccordionContent className="space-y-2 p-2">
+                        <p>Graph theory is fundamental to many algorithms, including:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li><strong>Graph Traversal:</strong> Depth-First Search (DFS), Breadth-First Search (BFS).</li>
+                          <li><strong>Shortest Path Algorithms:</strong> Dijkstra's Algorithm, Bellman-Ford Algorithm, Floyd-Warshall Algorithm.</li>
+                          <li><strong>Minimum Spanning Tree (MST):</strong> Prim's Algorithm, Kruskal's Algorithm.</li>
+                          <li><strong>Network Flow:</strong> Max-Flow Min-Cut Theorem, Ford-Fulkerson Algorithm.</li>
+                          <li><strong>Topological Sorting</strong> (for Directed Acyclic Graphs - DAGs).</li>
+                        </ul>
+                        <p>Visualizations for some of these algorithms are planned for the "Algorithms" tab of this explorer!</p>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -657,3 +730,6 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
+
+
+    
