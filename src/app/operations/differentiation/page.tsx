@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import katex from 'katex';
 import "katex/dist/katex.min.css";
+import { create, all, type MathJsStatic, type EvalFunction } from 'mathjs';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +15,15 @@ import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma, LineChart as LineChartIconLucide } from 'lucide-react';
 import { handlePerformDifferentiationAction, handleSolveDifferentialEquationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; 
 import { Textarea } from '@/components/ui/textarea';
+import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+
+const math: MathJsStatic = create(all);
 
 const renderMath = (latexString: string | undefined | null, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
@@ -44,11 +48,9 @@ const renderMath = (latexString: string | undefined | null, displayMode: boolean
 
 const renderStepsContent = (stepsString: string | undefined | null): string => {
   if (!stepsString) return "";
-  console.log("renderStepsContent input:", stepsString);
-
   const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
   
-  const htmlParts = parts.map((part, index) => {
+  const htmlParts = parts.map((part) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -64,8 +66,33 @@ const renderStepsContent = (stepsString: string | undefined | null): string => {
     }
   });
   const finalHtml = htmlParts.join('');
-  console.log("renderStepsContent output HTML:", finalHtml);
   return finalHtml;
+};
+
+interface PlotDataItem {
+  x: number;
+  original?: number;
+  derivative?: number;
+}
+
+const stripLatexDelimiters = (latexStr: string | null | undefined): string => {
+  if (!latexStr) return "";
+  let str = latexStr.trim();
+  if ((str.startsWith('\\(') && str.endsWith('\\)')) || (str.startsWith('\\[') && str.endsWith('\\]'))) {
+    str = str.substring(2, str.length - 2).trim();
+  }
+  // Replace common LaTeX functions with math.js compatible syntax if necessary
+  // This is a basic replacement, more complex LaTeX would need a proper parser
+  str = str.replace(/\\sin/g, 'sin')
+           .replace(/\\cos/g, 'cos')
+           .replace(/\\tan/g, 'tan')
+           .replace(/\\ln/g, 'log') // math.js uses log for natural log
+           .replace(/\\log_{10}/g, 'log10')
+           .replace(/\\exp/g, 'exp')
+           .replace(/\\sqrt{(.*?)}/g, 'sqrt($1)')
+           .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
+           .replace(/\^/g, '^');
+  return str;
 };
 
 export default function DifferentiationCalculatorPage() {
@@ -76,6 +103,8 @@ export default function DifferentiationCalculatorPage() {
   const [isDiffLoading, setIsDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [diffPreviewHtml, setDiffPreviewHtml] = useState<string>('');
+  const [chartData, setChartData] = useState<PlotDataItem[] | null>(null);
+  const [plotError, setPlotError] = useState<string | null>(null);
 
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
@@ -119,6 +148,65 @@ export default function DifferentiationCalculatorPage() {
     }
   }, [deString, deDependentVar, deIndependentVar, initialConditions]);
 
+  useEffect(() => {
+    if (diffApiResponse?.originalQuery?.functionString && diffApiResponse?.derivativeResult) {
+      setPlotError(null);
+      const originalFuncStr = stripLatexDelimiters(diffApiResponse.originalQuery.functionString);
+      const derivativeFuncStr = stripLatexDelimiters(diffApiResponse.derivativeResult);
+      const plotVar = diffApiResponse.originalQuery.variable || 'x';
+
+      if (!originalFuncStr || !derivativeFuncStr) {
+        setPlotError("Function strings are missing for plotting.");
+        setChartData(null);
+        return;
+      }
+      
+      try {
+        const compiledOriginal = math.compile(originalFuncStr);
+        const compiledDerivative = math.compile(derivativeFuncStr);
+        
+        const data: PlotDataItem[] = [];
+        const xMin = -5; const xMax = 5; const points = 100;
+        const step = (xMax - xMin) / (points - 1);
+
+        for (let i = 0; i < points; i++) {
+          const xVal = xMin + i * step;
+          let originalY: number | undefined = undefined;
+          let derivativeY: number | undefined = undefined;
+          const scope = { [plotVar]: xVal };
+          
+          try {
+            originalY = compiledOriginal.evaluate(scope);
+            if (typeof originalY !== 'number' || isNaN(originalY) || !isFinite(originalY)) originalY = undefined;
+          } catch (e) { /* ignore eval error for this point */ }
+
+          try {
+            derivativeY = compiledDerivative.evaluate(scope);
+            if (typeof derivativeY !== 'number' || isNaN(derivativeY) || !isFinite(derivativeY)) derivativeY = undefined;
+          } catch (e) { /* ignore eval error for this point */ }
+          
+          if (originalY !== undefined || derivativeY !== undefined) {
+            data.push({ x: parseFloat(xVal.toFixed(3)), original: originalY, derivative: derivativeY });
+          }
+        }
+        if (data.length > 1) { // Need at least 2 points to draw a line
+          setChartData(data);
+        } else {
+          setPlotError("Not enough valid data points to generate a plot.");
+          setChartData(null);
+        }
+
+      } catch (e: any) {
+        console.error("Error compiling/evaluating for plot:", e);
+        setPlotError(`Could not plot functions: ${e.message}. Ensure functions use standard notation (e.g. x^2, sin(x)).`);
+        setChartData(null);
+      }
+    } else {
+      setChartData(null);
+      setPlotError(null);
+    }
+  }, [diffApiResponse]);
+
 
   const handleDiffSubmit = async () => {
     if (!functionString.trim()) {
@@ -135,6 +223,8 @@ export default function DifferentiationCalculatorPage() {
     setIsDiffLoading(true);
     setDiffError(null);
     setDiffApiResponse(null);
+    setChartData(null);
+    setPlotError(null);
     
     const input: DifferentiationInput = {
       functionString,
@@ -164,6 +254,8 @@ export default function DifferentiationCalculatorPage() {
     setOrder(1);
     setDiffApiResponse(null);
     setDiffError(null);
+    setChartData(null);
+    setPlotError(null);
   };
   
   const getOriginalQueryAsLatex = (query: DifferentiationInput | undefined): string => {
@@ -190,11 +282,8 @@ export default function DifferentiationCalculatorPage() {
         initialConditions: initialConditions.filter(ic => ic.trim()), 
     };
     
-    console.log("Submitting DE with input:", input);
-
     try {
         const actionResult = await handleSolveDifferentialEquationAction(input);
-        console.log("DE Action Result:", actionResult);
         if (actionResult.error) {
             setDeError(actionResult.error);
             setDeApiResponse(null);
@@ -205,7 +294,6 @@ export default function DifferentiationCalculatorPage() {
             setDeApiResponse(null);
         }
     } catch (e: any) {
-        console.error("Error in handleDeSubmit:", e);
         setDeError(e.message || 'An unexpected error occurred while solving the DE.');
         setDeApiResponse(null);
     } finally {
@@ -242,6 +330,11 @@ export default function DifferentiationCalculatorPage() {
     }
     return latex;
   };
+
+  const chartConfig = {
+    original: { label: `f(${variable})`, color: "hsl(var(--chart-1))" },
+    derivative: { label: `f'(${variable})`, color: "hsl(var(--chart-2))" },
+  } satisfies Record<string, any>;
 
 
   return (
@@ -294,7 +387,7 @@ export default function DifferentiationCalculatorPage() {
                     value={functionString}
                     onChange={(e) => {
                       setFunctionString(e.target.value);
-                      setDiffError(null); setDiffApiResponse(null);
+                      setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
@@ -310,7 +403,7 @@ export default function DifferentiationCalculatorPage() {
                     value={variable}
                     onChange={(e) => {
                       setVariable(e.target.value || 'x'); 
-                      setDiffError(null); setDiffApiResponse(null);
+                      setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
                     }}
                     className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
                   />
@@ -325,7 +418,7 @@ export default function DifferentiationCalculatorPage() {
                   value={order.toString()} 
                   onValueChange={(value) => {
                     setOrder(parseInt(value, 10));
-                    setDiffError(null); setDiffApiResponse(null);
+                    setDiffError(null); setDiffApiResponse(null); setChartData(null); setPlotError(null);
                   }}
                 >
                   <SelectTrigger id="order-select" className="text-lg p-3 h-auto">
@@ -423,32 +516,47 @@ export default function DifferentiationCalculatorPage() {
                       </Accordion>
                     )}
 
-                    {diffApiResponse.plotHint && (
-                      <Accordion type="single" collapsible className="w-full mt-4">
+                    {(chartData || plotError || diffApiResponse.plotHint) && (
+                      <Accordion type="single" collapsible className="w-full mt-4" defaultValue='plot-info'>
                         <AccordionItem value="plot-info">
                           <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                            <Info className="mr-2 h-5 w-5" /> Plot Information
+                            <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
                           </AccordionTrigger>
                           <AccordionContent>
                             <Card className="shadow-none">
                                 <CardHeader>
-                                    <CardTitle className="text-lg">Visualizing the Derivative</CardTitle>
-                                    <CardDescription>{diffApiResponse.plotHint}</CardDescription>
+                                    <CardTitle className="text-lg">Visualizing the Functions</CardTitle>
+                                    {diffApiResponse.plotHint && <CardDescription>{diffApiResponse.plotHint}</CardDescription>}
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                                        <Image 
-                                            src="https://placehold.co/400x200.png" 
-                                            alt="Derivative plot placeholder" 
-                                            data-ai-hint="calculus graph"
-                                            width={400} 
-                                            height={200}
-                                            className="opacity-75 mb-2 rounded"
-                                        />
-                                        <p className="text-sm text-muted-foreground">
-                                            Interactive plot generation coming soon.
-                                        </p>
+                                  {plotError && (
+                                    <Alert variant="destructive" className="mb-4">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <AlertTitle>Plotting Error</AlertTitle>
+                                      <AlertDescription>{plotError}</AlertDescription>
+                                    </Alert>
+                                  )}
+                                  {chartData && chartData.length > 0 && !plotError ? (
+                                    <div className="h-[400px] w-full">
+                                      <ChartContainer config={chartConfig} className="h-full w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
+                                            <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
+                                            <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                                            <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
+                                            <Line type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
+                                            <Line type="monotone" dataKey="derivative" stroke={chartConfig.derivative.color} strokeWidth={2} dot={false} name={chartConfig.derivative.label} connectNulls />
+                                          </LineChart>
+                                        </ResponsiveContainer>
+                                      </ChartContainer>
                                     </div>
+                                  ) : !plotError && (
+                                    <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
+                                       <p className="text-sm text-muted-foreground">No plot data available or expression could not be plotted.</p>
+                                    </div>
+                                  )}
                                 </CardContent>
                             </Card>
                           </AccordionContent>
@@ -654,7 +762,7 @@ export default function DifferentiationCalculatorPage() {
                             <Accordion type="single" collapsible className="w-full mt-4">
                                 <AccordionItem value="plot-info">
                                 <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                    <Info className="mr-2 h-5 w-5" /> Plot Information
+                                    <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <Card className="shadow-none">
@@ -664,16 +772,11 @@ export default function DifferentiationCalculatorPage() {
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                                                <Image 
-                                                    src="https://placehold.co/400x200.png" 
-                                                    alt="DE solution plot placeholder" 
-                                                    data-ai-hint="differential equation plot"
-                                                    width={400} 
-                                                    height={200}
-                                                    className="opacity-75 mb-2 rounded"
+                                                <LineChartIconLucide 
+                                                    className="h-16 w-16 text-muted-foreground opacity-50 mb-2"
                                                 />
                                                 <p className="text-sm text-muted-foreground">
-                                                    Interactive plot generation coming soon.
+                                                    Interactive plot generation for DE solutions coming soon.
                                                 </p>
                                             </div>
                                         </CardContent>
@@ -701,3 +804,4 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
+
