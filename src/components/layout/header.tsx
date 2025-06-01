@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare } from 'lucide-react';
+import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare, LayoutGrid, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '../ui/skeleton';
@@ -40,6 +40,17 @@ const getInitials = (name?: string | null, email?: string | null): string => {
   return 'U'; // Default User
 };
 
+const workstationsHeaderLinks = [
+  { title: "Algebra", href: "/operations/algebra", icon: <CalculatorIconLucide className="mr-2 h-4 w-4" /> },
+  { title: "Integration", href: "/operations/integration", icon: <Sigma className="mr-2 h-4 w-4" /> },
+  { title: "Differentiation & DEs", href: "/operations/differentiation", icon: <Ratio className="mr-2 h-4 w-4" /> },
+  { title: "Matrix Operations", href: "/operations/matrix", icon: <Grid3X3 className="mr-2 h-4 w-4" /> },
+  { title: "Linear Transformations", href: "/operations/linear-transformations", icon: <Shapes className="mr-2 h-4 w-4" /> },
+  { title: "Graph Theory", href: "/operations/graph-theory", icon: <Share2 className="mr-2 h-4 w-4" /> },
+  { title: "Statistics", href: "/operations/statistics", icon: <BarChartHorizontalBig className="mr-2 h-4 w-4" /> },
+  { title: "Graphing Calculator", href: "/operations/graphing-calculator", icon: <FunctionSquare className="mr-2 h-4 w-4" /> },
+];
+
 
 export default function Header() {
   const { user, isLoading: authIsLoading, signOut } = useAuth();
@@ -58,7 +69,7 @@ export default function Header() {
            <BotMessageSquare className="h-8 w-8" />
           <span>MathVerse</span>
         </Link>
-        <nav className="flex items-center gap-3">
+        <nav className="flex items-center gap-2 sm:gap-3">
           <Dialog open={isCalculatorDialogOpen} onOpenChange={setIsCalculatorDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Open Scientific Calculator">
@@ -68,17 +79,34 @@ export default function Header() {
             <DialogContent className="sm:max-w-xs p-4 border shadow-2xl rounded-xl bg-popover">
               <DialogHeader>
                 <DialogTitle>Scientific Calculator</DialogTitle>
-                {/* DialogDescription can be added here if needed */}
               </DialogHeader>
-              {/* The PopupCalculator component is rendered here */}
               {isClient && isCalculatorDialogOpen && <PopupCalculator />}
             </DialogContent>
           </Dialog>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Open Workstations Menu">
+                <LayoutGrid className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Math Workstations</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {workstationsHeaderLinks.map((ws) => (
+                <DropdownMenuItem key={ws.href} asChild>
+                  <Link href={ws.href} className="flex items-center w-full">
+                    {ws.icon}
+                    {ws.title}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {authIsLoading ? (
             <div className="flex items-center gap-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                {/* <Skeleton className="h-4 w-20" /> */}
             </div>
           ) : user ? (
             <DropdownMenu>
