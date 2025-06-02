@@ -8,22 +8,22 @@ import {
   ArrowLeft,
   Trash2,
   Projector,
-  LayoutGrid, // Changed from TableIcon
+  LayoutGrid,
   Share2,
   Sigma,
   Network,
   Download,
-  Settings2, 
+  Settings2,
   HelpCircle,
   PlusCircle,
   Activity,
-  BookOpen, 
+  BookOpen,
   Waypoints,
   Loader2,
   AlertTriangle,
-  SearchCheck, 
-  Route, 
-  MousePointerSquare, 
+  SearchCheck,
+  Route,
+  SquareMousePointer, // Changed from MousePointerSquare based on previous successful fix for another component
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -59,13 +59,33 @@ interface GraphProperties {
 const initialRfNodes: RFNode[] = [];
 const initialRfEdges: RFEdge[] = [];
 
+const defaultNodeStyle = {
+  background: 'hsl(var(--primary-foreground))',
+  color: 'hsl(var(--primary))',
+  border: '2px solid hsl(var(--primary))',
+  borderRadius: '0.375rem',
+  padding: '0.5rem 1rem',
+  width: 'auto',
+  minWidth: '60px',
+  textAlign: 'center',
+};
+const highlightedNodeStyle = {
+  ...defaultNodeStyle,
+  background: 'hsl(var(--accent))',
+  color: 'hsl(var(--accent-foreground))',
+  border: '2px solid hsl(var(--accent))'
+};
+const defaultEdgeStyle = { stroke: 'hsl(var(--primary))', strokeWidth: 2 };
+const highlightedEdgeStyle = { ...defaultEdgeStyle, stroke: 'hsl(var(--accent))', strokeWidth: 4 };
+
+
 export default function GraphTheoryPage() {
   const { toast } = useToast();
   const [isDirected, setIsDirected] = useState(false);
   const [isWeighted, setIsWeighted] = useState(false);
-  
+
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [nodes, setNodes] = useState<Node[]>([]); 
+  const [nodes, setNodes] = useState<Node[]>([]);
 
   const [newEdgeSource, setNewEdgeSource] = useState('');
   const [newEdgeTarget, setNewEdgeTarget] = useState('');
@@ -96,7 +116,7 @@ export default function GraphTheoryPage() {
   const [foundPathDFS, setFoundPathDFS] = useState<string[] | null>(null);
   const [errorDFS, setErrorDFS] = useState<string | null>(null);
   const [isRunningDFS, setIsRunningDFS] = useState(false);
-  
+
   // Dijkstra's Algorithm state
   const [startNodeDijkstra, setStartNodeDijkstra] = useState('');
   const [endNodeDijkstra, setEndNodeDijkstra] = useState('');
@@ -112,37 +132,18 @@ export default function GraphTheoryPage() {
       uniqueNodeIds.add(edge.target);
     });
     const derivedNodes: Node[] = Array.from(uniqueNodeIds).map(id => ({ id, label: id }));
-    setNodes(derivedNodes.sort((a,b) => a.id.localeCompare(b.id)));
+    setNodes(derivedNodes.sort((a, b) => a.id.localeCompare(b.id)));
   }, [edges]);
 
-  const defaultNodeStyle = { 
-    background: 'hsl(var(--primary-foreground))', 
-    color: 'hsl(var(--primary))', 
-    border: '2px solid hsl(var(--primary))',
-    borderRadius: '0.375rem', 
-    padding: '0.5rem 1rem',
-    width: 'auto',
-    minWidth: '60px',
-    textAlign: 'center',
-  };
-  const highlightedNodeStyle = { 
-    ...defaultNodeStyle, 
-    background: 'hsl(var(--accent))', 
-    color: 'hsl(var(--accent-foreground))', 
-    border: '2px solid hsl(var(--accent))' 
-  };
-  const defaultEdgeStyle = { stroke: 'hsl(var(--primary))', strokeWidth: 2 };
-  const highlightedEdgeStyle = { ...defaultEdgeStyle, stroke: 'hsl(var(--accent))', strokeWidth: 4 };
 
   useEffect(() => {
     const newRfNodesData: RFNode[] = nodes.map((node, index) => {
-      // Try to preserve existing positions if node already in rfNodes
       const existingRfNode = rfNodes.find(rfn => rfn.id === node.id);
       return {
         id: node.id,
         data: { label: node.label },
-        position: existingRfNode?.position || { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 }, 
-        type: 'default', 
+        position: existingRfNode?.position || { x: (index % 8) * 100 + Math.random() * 20, y: Math.floor(index / 8) * 100 + Math.random() * 20 },
+        type: 'default',
         style: defaultNodeStyle,
       };
     });
@@ -160,10 +161,10 @@ export default function GraphTheoryPage() {
       labelBgPadding: [4, 2] as [number, number],
       labelBgBorderRadius: 2,
     }));
-    
+
     setRfNodesState(newRfNodesData);
     setRfEdgesState(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted, rfNodes, defaultNodeStyle, defaultEdgeStyle, setRfNodesState, setRfEdgesState]); 
+  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]); // Corrected dependency array
 
   useEffect(() => {
     if (nodes.length === 0) { setAdjacencyMatrix([]); return; }
@@ -189,11 +190,11 @@ export default function GraphTheoryPage() {
       if (sourceIdx === undefined || targetIdx === undefined) return;
       const weightValue = isWeighted && edge.weight !== undefined ? edge.weight : 1;
       if (isDirected) {
-        if (sourceIdx === targetIdx) matrix[sourceIdx][edgeIdx] = weightValue; 
+        if (sourceIdx === targetIdx) matrix[sourceIdx][edgeIdx] = weightValue;
         else { matrix[sourceIdx][edgeIdx] = weightValue; matrix[targetIdx][edgeIdx] = -weightValue; }
-      } else { 
+      } else {
         matrix[sourceIdx][edgeIdx] = weightValue;
-        if (sourceIdx !== targetIdx) matrix[targetIdx][edgeIdx] = weightValue; 
+        if (sourceIdx !== targetIdx) matrix[targetIdx][edgeIdx] = weightValue;
       }
     });
     setIncidenceMatrix(matrix);
@@ -206,10 +207,10 @@ export default function GraphTheoryPage() {
       if (edge.source === edge.target) newProperties.loops.push(edge);
       const sourceDegree = newProperties.degrees[edge.source]; const targetDegree = newProperties.degrees[edge.target];
       if (isDirected) {
-        if(sourceDegree && sourceDegree.outDegree !== undefined) sourceDegree.outDegree++;
-        if(targetDegree && targetDegree.inDegree !== undefined) targetDegree.inDegree++;
+        if (sourceDegree && sourceDegree.outDegree !== undefined) sourceDegree.outDegree++;
+        if (targetDegree && targetDegree.inDegree !== undefined) targetDegree.inDegree++;
       } else {
-        if(sourceDegree && sourceDegree.degree !== undefined) sourceDegree.degree++;
+        if (sourceDegree && sourceDegree.degree !== undefined) sourceDegree.degree++;
         if (edge.source !== edge.target && targetDegree && targetDegree.degree !== undefined) targetDegree.degree++;
         else if (edge.source === edge.target && sourceDegree && sourceDegree.degree !== undefined && newProperties.loops.find(l => l.id === edge.id)) sourceDegree.degree++;
       }
@@ -223,14 +224,14 @@ export default function GraphTheoryPage() {
       let isPathEdge = false;
       if (path) {
         for (let i = 0; i < path.length - 1; i++) {
-          if ((e.source === path[i] && e.target === path[i+1]) || (!isDirected && e.target === path[i] && e.source === path[i+1])) {
+          if ((e.source === path[i] && e.target === path[i + 1]) || (!isDirected && e.target === path[i] && e.source === path[i + 1])) {
             isPathEdge = true; break;
           }
         }
       }
       return { ...e, style: isPathEdge ? highlightedEdgeStyle : defaultEdgeStyle, animated: isPathEdge || (isDirected && e.source !== e.target && !isPathEdge) };
     }));
-  }, [isDirected, setRfNodesState, setRfEdgesState, defaultNodeStyle, highlightedNodeStyle, defaultEdgeStyle, highlightedEdgeStyle]);
+  }, [isDirected, setRfNodesState, setRfEdgesState]); // Removed stable style consts from deps
 
   const clearAllAlgorithmVisuals = useCallback(() => {
     setFoundPathBFS(null); setErrorBFS(null); setStartNodeBFS(''); setEndNodeBFS('');
@@ -247,7 +248,7 @@ export default function GraphTheoryPage() {
     }
     const weightValue = isWeighted ? parseFloat(newEdgeWeight) : undefined;
     if (isWeighted && (isNaN(weightValue!) || newEdgeWeight.trim() === '')) {
-       toast({ title: "Error Adding Edge", description: "Please enter a valid weight for weighted graphs.", variant: "destructive" }); return;
+      toast({ title: "Error Adding Edge", description: "Please enter a valid weight for weighted graphs.", variant: "destructive" }); return;
     }
     const newEdge: Edge = {
       id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -264,7 +265,6 @@ export default function GraphTheoryPage() {
     toast({ title: "Edge Deleted", description: "The selected edge has been removed.", variant: "destructive" });
   };
 
-  // BFS Pathfinding
   const findPathBFSLogic = (startId: string, endId: string): string[] | null => {
     if (!nodes.find(n => n.id === startId) || !nodes.find(n => n.id === endId)) return null;
     const queue: string[][] = [[startId]]; const visited = new Set<string>([startId]);
@@ -285,92 +285,91 @@ export default function GraphTheoryPage() {
 
   const handleFindPathBFS = () => {
     const start = startNodeBFS.trim().toUpperCase(); const end = endNodeBFS.trim().toUpperCase();
-    clearAllAlgorithmVisuals(); 
+    clearAllAlgorithmVisuals();
     if (!start || !end) { setErrorBFS("Please enter both Start and End node IDs."); return; }
     if (!nodes.find(n => n.id === start) || !nodes.find(n => n.id === end)) { setErrorBFS("One or both specified nodes do not exist."); return; }
     setIsRunningBFS(true); setErrorBFS(null); setFoundPathBFS(null);
     setTimeout(() => {
       const path = findPathBFSLogic(start, end);
-      if (path) { setFoundPathBFS(path); highlightPathOnGraph(path); toast({title: "BFS Path Found!", description: `Path from ${start} to ${end}: ${path.join(' → ')}`}); } 
-      else { setErrorBFS(`No BFS path found from ${start} to ${end}.`); toast({title: "BFS Path Not Found", variant: "destructive"}); }
+      if (path) { setFoundPathBFS(path); highlightPathOnGraph(path); toast({ title: "BFS Path Found!", description: `Path from ${start} to ${end}: ${path.join(' → ')}` }); }
+      else { setErrorBFS(`No BFS path found from ${start} to ${end}.`); toast({ title: "BFS Path Not Found", variant: "destructive" }); }
       setIsRunningBFS(false);
     }, 300);
   };
 
-  // DFS Pathfinding
   const findPathDFSLogic = (startId: string, endId: string): string[] | null => {
     if (!nodes.find(n => n.id === startId) || !nodes.find(n => n.id === endId)) return null;
     const stack: { nodeId: string, path: string[] }[] = [{ nodeId: startId, path: [startId] }];
-    const visitedInCurrentPath = new Set<string>(); 
+    const visitedInCurrentPath = new Set<string>();
     while (stack.length > 0) {
-        const { nodeId, path } = stack.pop()!;
-        if (nodeId === endId) return path;
-        
-        visitedInCurrentPath.add(nodeId);
+      const { nodeId, path } = stack.pop()!;
+      if (nodeId === endId) return path;
 
-        const neighbors = edges.filter(edge => edge.source === nodeId).map(edge => edge.target)
-            .concat(!isDirected ? edges.filter(edge => edge.target === nodeId).map(edge => edge.source) : []);
-        const uniqueNeighbors = Array.from(new Set(neighbors));
+      visitedInCurrentPath.add(nodeId);
 
-        for (const neighborId of uniqueNeighbors.reverse()) { 
-            if (!path.includes(neighborId)) { 
-                stack.push({ nodeId: neighborId, path: [...path, neighborId] });
-            }
+      const neighbors = edges.filter(edge => edge.source === nodeId).map(edge => edge.target)
+        .concat(!isDirected ? edges.filter(edge => edge.target === nodeId).map(edge => edge.source) : []);
+      const uniqueNeighbors = Array.from(new Set(neighbors));
+
+      for (const neighborId of uniqueNeighbors.reverse()) {
+        if (!path.includes(neighborId)) {
+          stack.push({ nodeId: neighborId, path: [...path, neighborId] });
         }
+      }
     }
     return null;
   };
 
   const handleFindPathDFS = () => {
     const start = startNodeDFS.trim().toUpperCase(); const end = endNodeDFS.trim().toUpperCase();
-    clearAllAlgorithmVisuals(); 
+    clearAllAlgorithmVisuals();
     if (!start || !end) { setErrorDFS("Please enter both Start and End node IDs."); return; }
     if (!nodes.find(n => n.id === start) || !nodes.find(n => n.id === end)) { setErrorDFS("One or both specified nodes do not exist."); return; }
     setIsRunningDFS(true); setErrorDFS(null); setFoundPathDFS(null);
     setTimeout(() => {
-        const path = findPathDFSLogic(start, end);
-        if (path) { setFoundPathDFS(path); highlightPathOnGraph(path); toast({title: "DFS Path Found!", description: `Path from ${start} to ${end}: ${path.join(' → ')}`}); } 
-        else { setErrorDFS(`No DFS path found from ${start} to ${end}.`); toast({title: "DFS Path Not Found", variant: "destructive"}); }
-        setIsRunningDFS(false);
+      const path = findPathDFSLogic(start, end);
+      if (path) { setFoundPathDFS(path); highlightPathOnGraph(path); toast({ title: "DFS Path Found!", description: `Path from ${start} to ${end}: ${path.join(' → ')}` }); }
+      else { setErrorDFS(`No DFS path found from ${start} to ${end}.`); toast({ title: "DFS Path Not Found", variant: "destructive" }); }
+      setIsRunningDFS(false);
     }, 300);
   };
-  
+
   const findShortestPathDijkstraLogic = (startId: string, endId: string): { path: string[] | null, cost: number | null } => {
-    if (!isWeighted) return { path: null, cost: null }; 
+    if (!isWeighted) return { path: null, cost: null };
     const startNodeExists = nodes.some(n => n.id === startId);
     const endNodeExists = nodes.some(n => n.id === endId);
     if (!startNodeExists || !endNodeExists) return { path: null, cost: null };
 
     const distances: Record<string, number> = {};
     const predecessors: Record<string, string | null> = {};
-    const pq: Set<string> = new Set(); 
+    const pq: Set<string> = new Set();
 
     nodes.forEach(node => {
-        distances[node.id] = Infinity;
-        predecessors[node.id] = null;
-        pq.add(node.id);
+      distances[node.id] = Infinity;
+      predecessors[node.id] = null;
+      pq.add(node.id);
     });
     distances[startId] = 0;
 
     while (pq.size > 0) {
-        let u: string | null = null;
-        pq.forEach(nodeId => {
-            if (u === null || distances[nodeId] < distances[u!]) { u = nodeId; }
-        });
-        if (u === null || distances[u] === Infinity) break; 
-        pq.delete(u);
-        if (u === endId) break; 
+      let u: string | null = null;
+      pq.forEach(nodeId => {
+        if (u === null || distances[nodeId] < distances[u!]) { u = nodeId; }
+      });
+      if (u === null || distances[u] === Infinity) break;
+      pq.delete(u);
+      if (u === endId) break;
 
-        edges.filter(edge => edge.source === u || (!isDirected && edge.target === u))
-            .forEach(edge => {
-                const v = edge.source === u ? edge.target : edge.source;
-                const weight = edge.weight === undefined ? 1 : edge.weight; 
-                if (weight < 0) throw new Error("Dijkstra's algorithm does not support negative edge weights.");
-                const alt = distances[u!] + weight;
-                if (alt < distances[v]) { distances[v] = alt; predecessors[v] = u; }
-            });
+      edges.filter(edge => edge.source === u || (!isDirected && edge.target === u))
+        .forEach(edge => {
+          const v = edge.source === u ? edge.target : edge.source;
+          const weight = edge.weight === undefined ? 1 : edge.weight;
+          if (weight < 0) throw new Error("Dijkstra's algorithm does not support negative edge weights.");
+          const alt = distances[u!] + weight;
+          if (alt < distances[v]) { distances[v] = alt; predecessors[v] = u; }
+        });
     }
-    if (distances[endId] === Infinity) return { path: null, cost: null }; 
+    if (distances[endId] === Infinity) return { path: null, cost: null };
     const path: string[] = []; let current: string | null = endId;
     while (current) { path.unshift(current); current = predecessors[current]; }
     return (path[0] === startId) ? { path, cost: distances[endId] } : { path: null, cost: null };
@@ -384,14 +383,14 @@ export default function GraphTheoryPage() {
     if (!nodes.find(n => n.id === start) || !nodes.find(n => n.id === end)) { setErrorDijkstra("One or both specified nodes do not exist."); return; }
     setIsRunningDijkstra(true); setErrorDijkstra(null); setFoundPathDijkstra(null); setCostDijkstra(null);
     setTimeout(() => {
-        try {
-            const result = findShortestPathDijkstraLogic(start, end);
-            if (result.path && result.cost !== null) {
-                setFoundPathDijkstra(result.path); setCostDijkstra(result.cost); highlightPathOnGraph(result.path);
-                toast({title: "Dijkstra's Path Found!", description: `Shortest path from ${start} to ${end} (Cost: ${result.cost}): ${result.path.join(' → ')}`});
-            } else { setErrorDijkstra(`No path found from ${start} to ${end} using Dijkstra's algorithm.`); toast({title: "Dijkstra's Path Not Found", variant: "destructive"}); }
-        } catch (e: any) { setErrorDijkstra(e.message || "An error occurred during Dijkstra's calculation."); toast({title: "Dijkstra's Error", description: e.message, variant: "destructive"}); }
-        setIsRunningDijkstra(false);
+      try {
+        const result = findShortestPathDijkstraLogic(start, end);
+        if (result.path && result.cost !== null) {
+          setFoundPathDijkstra(result.path); setCostDijkstra(result.cost); highlightPathOnGraph(result.path);
+          toast({ title: "Dijkstra's Path Found!", description: `Shortest path from ${start} to ${end} (Cost: ${result.cost}): ${result.path.join(' → ')}` });
+        } else { setErrorDijkstra(`No path found from ${start} to ${end} using Dijkstra's algorithm.`); toast({ title: "Dijkstra's Path Not Found", variant: "destructive" }); }
+      } catch (e: any) { setErrorDijkstra(e.message || "An error occurred during Dijkstra's calculation."); toast({ title: "Dijkstra's Error", description: e.message, variant: "destructive" }); }
+      setIsRunningDijkstra(false);
     }, 300);
   };
 
@@ -400,8 +399,8 @@ export default function GraphTheoryPage() {
     let newNodeId = '';
     let counter = nodes.length + 1;
     do {
-        newNodeId = `N${counter}`;
-        counter++;
+      newNodeId = `N${counter}`;
+      counter++;
     } while (existingNodeIds.has(newNodeId));
     const newNodeData: Node = { id: newNodeId, label: newNodeId };
     setNodes(prevNodes => [...prevNodes, newNodeData]);
@@ -424,9 +423,9 @@ export default function GraphTheoryPage() {
     <Card className="h-full flex flex-col">
       <CardHeader><CardTitle className="text-lg">Edge List Editor</CardTitle><CardDescription>Define graph edges. Nodes are derived automatically. Use ALL CAPS for Node IDs.</CardDescription></CardHeader>
       <CardContent className="flex-grow overflow-auto space-y-4">
-        <div className="space-y-2"><div className={`grid ${isWeighted ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}><div><Label htmlFor="new-edge-source">Source Node</Label><Input id="new-edge-source" placeholder="e.g., A" value={newEdgeSource} onChange={e => setNewEdgeSource(e.target.value)} className="uppercase"/></div><div><Label htmlFor="new-edge-target">Target Node</Label><Input id="new-edge-target" placeholder="e.g., B" value={newEdgeTarget} onChange={e => setNewEdgeTarget(e.target.value)} className="uppercase"/></div>{isWeighted && (<div><Label htmlFor="new-edge-weight">Weight</Label><Input id="new-edge-weight" type="number" placeholder="e.g., 5" value={newEdgeWeight} onChange={e => setNewEdgeWeight(e.target.value)} /></div>)}</div><Button onClick={handleAddEdge} size="sm" className="w-full"><PlusCircle className="mr-2 h-4 w-4"/> Add Edge</Button></div>
+        <div className="space-y-2"><div className={`grid ${isWeighted ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-end`}><div><Label htmlFor="new-edge-source">Source Node</Label><Input id="new-edge-source" placeholder="e.g., A" value={newEdgeSource} onChange={e => setNewEdgeSource(e.target.value)} className="uppercase" /></div><div><Label htmlFor="new-edge-target">Target Node</Label><Input id="new-edge-target" placeholder="e.g., B" value={newEdgeTarget} onChange={e => setNewEdgeTarget(e.target.value)} className="uppercase" /></div>{isWeighted && (<div><Label htmlFor="new-edge-weight">Weight</Label><Input id="new-edge-weight" type="number" placeholder="e.g., 5" value={newEdgeWeight} onChange={e => setNewEdgeWeight(e.target.value)} /></div>)}</div><Button onClick={handleAddEdge} size="sm" className="w-full"><PlusCircle className="mr-2 h-4 w-4" /> Add Edge</Button></div>
         <div className="border rounded-md"><Table><TableHeader><TableRow><TableHead className="w-[30%]">Source</TableHead><TableHead className="w-[30%]">Target</TableHead>{isWeighted && <TableHead className="w-[20%]">Weight</TableHead>}<TableHead className="w-[20%] text-right">Action</TableHead></TableRow></TableHeader><TableBody>{edges.length === 0 && (<TableRow><TableCell colSpan={isWeighted ? 4 : 3} className="text-center text-muted-foreground h-24">No edges defined yet. Add edges using the form above.</TableCell></TableRow>)}{edges.map((edge) => (<TableRow key={edge.id}><TableCell>{edge.source}</TableCell><TableCell>{edge.target}</TableCell>{isWeighted && <TableCell>{edge.weight ?? 'N/A'}</TableCell>}<TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDeleteEdge(edge.id)} aria-label="Delete edge"><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell></TableRow>))}</TableBody></Table></div>
-         <div className="mt-4 text-sm"><p><span className="font-semibold">Nodes:</span> {nodes.map(n => n.label).join(', ') || 'None'}</p><p><span className="font-semibold">Edge Count:</span> {edges.length}</p></div>
+        <div className="mt-4 text-sm"><p><span className="font-semibold">Nodes:</span> {nodes.map(n => n.label).join(', ') || 'None'}</p><p><span className="font-semibold">Edge Count:</span> {edges.length}</p></div>
       </CardContent>
     </Card>
   );
@@ -471,7 +470,7 @@ export default function GraphTheoryPage() {
           <MiniMap nodeStrokeWidth={3} zoomable pannable />
           <Background gap={16} color="hsl(var(--border))" />
           <Panel position="top-left" className="p-2 bg-card border rounded-md shadow">
-             <p className="text-xs text-muted-foreground">Select nodes and press Delete/Backspace to remove.</p>
+            <p className="text-xs text-muted-foreground">Select nodes and press Delete/Backspace to remove.</p>
           </Panel>
         </ReactFlow>
       </CardContent>
@@ -506,19 +505,19 @@ export default function GraphTheoryPage() {
 
   const renderAlgorithmsTab = () => (
     <div className="space-y-6">
-      <Button onClick={clearAllAlgorithmVisuals} variant="outline" className="w-full sm:w-auto"><Trash2 className="mr-2 h-4 w-4"/> Clear All Algorithm Results & Highlights</Button>
+      <Button onClick={clearAllAlgorithmVisuals} variant="outline" className="w-full sm:w-auto"><Trash2 className="mr-2 h-4 w-4" /> Clear All Algorithm Results & Highlights</Button>
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><Waypoints className="mr-2 h-5 w-5 text-primary" />Breadth-First Search (BFS) Pathfinding</CardTitle><CardDescription>Finds the shortest path in terms of number of edges.</CardDescription></CardHeader>
-        <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-bfs">Start Node ID</Label><Input id="start-node-bfs" placeholder="e.g., A" value={startNodeBFS} onChange={e => setStartNodeBFS(e.target.value.toUpperCase())} className="uppercase"/></div><div><Label htmlFor="end-node-bfs">End Node ID</Label><Input id="end-node-bfs" placeholder="e.g., Z" value={endNodeBFS} onChange={e => setEndNodeBFS(e.target.value.toUpperCase())} className="uppercase"/></div></div>
-          <Button onClick={handleFindPathBFS} disabled={isRunningBFS} className="w-full">{isRunningBFS ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Waypoints className="mr-2 h-4 w-4"/>}{isRunningBFS ? "Searching (BFS)..." : "Find Path (BFS)"}</Button>
+        <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-bfs">Start Node ID</Label><Input id="start-node-bfs" placeholder="e.g., A" value={startNodeBFS} onChange={e => setStartNodeBFS(e.target.value.toUpperCase())} className="uppercase" /></div><div><Label htmlFor="end-node-bfs">End Node ID</Label><Input id="end-node-bfs" placeholder="e.g., Z" value={endNodeBFS} onChange={e => setEndNodeBFS(e.target.value.toUpperCase())} className="uppercase" /></div></div>
+          <Button onClick={handleFindPathBFS} disabled={isRunningBFS} className="w-full">{isRunningBFS ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Waypoints className="mr-2 h-4 w-4" />}{isRunningBFS ? "Searching (BFS)..." : "Find Path (BFS)"}</Button>
           {errorBFS && (<Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>BFS Error</AlertTitle><AlertDescUI>{errorBFS}</AlertDescUI></Alert>)}
           {foundPathBFS && !errorBFS && (<Alert variant="default" className="border-green-500"><Waypoints className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">BFS Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">{foundPathBFS.join(' → ')}</AlertDescUI></Alert>)}
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><SearchCheck className="mr-2 h-5 w-5 text-primary" />Depth-First Search (DFS) Pathfinding</CardTitle><CardDescription>Finds a path between two nodes (not necessarily the shortest).</CardDescription></CardHeader>
-        <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-dfs">Start Node ID</Label><Input id="start-node-dfs" placeholder="e.g., A" value={startNodeDFS} onChange={e => setStartNodeDFS(e.target.value.toUpperCase())} className="uppercase"/></div><div><Label htmlFor="end-node-dfs">End Node ID</Label><Input id="end-node-dfs" placeholder="e.g., Z" value={endNodeDFS} onChange={e => setEndNodeDFS(e.target.value.toUpperCase())} className="uppercase"/></div></div>
-          <Button onClick={handleFindPathDFS} disabled={isRunningDFS} className="w-full">{isRunningDFS ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SearchCheck className="mr-2 h-4 w-4"/>}{isRunningDFS ? "Searching (DFS)..." : "Find Path (DFS)"}</Button>
+        <CardContent className="space-y-4"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-dfs">Start Node ID</Label><Input id="start-node-dfs" placeholder="e.g., A" value={startNodeDFS} onChange={e => setStartNodeDFS(e.target.value.toUpperCase())} className="uppercase" /></div><div><Label htmlFor="end-node-dfs">End Node ID</Label><Input id="end-node-dfs" placeholder="e.g., Z" value={endNodeDFS} onChange={e => setEndNodeDFS(e.target.value.toUpperCase())} className="uppercase" /></div></div>
+          <Button onClick={handleFindPathDFS} disabled={isRunningDFS} className="w-full">{isRunningDFS ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SearchCheck className="mr-2 h-4 w-4" />}{isRunningDFS ? "Searching (DFS)..." : "Find Path (DFS)"}</Button>
           {errorDFS && (<Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>DFS Error</AlertTitle><AlertDescUI>{errorDFS}</AlertDescUI></Alert>)}
           {foundPathDFS && !errorDFS && (<Alert variant="default" className="border-green-500"><SearchCheck className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">DFS Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">{foundPathDFS.join(' → ')}</AlertDescUI></Alert>)}
         </CardContent>
@@ -526,11 +525,11 @@ export default function GraphTheoryPage() {
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center"><Route className="mr-2 h-5 w-5 text-primary" />Dijkstra's Shortest Path</CardTitle><CardDescription>Finds the shortest path in a weighted graph. Requires 'Weighted' graph type to be enabled.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-          {!isWeighted && <Alert variant="default" className="border-amber-500"><AlertTriangle className="h-4 w-4 text-amber-600"/><AlertTitle className="text-amber-700">Enable Weighted Graph</AlertTitle><AlertDescUI>Dijkstra's algorithm requires edge weights. Please enable 'Weighted' graph type in settings.</AlertDescUI></Alert>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-dijkstra">Start Node ID</Label><Input id="start-node-dijkstra" placeholder="e.g., A" value={startNodeDijkstra} onChange={e => setStartNodeDijkstra(e.target.value.toUpperCase())} className="uppercase" disabled={!isWeighted}/></div><div><Label htmlFor="end-node-dijkstra">End Node ID</Label><Input id="end-node-dijkstra" placeholder="e.g., Z" value={endNodeDijkstra} onChange={e => setEndNodeDijkstra(e.target.value.toUpperCase())} className="uppercase" disabled={!isWeighted}/></div></div>
-          <Button onClick={handleFindShortestPathDijkstra} disabled={isRunningDijkstra || !isWeighted} className="w-full">{isRunningDijkstra ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Route className="mr-2 h-4 w-4"/>}{isRunningDijkstra ? "Searching (Dijkstra)..." : "Find Shortest Path (Dijkstra)"}</Button>
+          {!isWeighted && <Alert variant="default" className="border-amber-500"><AlertTriangle className="h-4 w-4 text-amber-600" /><AlertTitle className="text-amber-700">Enable Weighted Graph</AlertTitle><AlertDescUI>Dijkstra's algorithm requires edge weights. Please enable 'Weighted' graph type in settings.</AlertDescUI></Alert>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><Label htmlFor="start-node-dijkstra">Start Node ID</Label><Input id="start-node-dijkstra" placeholder="e.g., A" value={startNodeDijkstra} onChange={e => setStartNodeDijkstra(e.target.value.toUpperCase())} className="uppercase" disabled={!isWeighted} /></div><div><Label htmlFor="end-node-dijkstra">End Node ID</Label><Input id="end-node-dijkstra" placeholder="e.g., Z" value={endNodeDijkstra} onChange={e => setEndNodeDijkstra(e.target.value.toUpperCase())} className="uppercase" disabled={!isWeighted} /></div></div>
+          <Button onClick={handleFindShortestPathDijkstra} disabled={isRunningDijkstra || !isWeighted} className="w-full">{isRunningDijkstra ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}{isRunningDijkstra ? "Searching (Dijkstra)..." : "Find Shortest Path (Dijkstra)"}</Button>
           {errorDijkstra && (<Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Dijkstra's Error</AlertTitle><AlertDescUI>{errorDijkstra}</AlertDescUI></Alert>)}
-          {foundPathDijkstra && !errorDijkstra && (<Alert variant="default" className="border-green-500"><Route className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">Dijkstra's Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">Path: {foundPathDijkstra.join(' → ')} <br/> Total Cost: {costDijkstra !== null ? costDijkstra.toFixed(2) : 'N/A'}</AlertDescUI></Alert>)}
+          {foundPathDijkstra && !errorDijkstra && (<Alert variant="default" className="border-green-500"><Route className="h-4 w-4 text-green-600" /><AlertTitle className="text-green-700">Dijkstra's Path Found!</AlertTitle><AlertDescUI className="font-mono text-sm">Path: {foundPathDijkstra.join(' → ')} <br /> Total Cost: {costDijkstra !== null ? costDijkstra.toFixed(2) : 'N/A'}</AlertDescUI></Alert>)}
         </CardContent>
       </Card>
     </div>
@@ -544,7 +543,7 @@ export default function GraphTheoryPage() {
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 border rounded-md bg-secondary/30"><div><Label className="block text-md font-semibold text-foreground mb-1">Graph Type</Label><Select value={isDirected ? "directed" : "undirected"} onValueChange={(val) => setIsDirected(val === "directed")}><SelectTrigger className="w-full"><SelectValue placeholder="Select graph directionality" /></SelectTrigger><SelectContent><SelectItem value="undirected">Undirected</SelectItem><SelectItem value="directed">Directed</SelectItem></SelectContent></Select></div><div><Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label><Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => { setIsWeighted(val === "weighted"); if (val === "unweighted") setNewEdgeWeight(''); }}><SelectTrigger className="w-full"><SelectValue placeholder="Select edge weight type" /></SelectTrigger><SelectContent><SelectItem value="unweighted">Unweighted</SelectItem><SelectItem value="weighted">Weighted</SelectItem></SelectContent></Select></div></div>
           <Tabs defaultValue="grid-editor" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><LayoutGrid className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><MousePointerSquare className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><LayoutGrid className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><SquareMousePointer className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
             <TabsContent value="grid-editor" className="mt-4 min-h-[600px] space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderEdgeInputTable()}</div><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderGraphVisualization()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderAdjacencyMatrix()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderIncidenceMatrix()}</div></div>{renderGraphProperties()}</TabsContent>
             <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]">{renderVisualEditorTab()}</TabsContent>
             <TabsContent value="algorithms" className="mt-4 min-h-[600px]">{renderAlgorithmsTab()}</TabsContent>
@@ -557,4 +556,3 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
-
