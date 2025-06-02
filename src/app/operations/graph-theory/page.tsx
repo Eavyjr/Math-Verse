@@ -8,22 +8,22 @@ import {
   ArrowLeft,
   Trash2,
   Projector,
-  TableIcon, // Ensured
+  LayoutGrid, // Changed from TableIcon
   Share2,
   Sigma,
   Network,
   Download,
-  Settings2, // Ensured
+  Settings2, 
   HelpCircle,
   PlusCircle,
   Activity,
-  BookOpen, // Ensured
+  BookOpen, 
   Waypoints,
   Loader2,
   AlertTriangle,
   SearchCheck, 
   Route, 
-  MousePointerSquare, // Ensured
+  MousePointerSquare, 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -487,7 +487,7 @@ export default function GraphTheoryPage() {
   const renderAdjacencyMatrix = () => (
     <Card className="h-full flex flex-col">
       <CardHeader><CardTitle className="text-lg">Adjacency Matrix</CardTitle><CardDescription>Rows/Cols: {nodes.map(n => n.label).join(', ')}</CardDescription></CardHeader>
-      <CardContent className="flex-grow overflow-auto">{nodes.length === 0 ? (<div className="flex flex-col items-center justify-center h-full text-muted-foreground"><TableIcon className="h-12 w-12 mx-auto mb-2 opacity-30" /><p>No nodes to build matrix.</p></div>) : (<Table><TableHeader><TableRow><TableHead className="min-w-[40px] sticky left-0 bg-card z-10"></TableHead>{nodes.map(node => <TableHead key={node.id} className="text-center min-w-[40px]">{node.label}</TableHead>)}</TableRow></TableHeader><TableBody>{nodes.map((rowNode, rowIndex) => (<TableRow key={rowNode.id}><TableHead className="font-semibold sticky left-0 bg-card z-10 min-w-[40px]">{rowNode.label}</TableHead>{nodes.map((colNode, colIndex) => (<TableCell key={colNode.id} className="text-center min-w-[40px]">{adjacencyMatrix[rowIndex]?.[colIndex] ?? 0}</TableCell>))}</TableRow>))}</TableBody></Table>)}</CardContent>
+      <CardContent className="flex-grow overflow-auto">{nodes.length === 0 ? (<div className="flex flex-col items-center justify-center h-full text-muted-foreground"><LayoutGrid className="h-12 w-12 mx-auto mb-2 opacity-30" /><p>No nodes to build matrix.</p></div>) : (<Table><TableHeader><TableRow><TableHead className="min-w-[40px] sticky left-0 bg-card z-10"></TableHead>{nodes.map(node => <TableHead key={node.id} className="text-center min-w-[40px]">{node.label}</TableHead>)}</TableRow></TableHeader><TableBody>{nodes.map((rowNode, rowIndex) => (<TableRow key={rowNode.id}><TableHead className="font-semibold sticky left-0 bg-card z-10 min-w-[40px]">{rowNode.label}</TableHead>{nodes.map((colNode, colIndex) => (<TableCell key={colNode.id} className="text-center min-w-[40px]">{adjacencyMatrix[rowIndex]?.[colIndex] ?? 0}</TableCell>))}</TableRow>))}</TableBody></Table>)}</CardContent>
     </Card>
   );
 
@@ -544,7 +544,7 @@ export default function GraphTheoryPage() {
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 border rounded-md bg-secondary/30"><div><Label className="block text-md font-semibold text-foreground mb-1">Graph Type</Label><Select value={isDirected ? "directed" : "undirected"} onValueChange={(val) => setIsDirected(val === "directed")}><SelectTrigger className="w-full"><SelectValue placeholder="Select graph directionality" /></SelectTrigger><SelectContent><SelectItem value="undirected">Undirected</SelectItem><SelectItem value="directed">Directed</SelectItem></SelectContent></Select></div><div><Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label><Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => { setIsWeighted(val === "weighted"); if (val === "unweighted") setNewEdgeWeight(''); }}><SelectTrigger className="w-full"><SelectValue placeholder="Select edge weight type" /></SelectTrigger><SelectContent><SelectItem value="unweighted">Unweighted</SelectItem><SelectItem value="weighted">Weighted</SelectItem></SelectContent></Select></div></div>
           <Tabs defaultValue="grid-editor" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><TableIcon className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><MousePointerSquare className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><LayoutGrid className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><MousePointerSquare className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
             <TabsContent value="grid-editor" className="mt-4 min-h-[600px] space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderEdgeInputTable()}</div><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderGraphVisualization()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderAdjacencyMatrix()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderIncidenceMatrix()}</div></div>{renderGraphProperties()}</TabsContent>
             <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]">{renderVisualEditorTab()}</TabsContent>
             <TabsContent value="algorithms" className="mt-4 min-h-[600px]">{renderAlgorithmsTab()}</TabsContent>
