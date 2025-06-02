@@ -15,6 +15,9 @@ importers:
 
   .:
     dependencies:
+      '@firebase/auth':
+        specifier: 1.10.6
+        version: 1.10.6(@firebase/app@0.13.0)
       '@genkit-ai/googleai':
         specifier: ^1.8.0
         version: 1.11.0(genkit@1.11.0)
