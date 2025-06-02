@@ -1,4 +1,4 @@
-# MathVerse
+dd .# MathVerse
 
 This project is the MathVerse application, your universe for mathematical exploration and AI assistance.
 
