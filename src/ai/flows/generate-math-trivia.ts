@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -32,7 +33,7 @@ const prompt = ai.definePrompt({
   name: 'generateMathTriviaPrompt',
   input: {schema: GenerateMathTriviaInputSchema},
   output: {schema: GenerateMathTriviaOutputSchema},
-  prompt: `You are a math trivia generator. Generate a random math fact, puzzle, or historical insight based on the topic: {{{topic}}}.`,
+  prompt: `You are a math trivia generator. Generate a random math fact, puzzle, or historical insight based on the topic: {{{topic}}}. Keep it concise and engaging.`,
 });
 
 const generateMathTriviaFlow = ai.defineFlow(
@@ -42,7 +43,22 @@ const generateMathTriviaFlow = ai.defineFlow(
     outputSchema: GenerateMathTriviaOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      if (output && output.trivia) {
+        return output;
+      }
+      // Fallback if output is null or trivia field is missing, though schema should prevent this.
+      console.warn('generateMathTriviaFlow: AI returned null or malformed output. Using fallback.');
+      return { trivia: "Could not generate a fun fact at this moment. How about this: Did you know π (pi) is an irrational number?" };
+    } catch (error: any) {
+      console.error('Error in generateMathTriviaFlow:', error.message || error);
+      // Check for specific error messages if needed, e.g., from Google API
+      if (error.message && (error.message.includes('503') || error.message.toLowerCase().includes('overloaded'))) {
+        return { trivia: "The math trivia service is currently busy. Please try again in a moment!" };
+      }
+      return { trivia: "Sorry, I couldn't fetch a new trivia fact right now. Please try again later." };
+    }
   }
 );
+
