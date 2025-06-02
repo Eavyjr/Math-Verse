@@ -8,22 +8,22 @@ import {
   ArrowLeft,
   Trash2,
   Projector,
-  TableIcon,
+  TableIcon, // Ensured
   Share2,
   Sigma,
   Network,
   Download,
-  Settings2,
+  Settings2, // Ensured
   HelpCircle,
   PlusCircle,
   Activity,
-  BookOpen,
+  BookOpen, // Ensured
   Waypoints,
   Loader2,
   AlertTriangle,
   SearchCheck, 
   Route, 
-  MousePointerSquare, // For visual editor tab
+  MousePointerSquare, // Ensured
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -163,7 +163,7 @@ export default function GraphTheoryPage() {
     
     setRfNodesState(newRfNodesData);
     setRfEdgesState(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted]); // Removed setRfNodesState, setRfEdgesState from deps as they are stable
+  }, [nodes, edges, isDirected, isWeighted, rfNodes, defaultNodeStyle, defaultEdgeStyle, setRfNodesState, setRfEdgesState]); 
 
   useEffect(() => {
     if (nodes.length === 0) { setAdjacencyMatrix([]); return; }
@@ -557,3 +557,4 @@ export default function GraphTheoryPage() {
     </div>
   );
 }
+
