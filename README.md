@@ -1,4 +1,4 @@
-dd .# MathVerse
+npmdd .# MathVerse
 
 This project is the MathVerse application, your universe for mathematical exploration and AI assistance.
 

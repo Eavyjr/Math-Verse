@@ -1,6 +1,17 @@
 
 import type { NextConfig } from 'next';
-// We are removing the WebpackConfiguration import as the webpack function is being removed.
+import type { Configuration as WebpackConfiguration, WebpackPluginInstance } from 'webpack'; // Added WebpackPluginInstance
+
+// Try to require the plugin at the top level to see if it's available
+let MiniCssExtractPlugin: (new (options?: any) => WebpackPluginInstance) | null = null;
+try {
+  MiniCssExtractPlugin = require('mini-css-extract-plugin');
+  if (!MiniCssExtractPlugin) {
+    console.warn("mini-css-extract-plugin could not be required. CSS extraction might fail.");
+  }
+} catch (e) {
+  console.warn("Failed to require mini-css-extract-plugin:", e, "CSS extraction might fail.");
+}
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -22,8 +33,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // The custom webpack function has been removed.
-  // Next.js will use its default webpack configuration.
+  webpack: (config: WebpackConfiguration, { isServer }) => {
+    if (!isServer && MiniCssExtractPlugin) {
+      const miniCssExtractPluginExists = config.plugins?.some(
+        (plugin) => plugin instanceof MiniCssExtractPlugin
+      );
+
+      if (!miniCssExtractPluginExists) {
+        console.log("Manually adding MiniCssExtractPlugin to webpack config.");
+        config.plugins = [...(config.plugins || []), new MiniCssExtractPlugin()];
+      } else {
+        // console.log("MiniCssExtractPlugin already exists in webpack config.");
+      }
+    } else if (!isServer && !MiniCssExtractPlugin) {
+        console.error("MiniCssExtractPlugin is not available, cannot add to webpack config. CSS extraction likely to fail.");
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
