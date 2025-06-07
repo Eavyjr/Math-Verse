@@ -11,10 +11,9 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Helper to describe a vector input
 const VectorSchema = z.array(z.number()).describe('A vector represented as an array of numbers (e.g., [1, 2, 3] for a 3D vector).');
 
-const VectorOperationInputSchema = z.object({
+export const VectorOperationInputSchema = z.object({
   vectorA: VectorSchema.describe('The first vector (Vector A).'),
   vectorB: VectorSchema.optional().describe('The second vector (Vector B), required for binary operations like dot product, cross product, addition, subtraction.'),
   scalar: z.number().optional().describe('A scalar value, required for scalar multiplication.'),
@@ -35,15 +34,15 @@ const VectorOperationInputSchema = z.object({
 });
 export type VectorOperationInput = z.infer<typeof VectorOperationInputSchema>;
 
-const VectorOperationOutputSchema = z.object({
+export const VectorOperationOutputSchema = z.object({
   result: z.union([
-    z.number(), // For magnitude, dot product, angle
-    VectorSchema, // For normalize, add, subtract, scalarMultiply, crossProduct
-    z.string() // For errors or descriptive results
+    z.number(), 
+    z.array(z.number()), 
+    z.string() 
   ]).describe(
-    'The result of the vector operation. This could be a scalar number, a vector (array of numbers), or a descriptive message (e.g., for errors or operations not directly resulting in a number/vector like "Vectors must be 3D for cross product").'
+    'The result of the vector operation. This could be a scalar number (for magnitude, dot product, angle), a vector array (for normalize, add, subtract, scalarMultiply, crossProduct), or a descriptive string message (e.g., for errors like incompatible dimensions or cross product of non-3D vectors).'
   ),
-  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in \\(...\\) delimiters."),
+  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in \\(...\\) delimiters (e.g., \\(\\sqrt{x^2 + y^2}\\), \\(A \\cdot B\\))."),
   originalQuery: VectorOperationInputSchema.describe("The original input parameters for the operation."),
 });
 export type VectorOperationOutput = z.infer<typeof VectorOperationOutputSchema>;
@@ -51,33 +50,65 @@ export type VectorOperationOutput = z.infer<typeof VectorOperationOutputSchema>;
 export async function performVectorOperation(
   input: VectorOperationInput
 ): Promise<VectorOperationOutput> {
-  // Placeholder: AI flow logic will be implemented here.
-  // For now, just returning a dummy response based on operation.
-  console.log("performVectorOperation called with input:", input);
-  
-  // This is where you would call your AI flow (e.g., performVectorOperationFlow(input))
-  // For now, let's simulate a response.
-  let dummyResult: VectorOperationOutput['result'] = "Operation not yet implemented in placeholder.";
-  let dummySteps: string | undefined = "Placeholder steps: AI calculation pending.";
-
-  if (input.operation === 'magnitudeA') {
-    dummyResult = 0; // Placeholder
-    dummySteps = `1. Calculate the sum of squares of components of vector A: \\(${input.vectorA.join('^2 + ')}^2\\) = ... \n2. Take the square root: \\(\\sqrt{...}\\) = ...`;
-  } else if (input.operation === 'add' && input.vectorB) {
-    dummyResult = [0,0,0]; // Placeholder
-     dummySteps = `1. Add corresponding components of A and B: \\(A_i + B_i\\).`;
-  }
-  // Add more placeholder logic for other operations if desired
-
-  return {
-    result: dummyResult,
-    steps: dummySteps,
-    originalQuery: input,
-  };
+  return performVectorOperationFlow(input);
 }
 
-// Example (Illustrative - actual Genkit flow to be defined later)
-/*
+const systemPrompt = `You are an expert vector algebra assistant. Perform the requested operation on the given vector(s) and scalar.
+
+Input Vectors are provided as arrays of numbers.
+
+Output Requirements:
+- 'result': This field should contain the direct mathematical result.
+    - If the result is a scalar (e.g., magnitude, dot product, angle), return it as a number.
+    - If the result is a vector (e.g., normalization, addition, cross product), return it as an array of numbers.
+    - If an operation is invalid (e.g., cross product of 2D vectors, different dimensions for addition/dot product, angle with zero vector), the 'result' field should be a concise string explaining the error (e.g., "Error: Cross product is only defined for 3D vectors.").
+- 'steps': Provide a detailed step-by-step explanation for how the result was obtained. Use LaTeX notation wrapped in \\(...\\) for all mathematical expressions, variables, and numbers within the steps. Clearly state the formula or rule used at each step.
+
+Operation Specific Instructions:
+- magnitudeA: Calculate the magnitude (length or norm) of Vector A. Formula: \\(|A| = \\sqrt{\\sum A_i^2}\\).
+- normalizeA: Normalize Vector A to a unit vector. Formula: \\(\\hat{A} = \\frac{A}{|A|}\\). If magnitude is 0, result should be an error string "Error: Cannot normalize a zero vector."
+- add: Add Vector A and Vector B. (e.g., \\(A+B = [A_x+B_x, A_y+B_y, ... ]\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
+- subtract: Subtract Vector B from Vector A. (e.g., \\(A-B = [A_x-B_x, A_y-B_y, ... ]\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
+- scalarMultiplyA: Multiply Vector A by the scalar 'k'. (e.g., \\(kA = [k A_x, k A_y, ... ]\\)). Result is a vector.
+- dotProduct: Calculate the dot product (scalar product) of Vector A and Vector B. (e.g., \\(A \\cdot B = \\sum A_i B_i\\)). Result is a number. Vectors must have the same dimension, otherwise, result is an error string.
+- crossProduct: Calculate the cross product of Vector A and Vector B. (e.g., \\(A \\times B\\)). Result is a vector. Both Vector A and Vector B MUST be 3D vectors. If not, result is an error string "Error: Cross product is only defined for 3D vectors." For \\(A = [A_x, A_y, A_z]\\) and \\(B = [B_x, B_y, B_z]\\), the result is \\([A_y B_z - A_z B_y, A_z B_x - A_x B_z, A_x B_y - A_y B_x]\\).
+- angleBetween: Calculate the angle in RADIANS between Vector A and Vector B. Formula: \\(\\theta = \\arccos\\left(\\frac{A \\cdot B}{|A| |B|}\\right)\\). Result is a number (radians). If either vector is a zero vector, result is an error string "Error: Angle is undefined for zero vectors." Vectors must have the same dimension.
+
+Ensure mathematical notation in 'steps' is always wrapped in \\(...\\).
+The 'originalQuery' field in the output should be an echo of the input you received.
+If an input vector is empty or invalid based on the operation, the 'result' should be an error string.
+`;
+
+const vectorOperationPrompt = ai.definePrompt({
+    name: 'vectorOperationPrompt',
+    input: { schema: VectorOperationInputSchema },
+    output: { schema: VectorOperationOutputSchema.omit({ originalQuery: true }) }, // AI doesn't need to echo originalQuery
+    system: systemPrompt,
+    prompt: `Vector A: {{{JSONstringify vectorA}}}
+    {{#if vectorB}}Vector B: {{{JSONstringify vectorB}}}{{/if}}
+    {{#if scalarValue}}Scalar: {{{scalarValue}}}{{/if}}
+    Operation: {{{operation}}}
+
+    Perform the operation '{{{operation}}}' based on the system instructions.
+    Return the 'result' as a number, an array of numbers, or an error string.
+    Provide detailed 'steps', ensuring all mathematical notation is wrapped in \\(...\\) delimiters.`,
+    config: {
+        temperature: 0.1,
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+        ],
+    }
+});
+
+// Helper for Handlebars to stringify arrays/objects for the prompt if complex structures are used directly
+// Though for simple arrays like vectors, Genkit usually handles it. This is for robustness.
+ai.handlebars.registerHelper('JSONstringify', function(context: any) {
+  return JSON.stringify(context);
+});
+
 const performVectorOperationFlow = ai.defineFlow(
   {
     name: 'performVectorOperationFlow',
@@ -85,55 +116,31 @@ const performVectorOperationFlow = ai.defineFlow(
     outputSchema: VectorOperationOutputSchema,
   },
   async (input) => {
-    // Actual AI prompt call would go here
-    // For now, returning the dummy logic for illustration
-    const {output} = await vectorOperationPrompt(input); // Assume vectorOperationPrompt exists
-    if (!output) {
-        throw new Error('AI model did not return valid output for vector operation.');
+    // Basic input validation that might be too complex for Zod schema alone for some ops
+    if ((input.operation === 'add' || input.operation === 'subtract' || input.operation === 'dotProduct' || input.operation === 'angleBetween') && !input.vectorB) {
+        return { result: `Error: Vector B is required for ${input.operation} operation.`, originalQuery: input };
     }
+    if (input.operation === 'scalarMultiplyA' && typeof input.scalar !== 'number') {
+        return { result: "Error: Scalar value is required for scalar multiplication.", originalQuery: input };
+    }
+    if (input.operation === 'crossProduct' && (!input.vectorB || input.vectorA.length !== 3 || input.vectorB.length !== 3)) {
+        return { result: "Error: Cross product is defined only for two 3D vectors.", originalQuery: input };
+    }
+    if ((input.operation === 'add' || input.operation === 'subtract' || input.operation === 'dotProduct' || input.operation === 'angleBetween') && input.vectorB && input.vectorA.length !== input.vectorB.length) {
+        return { result: "Error: Vectors must have the same dimension for this operation.", originalQuery: input };
+    }
+
+
+    const { output } = await vectorOperationPrompt(input);
+    if (!output || output.result === undefined) { // Check if result itself is undefined
+        throw new Error('AI model did not return valid output (result field missing) for vector operation.');
+    }
+    
+    // Ensure the output structure is what we expect, even if AI gives string result
     return {
-        result: output.result,
+        result: output.result, // This can be number, number[], or string
         steps: output.steps,
         originalQuery: input,
     };
   }
 );
-*/
-
-// Placeholder for the AI prompt - this would be defined more thoroughly
-/*
-const vectorOperationPrompt = ai.definePrompt({
-    name: 'vectorOperationPrompt',
-    input: {schema: VectorOperationInputSchema},
-    output: {schema: VectorOperationOutputSchema.omit({ originalQuery: true })}, // AI doesn't need to echo originalQuery
-    system: `You are an expert vector algebra assistant. Perform the requested operation on the given vector(s) and scalar.
-    - For 'magnitudeA', calculate the magnitude of Vector A.
-    - For 'normalizeA', normalize Vector A to a unit vector.
-    - For 'add', add Vector A and Vector B. Ensure they have the same dimension.
-    - For 'subtract', subtract Vector B from Vector A. Ensure they have the same dimension.
-    - For 'scalarMultiplyA', multiply Vector A by the scalar.
-    - For 'dotProduct', calculate the dot product of Vector A and Vector B. Ensure they have the same dimension.
-    - For 'crossProduct', calculate the cross product of Vector A and Vector B. Both must be 3D vectors. If not, result should be an error message.
-    - For 'angleBetween', calculate the angle in radians between Vector A and Vector B. Ensure they have the same dimension and are non-zero.
-    Provide the 'result' (a number or a vector array) and detailed 'steps' using LaTeX for math notation \\(...\\).
-    If an operation is invalid (e.g., cross product of 2D vectors, different dimensions for addition), the 'result' field should be a string explaining the error.`,
-    prompt: `Vector A: {{{JSONstringify vectorA}}}
-    {{#if vectorB}}Vector B: {{{JSONstringify vectorB}}}{{/if}}
-    {{#if scalar}}Scalar: {{{scalar}}}{{/if}}
-    Operation: {{{operation}}}
-
-    Perform the operation '{{{operation}}}'.
-    Return the result and detailed steps, ensuring mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
-     config: {
-        temperature: 0.1,
-        safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            // ... other safety settings
-        ],
-    }
-});
-*/
-// Helper for Handlebars if needed (usually Genkit handles JSON stringification for objects/arrays in prompts)
-// genkit.Handlebars.registerHelper('JSONstringify', function(context: any) {
-//   return JSON.stringify(context);
-// });

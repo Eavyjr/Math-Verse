@@ -7,6 +7,7 @@ import { performIntegration, type IntegrationInput, type IntegrationOutput } fro
 import { performDifferentiation, type DifferentiationInput, type DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 import { performMatrixOperation, type MatrixOperationInput, type MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
+import { performVectorOperation, type VectorOperationInput, type VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
 import { getMathChatbotResponse, type MathChatbotInput } from '@/ai/flows/math-chatbot-flow'; 
 
 interface ActionResult<T> {
@@ -256,6 +257,46 @@ export async function handlePerformMatrixOperationAction(
         } else {
             errorMessage = `An AI processing error occurred. Details: ${e.message}`;
         }
+    } else if (typeof e === 'string') {
+        errorMessage = e;
+    }
+    return { data: null, error: errorMessage };
+  }
+}
+
+export async function handlePerformVectorOperationAction(
+  input: VectorOperationInput
+): Promise<ActionResult<VectorOperationOutput>> {
+  // Basic validation - further validation is in the AI flow
+  if (!input.vectorA || input.vectorA.length === 0) {
+    return { data: null, error: 'Vector A cannot be empty.' };
+  }
+  if (!input.operation) {
+    return { data: null, error: 'Operation must be selected.' };
+  }
+
+  const binaryOps = ['add', 'subtract', 'dotProduct', 'crossProduct', 'angleBetween'];
+  if (binaryOps.includes(input.operation) && (!input.vectorB || input.vectorB.length === 0)) {
+    return { data: null, error: `Vector B is required for the '${input.operation}' operation.` };
+  }
+  if (input.operation === 'scalarMultiplyA' && (input.scalar === undefined || isNaN(input.scalar))) {
+    return { data: null, error: 'A valid scalar value is required for scalar multiplication.' };
+  }
+
+  try {
+    const result = await performVectorOperation(input);
+    return { data: result, error: null };
+  } catch (e) {
+    console.error('Error performing vector operation in action:', e);
+    let errorMessage = 'An error occurred while performing the vector operation.';
+    if (e instanceof Error) {
+      if (e.message.includes('quota')) {
+        errorMessage = 'API quota exceeded. Please try again later.';
+      } else if (e.message.includes('model did not return valid output')) {
+        errorMessage = 'The AI model could not process this vector operation. Please check your input.';
+      } else {
+        errorMessage = `An AI processing error occurred: ${e.message}`;
+      }
     } else if (typeof e === 'string') {
         errorMessage = e;
     }
