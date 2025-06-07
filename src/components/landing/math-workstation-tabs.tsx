@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes } from 'lucide-react';
+import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const workstations = [
@@ -72,6 +72,14 @@ const workstations = [
     description: "A full-featured Desmos graphing calculator for advanced plotting and geometric explorations.",
     cta: "Open Calculator",
     href: "/operations/graphing-calculator"
+  },
+  {
+    value: "vector-operations",
+    title: "Vector Operations",
+    icon: <Move3d className="mr-2 h-5 w-5" />,
+    description: "Perform vector operations like dot product, cross product, addition, scalar multiplication, and more.",
+    cta: "Explore Vectors",
+    href: "/operations/vector-operations"
   },
 ];
 

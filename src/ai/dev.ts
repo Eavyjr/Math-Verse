@@ -10,3 +10,4 @@ import '@/ai/flows/perform-differentiation-flow.ts';
 import '@/ai/flows/solve-differential-equation-flow.ts';
 import '@/ai/flows/perform-matrix-operation.ts';
 import '@/ai/flows/math-chatbot-flow.ts';
+import '@/ai/flows/perform-vector-operation.ts';

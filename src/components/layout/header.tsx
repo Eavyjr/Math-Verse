@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare, LayoutGrid, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes } from 'lucide-react';
+import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare, LayoutGrid, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '../ui/skeleton';
@@ -49,6 +49,7 @@ const workstationsHeaderLinks = [
   { title: "Graph Theory", href: "/operations/graph-theory", icon: <Share2 className="mr-2 h-4 w-4" /> },
   { title: "Statistics", href: "/operations/statistics", icon: <BarChartHorizontalBig className="mr-2 h-4 w-4" /> },
   { title: "Graphing Calculator", href: "/operations/graphing-calculator", icon: <FunctionSquare className="mr-2 h-4 w-4" /> },
+  { title: "Vector Operations", href: "/operations/vector-operations", icon: <Move3d className="mr-2 h-4 w-4" /> },
 ];
 
 
