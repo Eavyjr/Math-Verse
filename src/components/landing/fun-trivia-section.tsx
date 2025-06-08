@@ -20,10 +20,20 @@ export default function FunTriviaSection() {
     setTrivia(null); // Clear previous trivia before fetching new one
     try {
       const result = await generateMathTrivia({ topic: 'general' }); 
+      // The flow itself handles many errors and returns a specific trivia string.
+      // If result.trivia indicates an error from the flow, we might want to reflect that differently.
+      if (result && result.trivia && (result.trivia.toLowerCase().includes("could not generate") || result.trivia.toLowerCase().includes("service is currently busy") || result.trivia.toLowerCase().includes("couldn't fetch"))) {
+        // This is a "soft" error from the flow, display it as trivia but maybe style it differently or log it
+        console.warn("FunTriviaSection: Received an error-like message from trivia flow:", result.trivia);
+      }
       setTrivia(result);
-    } catch (e) {
-      console.error("Error fetching trivia:", e);
-      setError("Could not load a fun fact right now. Please try again!");
+    } catch (e: any) {
+      console.error("Error fetching trivia in FunTriviaSection:", e);
+      if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
+        setError("Could not load a fun fact. This might be a network issue, or the AI service could be temporarily unavailable. Please check your connection and try again.");
+      } else {
+        setError("Could not load a fun fact right now. Please try again!");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,3 +87,4 @@ export default function FunTriviaSection() {
     </Card>
   );
 }
+
