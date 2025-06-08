@@ -1,13 +1,23 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react'; // Added useState
 import Link from 'next/link';
-import { ArrowLeft, Layers, Brain, Search, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Layers, Brain, Search, BarChart2, Send } from 'lucide-react'; // Added Send icon
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea'; // Added Textarea
+import { Label } from '@/components/ui/label'; // Added Label
 
 export default function MathematicalModelGeneratorPage() {
+  const [problemDescription, setProblemDescription] = useState('');
+
+  const handleSubmitProblem = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log('Problem Description Submitted:', problemDescription);
+    // Further AI processing will be added here later
+  };
+
   return (
     <div className="space-y-8">
       <Link href="/workstations" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
@@ -32,14 +42,28 @@ export default function MathematicalModelGeneratorPage() {
               <Brain className="mr-2 h-6 w-6 text-accent" />
               1. Describe Your Mathematical Problem
             </h2>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm mb-4">
               Clearly articulate the problem you want to model. Provide context, variables, known relationships, and any constraints.
               The more detail you provide, the better the AI can assist in generating relevant models.
             </p>
-            {/* Placeholder for input form elements */}
-            <div className="mt-4 p-4 bg-muted rounded-md min-h-[100px]">
-              <p className="text-sm text-muted-foreground italic">Input fields and controls for problem description will go here...</p>
-            </div>
+            <form onSubmit={handleSubmitProblem} className="space-y-4">
+              <div>
+                <Label htmlFor="problemDescription" className="block text-md font-medium text-foreground mb-1">
+                  Problem Description:
+                </Label>
+                <Textarea
+                  id="problemDescription"
+                  value={problemDescription}
+                  onChange={(e) => setProblemDescription(e.target.value)}
+                  placeholder="e.g., 'Model the growth of a bacterial population that doubles every hour, starting with 100 bacteria.' or 'Find the optimal dimensions for a rectangular fence with a fixed perimeter to maximize area.'"
+                  className="min-h-[150px] p-3 border-2 focus:border-accent focus:ring-accent"
+                  rows={6}
+                />
+              </div>
+              <Button type="submit" className="w-full sm:w-auto">
+                <Send className="mr-2 h-4 w-4" /> Submit Problem Description
+              </Button>
+            </form>
           </div>
 
           {/* Section 2: Model Generation & Refinement */}
@@ -51,7 +75,6 @@ export default function MathematicalModelGeneratorPage() {
             <p className="text-muted-foreground text-sm">
               Based on your input, the AI will suggest one or more mathematical models. You can review, select, and refine these models.
             </p>
-            {/* Placeholder for displaying generated models */}
             <div className="mt-4 p-4 bg-muted rounded-md min-h-[150px]">
               <p className="text-sm text-muted-foreground italic">
                 List of AI-generated models, with options to inspect or refine, will appear here...
@@ -69,7 +92,6 @@ export default function MathematicalModelGeneratorPage() {
             <p className="text-muted-foreground text-sm">
               Explore the implications of the selected model(s). View solution breakdowns, simulations, visualizations, and compare different approaches.
             </p>
-            {/* Placeholder for analysis and comparison tools */}
             <div className="mt-4 p-4 bg-muted rounded-md min-h-[150px]">
               <p className="text-sm text-muted-foreground italic">
                 Tools for model simulation, solution steps, charts, sensitivity analysis, and model comparison will be available here...
