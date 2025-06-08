@@ -419,7 +419,7 @@ export default function DifferentiationCalculatorPage() {
 
   return (
     <div className="space-y-8">
-      <Link href="/" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
+      <Link href="/workstations" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Workstations
       </Link>
