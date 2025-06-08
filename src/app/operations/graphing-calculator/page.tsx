@@ -144,7 +144,7 @@ export default function GraphingAndGeometryPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height,60px)-var(--footer-height,0px)-2rem)] space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
+        <Link href="/workstations" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Workstations
         </Link>

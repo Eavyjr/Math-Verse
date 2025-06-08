@@ -537,7 +537,7 @@ export default function GraphTheoryPage() {
 
   return (
     <div className="space-y-8">
-      <Link href="/" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4"><ArrowLeft className="mr-2 h-4 w-4" />Back to Workstations</Link>
+      <Link href="/workstations" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4"><ArrowLeft className="mr-2 h-4 w-4" />Back to Workstations</Link>
       <Card className="shadow-xl rounded-lg overflow-hidden">
         <CardHeader className="bg-primary text-primary-foreground p-6"><CardTitle className="text-3xl font-bold flex items-center"><Share2 className="h-8 w-8 mr-3" />Graph Theory Explorer</CardTitle><CardDescription className="text-primary-foreground/90 text-lg">Interactively build graphs, visualize them, and explore their properties through matrices and algorithms.</CardDescription></CardHeader>
         <CardContent className="p-6 space-y-6">
