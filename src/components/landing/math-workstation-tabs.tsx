@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d } from 'lucide-react';
+import { Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d, ArrowRight } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const workstations = [
@@ -125,6 +125,14 @@ export default function MathWorkstationTabs() {
           </TabsContent>
         ))}
       </Tabs>
+      <div className="mt-8 text-center">
+        <Button asChild size="lg" variant="default">
+          <Link href="/workstations">
+            View All Workstations
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
