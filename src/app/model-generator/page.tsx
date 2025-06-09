@@ -1,21 +1,86 @@
 
 'use client';
 
-import React, { useState } from 'react'; // Added useState
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Layers, Brain, Search, BarChart2, Send } from 'lucide-react'; // Added Send icon
+import { ArrowLeft, Layers, Brain, Send, Loader2, AlertTriangle, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea'; // Added Textarea
-import { Label } from '@/components/ui/label'; // Added Label
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle as AlertUITitle, AlertDescription as AlertUIDescription } from "@/components/ui/alert"; // Aliased to avoid conflict
+import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { app } from '@/lib/firebase'; // Firebase app instance
+
+interface ModelSuggestion {
+  name: string;
+  rationale: string;
+}
+
+interface FirebaseFunctionResponse {
+  models: ModelSuggestion[];
+}
 
 export default function MathematicalModelGeneratorPage() {
   const [problemDescription, setProblemDescription] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [suggestedModels, setSuggestedModels] = useState<ModelSuggestion[] | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
-  const handleSubmitProblem = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitProblem = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('Problem Description Submitted:', problemDescription);
-    // Further AI processing will be added here later
+    if (!problemDescription.trim()) {
+      setGenerationError("Please enter a problem description.");
+      setSuggestedModels(null);
+      return;
+    }
+    if (!app) {
+      setGenerationError("Firebase app is not initialized. Please check the configuration.");
+      setIsGenerating(false);
+      return;
+    }
+
+    setIsGenerating(true);
+    setSuggestedModels(null);
+    setGenerationError(null);
+
+    try {
+      const functions = getFunctions(app);
+      const generateMathematicalModel = httpsCallable<
+        { problemDescription: string },
+        FirebaseFunctionResponse
+      >(functions, 'generateMathematicalModel');
+      
+      console.log('Calling generateMathematicalModel with:', problemDescription);
+      const result: HttpsCallableResult<FirebaseFunctionResponse> = await generateMathematicalModel({ problemDescription });
+      console.log('Firebase Function response:', result.data);
+      
+      if (result.data && result.data.models && Array.isArray(result.data.models)) {
+        setSuggestedModels(result.data.models);
+        if (result.data.models.length === 0) {
+             setGenerationError("The AI didn't suggest any models for this problem. Try rephrasing or adding more detail.");
+        }
+      } else {
+        console.error('Unexpected response structure from Firebase Function:', result.data);
+        setGenerationError('Received an unexpected response format from the model generator.');
+      }
+    } catch (error: any) {
+      console.error('Error calling Firebase Function:', error);
+      let errorMessage = "An error occurred while generating models. Please try again.";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      if (error.code === 'functions/unavailable') {
+        errorMessage = "The model generation service is currently unavailable. Please try again later.";
+      } else if (error.code === 'functions/internal' || error.message.includes("internal")) {
+        errorMessage = "An internal error occurred in the model generator. The AI might have had trouble with the request. Please check the function logs or try rephrasing your problem.";
+      } else if (error.message.includes("quota")) {
+        errorMessage = "The AI service quota has been exceeded. Please try again later.";
+      }
+      setGenerationError(errorMessage);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -54,57 +119,99 @@ export default function MathematicalModelGeneratorPage() {
                 <Textarea
                   id="problemDescription"
                   value={problemDescription}
-                  onChange={(e) => setProblemDescription(e.target.value)}
-                  placeholder="e.g., 'Model the growth of a bacterial population that doubles every hour, starting with 100 bacteria.' or 'Find the optimal dimensions for a rectangular fence with a fixed perimeter to maximize area.'"
+                  onChange={(e) => {
+                    setProblemDescription(e.target.value);
+                    if (generationError) setGenerationError(null); // Clear error on input change
+                    if (suggestedModels) setSuggestedModels(null); // Clear results on input change
+                  }}
+                  placeholder="e.g., 'Model the spread of a disease in a small town.' or 'Optimize the production schedule for a factory with multiple products and resource constraints.'"
                   className="min-h-[150px] p-3 border-2 focus:border-accent focus:ring-accent"
                   rows={6}
                 />
               </div>
-              <Button type="submit" className="w-full sm:w-auto">
-                <Send className="mr-2 h-4 w-4" /> Submit Problem Description
+              <Button type="submit" className="w-full sm:w-auto" disabled={isGenerating}>
+                {isGenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                {isGenerating ? 'Generating Models...' : 'Generate Model Suggestions'}
               </Button>
             </form>
           </div>
 
           {/* Section 2: Model Generation & Refinement */}
-          <div className="model-generation-section p-4 border rounded-lg bg-card shadow">
+          <div className="model-generation-section p-4 border rounded-lg bg-card shadow min-h-[200px]">
             <h2 className="text-xl font-semibold text-primary mb-3 flex items-center">
-              <Layers className="mr-2 h-6 w-6 text-accent" />
-              2. Generated Models & Refinement
+              <Lightbulb className="mr-2 h-6 w-6 text-accent" />
+              2. AI Model Suggestions
             </h2>
-            <p className="text-muted-foreground text-sm">
-              Based on your input, the AI will suggest one or more mathematical models. You can review, select, and refine these models.
-            </p>
-            <div className="mt-4 p-4 bg-muted rounded-md min-h-[150px]">
-              <p className="text-sm text-muted-foreground italic">
-                List of AI-generated models, with options to inspect or refine, will appear here...
-                Each model might show its equations, assumptions, and type (e.g., Linear, Exponential, Differential).
+            {isGenerating && (
+              <div className="flex items-center justify-center p-8 rounded-md bg-muted">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="ml-3 text-xl font-medium text-foreground">
+                  AI is thinking...
+                </p>
+              </div>
+            )}
+            {generationError && !isGenerating && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-5 w-5" />
+                <AlertUITitle className="font-semibold">Model Generation Failed</AlertUITitle>
+                <AlertUIDescription>{generationError}</AlertUIDescription>
+              </Alert>
+            )}
+            {!isGenerating && !generationError && suggestedModels && suggestedModels.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Here are some mathematical models suggested by the AI based on your problem description:
+                </p>
+                <ul className="space-y-3">
+                  {suggestedModels.map((model, index) => (
+                    <li key={index}>
+                      <Card className="bg-secondary/50">
+                        <CardHeader className="pb-2 pt-4 px-4">
+                          <CardTitle className="text-lg text-secondary-foreground">{model.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4">
+                          <p className="text-sm text-muted-foreground">{model.rationale}</p>
+                        </CardContent>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {!isGenerating && !generationError && (!suggestedModels || suggestedModels.length === 0) && (
+                <p className="text-sm text-muted-foreground italic text-center p-4">
+                Submit a problem description above to see AI-generated model suggestions here.
               </p>
-            </div>
+            )}
           </div>
 
           {/* Section 3: Solution Breakdown & Comparison */}
           <div className="solution-analysis-section p-4 border rounded-lg bg-card shadow">
             <h2 className="text-xl font-semibold text-primary mb-3 flex items-center">
-              <BarChart2 className="mr-2 h-6 w-6 text-accent" />
-              3. Model Analysis & Solution
+              <Layers className="mr-2 h-6 w-6 text-accent" />
+              3. Model Analysis & Solution Exploration (Coming Soon)
             </h2>
             <p className="text-muted-foreground text-sm">
-              Explore the implications of the selected model(s). View solution breakdowns, simulations, visualizations, and compare different approaches.
+              Once models are generated, this section will allow you to dive deeper. Explore the implications, view solution breakdowns, simulate, visualize, and compare different approaches.
             </p>
-            <div className="mt-4 p-4 bg-muted rounded-md min-h-[150px]">
+            <div className="mt-4 p-4 bg-muted rounded-md min-h-[100px]">
               <p className="text-sm text-muted-foreground italic">
-                Tools for model simulation, solution steps, charts, sensitivity analysis, and model comparison will be available here...
+                Tools for model simulation, step-by-step solution walkthroughs, parameter adjustments, charts, and model comparison features will be available here in a future update.
               </p>
             </div>
           </div>
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground mx-auto">
-                This interactive tool is designed to guide you through the process of mathematical modeling.
+                This interactive tool is designed to guide you through the process of mathematical modeling, from problem definition to AI-assisted model selection and future analysis.
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
