@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Layers, Brain, Send, Loader2, AlertTriangle, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Layers, Brain, Send, Loader2, AlertTriangle, Lightbulb, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle as AlertUITitle, AlertDescription as AlertUIDescription } from "@/components/ui/alert"; // Aliased to avoid conflict
 import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
 import { app } from '@/lib/firebase'; // Firebase app instance
+import { cn } from '@/lib/utils';
 
 interface ModelSuggestion {
   name: string;
@@ -26,12 +27,14 @@ export default function MathematicalModelGeneratorPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestedModels, setSuggestedModels] = useState<ModelSuggestion[] | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [selectedModelName, setSelectedModelName] = useState<string | null>(null);
 
   const handleSubmitProblem = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!problemDescription.trim()) {
       setGenerationError("Please enter a problem description.");
       setSuggestedModels(null);
+      setSelectedModelName(null);
       return;
     }
     if (!app) {
@@ -43,6 +46,7 @@ export default function MathematicalModelGeneratorPage() {
     setIsGenerating(true);
     setSuggestedModels(null);
     setGenerationError(null);
+    setSelectedModelName(null);
 
     try {
       const functions = getFunctions(app);
@@ -83,6 +87,10 @@ export default function MathematicalModelGeneratorPage() {
     }
   };
 
+  const handleModelSelect = (modelName: string) => {
+    setSelectedModelName(modelName);
+  };
+
   return (
     <div className="space-y-8">
       <Link href="/workstations" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
@@ -121,8 +129,9 @@ export default function MathematicalModelGeneratorPage() {
                   value={problemDescription}
                   onChange={(e) => {
                     setProblemDescription(e.target.value);
-                    if (generationError) setGenerationError(null); // Clear error on input change
-                    if (suggestedModels) setSuggestedModels(null); // Clear results on input change
+                    if (generationError) setGenerationError(null);
+                    if (suggestedModels) setSuggestedModels(null);
+                    if (selectedModelName) setSelectedModelName(null);
                   }}
                   placeholder="e.g., 'Model the spread of a disease in a small town.' or 'Optimize the production schedule for a factory with multiple products and resource constraints.'"
                   className="min-h-[150px] p-3 border-2 focus:border-accent focus:ring-accent"
@@ -164,14 +173,23 @@ export default function MathematicalModelGeneratorPage() {
             {!isGenerating && !generationError && suggestedModels && suggestedModels.length > 0 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Here are some mathematical models suggested by the AI based on your problem description:
+                  Here are some mathematical models suggested by the AI. Click on a model to select it:
                 </p>
                 <ul className="space-y-3">
                   {suggestedModels.map((model, index) => (
                     <li key={index}>
-                      <Card className="bg-secondary/50">
+                      <Card 
+                        className={cn(
+                          "bg-secondary/50 hover:shadow-md transition-shadow cursor-pointer",
+                          selectedModelName === model.name && "ring-2 ring-accent border-accent bg-accent/10"
+                        )}
+                        onClick={() => handleModelSelect(model.name)}
+                      >
                         <CardHeader className="pb-2 pt-4 px-4">
-                          <CardTitle className="text-lg text-secondary-foreground">{model.name}</CardTitle>
+                          <CardTitle className="text-lg text-secondary-foreground flex items-center">
+                            {selectedModelName === model.name && <CheckCircle className="h-5 w-5 mr-2 text-accent" />}
+                            {model.name}
+                          </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
                           <p className="text-sm text-muted-foreground">{model.rationale}</p>
@@ -180,6 +198,14 @@ export default function MathematicalModelGeneratorPage() {
                     </li>
                   ))}
                 </ul>
+                {selectedModelName && (
+                  <div className="mt-6 p-3 border-t border-dashed">
+                    <h3 className="text-md font-semibold text-primary flex items-center">
+                      <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
+                      Selected Model: <span className="ml-2 font-bold text-accent">{selectedModelName}</span>
+                    </h3>
+                  </div>
+                )}
               </div>
             )}
             {!isGenerating && !generationError && (!suggestedModels || suggestedModels.length === 0) && (
@@ -197,6 +223,7 @@ export default function MathematicalModelGeneratorPage() {
             </h2>
             <p className="text-muted-foreground text-sm">
               Once models are generated, this section will allow you to dive deeper. Explore the implications, view solution breakdowns, simulate, visualize, and compare different approaches.
+              {selectedModelName && <span className="block mt-1 font-medium">You have selected: <strong className="text-accent">{selectedModelName}</strong>. Analysis tools for this model will appear here.</span>}
             </p>
             <div className="mt-4 p-4 bg-muted rounded-md min-h-[100px]">
               <p className="text-sm text-muted-foreground italic">
@@ -214,4 +241,5 @@ export default function MathematicalModelGeneratorPage() {
     </div>
   );
 }
+
 
