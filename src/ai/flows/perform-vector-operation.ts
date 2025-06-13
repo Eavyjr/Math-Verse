@@ -84,8 +84,8 @@ const vectorOperationPrompt = ai.definePrompt({
     input: { schema: VectorOperationInputSchema },
     output: { schema: VectorOperationOutputSchema.omit({ originalQuery: true }) }, // AI doesn't need to echo originalQuery
     system: systemPrompt,
-    prompt: `Vector A: {{{JSONstringify vectorA}}}
-    {{#if vectorB}}Vector B: {{{JSONstringify vectorB}}}{{/if}}
+    prompt: `Vector A: {{{JSON.stringify vectorA}}}
+    {{#if vectorB}}Vector B: {{{JSON.stringify vectorB}}}{{/if}}
     {{#if scalarValue}}Scalar: {{{scalarValue}}}{{/if}}
     Operation: {{{operation}}}
 
@@ -101,12 +101,6 @@ const vectorOperationPrompt = ai.definePrompt({
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
         ],
     }
-});
-
-// Helper for Handlebars to stringify arrays/objects for the prompt if complex structures are used directly
-// Though for simple arrays like vectors, Genkit usually handles it. This is for robustness.
-ai.handlebars.registerHelper('JSONstringify', function(context: any) {
-  return JSON.stringify(context);
 });
 
 const performVectorOperationFlow = ai.defineFlow(
@@ -130,8 +124,17 @@ const performVectorOperationFlow = ai.defineFlow(
         return { result: "Error: Vectors must have the same dimension for this operation.", originalQuery: input };
     }
 
+    // For the prompt, ensure vectors are passed in a way Handlebars can iterate or model can understand.
+    // Genkit should handle passing the array directly. If specific stringification is needed, it should be done here.
+    const promptInput = {
+      ...input,
+      // If JSON.stringify was critical for the model, do it here:
+      // vectorAString: JSON.stringify(input.vectorA),
+      // vectorBString: input.vectorB ? JSON.stringify(input.vectorB) : undefined,
+    };
 
-    const { output } = await vectorOperationPrompt(input);
+
+    const { output } = await vectorOperationPrompt(promptInput);
     if (!output || output.result === undefined) { // Check if result itself is undefined
         throw new Error('AI model did not return valid output (result field missing) for vector operation.');
     }
@@ -144,3 +147,4 @@ const performVectorOperationFlow = ai.defineFlow(
     };
   }
 );
+
