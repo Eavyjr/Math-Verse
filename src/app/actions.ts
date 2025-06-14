@@ -15,6 +15,8 @@ interface ActionResult<T> {
   error: string | null;
 }
 
+const genkitUnreachableError = 'Failed to connect to the AI service (Genkit). Please ensure it is running and accessible (e.g., via `pnpm genkit:dev`).';
+
 export async function handleClassifyExpressionAction(
   expression: string
 ): Promise<ActionResult<ClassifyExpressionOutput>> {
@@ -36,7 +38,9 @@ export async function handleClassifyExpressionAction(
     let errorMessage = 'An error occurred while processing your request. Please try again.';
     if (e instanceof Error) {
         console.error("Error in handleClassifyExpressionAction (server) for expression '"+expression+"':", e.message, e.stack);
-        if (e.message.includes('quota')) {
+        if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+            errorMessage = genkitUnreachableError;
+        } else if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output') || e.message.includes('not available due to model error')) {
             errorMessage = 'The AI model could not process this expression. Please try a different expression.';
@@ -73,7 +77,9 @@ export async function handlePerformAlgebraicOperationAction(
     console.error('Error performing algebraic operation:', e);
     let errorMessage = 'An error occurred while performing the operation. Please try again.';
      if (e instanceof Error) {
-        if (e.message.includes('quota')) {
+        if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+            errorMessage = genkitUnreachableError;
+        } else if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this expression with this operation. Please try a different expression or operation.';
@@ -107,7 +113,9 @@ export async function handlePerformIntegrationAction(
     console.error('Error performing integration:', e);
     let errorMessage = 'An error occurred while performing the integration. Please try again.';
      if (e instanceof Error) {
-        if (e.message.includes('quota')) {
+        if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+            errorMessage = genkitUnreachableError;
+        } else if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this integration. Please try a different function or check your bounds.';
@@ -139,7 +147,9 @@ export async function handlePerformDifferentiationAction(
     console.error('Error performing differentiation:', e);
     let errorMessage = 'An error occurred while performing the differentiation. Please try again.';
      if (e instanceof Error) {
-        if (e.message.includes('quota')) {
+        if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+            errorMessage = genkitUnreachableError;
+        } else if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this differentiation. Please try a different function or order.';
@@ -194,7 +204,9 @@ export async function handleSolveDifferentialEquationAction(
     console.error('Error solving differential equation in action:', e);
     let errorMessage = 'An error occurred while solving the differential equation. Please try again.';
     if (e instanceof Error) {
-      if (e.message.includes('quota')) {
+      if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+          errorMessage = genkitUnreachableError;
+      } else if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
       } else if (e.message.includes('model did not return a valid solution') || e.message.includes('received null or undefined') || e.message.includes('empty or whitespace-only') || e.message.includes('empty or insufficient response') || e.message.includes('no substantial information')) {
         errorMessage = 'The AI model could not process this differential equation. Please check your input or try a simpler equation. Details: ' + e.message;
@@ -250,7 +262,9 @@ export async function handlePerformMatrixOperationAction(
     console.error('Error performing matrix operation:', e);
     let errorMessage = 'An error occurred while performing the matrix operation. Please try again.';
      if (e instanceof Error) {
-        if (e.message.includes('quota')) {
+        if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+            errorMessage = genkitUnreachableError;
+        } else if (e.message.includes('quota')) {
             errorMessage = 'API quota exceeded. Please try again later.';
         } else if (e.message.includes('model did not return a valid output')) {
             errorMessage = 'The AI model could not process this matrix operation. Please check your input.';
@@ -267,7 +281,6 @@ export async function handlePerformMatrixOperationAction(
 export async function handlePerformVectorOperationAction(
   input: VectorOperationInput
 ): Promise<ActionResult<VectorOperationOutput>> {
-  // Basic validation - further validation is in the AI flow
   if (!input.vectorA || input.vectorA.length === 0) {
     return { data: null, error: 'Vector A cannot be empty.' };
   }
@@ -290,7 +303,9 @@ export async function handlePerformVectorOperationAction(
     console.error('Error performing vector operation in action:', e);
     let errorMessage = 'An error occurred while performing the vector operation.';
     if (e instanceof Error) {
-      if (e.message.includes('quota')) {
+      if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+          errorMessage = genkitUnreachableError;
+      } else if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
       } else if (e.message.includes('model did not return valid output')) {
         errorMessage = 'The AI model could not process this vector operation. Please check your input.';
@@ -326,7 +341,9 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
     console.error('[Action:handleChatbotMessageAction] Error calling getMathChatbotResponse:', e);
     let errorMessage = 'Sorry, I encountered an error trying to respond. Please try again.';
     if (e instanceof Error) {
-      if (e.message.includes('quota')) {
+      if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
+          errorMessage = 'Sorry, I\'m having trouble connecting to my brain (AI service). Please ensure Genkit is running and try again.';
+      } else if (e.message.includes('quota')) {
         errorMessage = 'API quota exceeded. Please try again later.';
       } else if (e.message.includes('model did not return a valid output') || 
                  e.message.includes('couldn\'t process that request') || 
@@ -340,3 +357,4 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
     return errorMessage;
   }
 }
+
