@@ -8,7 +8,9 @@ import { performDifferentiation, type DifferentiationInput, type Differentiation
 import { solveDifferentialEquation, type DESolutionInput, type DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow';
 import { performMatrixOperation, type MatrixOperationInput, type MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
 import { performVectorOperation, type VectorOperationInput, type VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
-import { getMathChatbotResponse, type MathChatbotInput } from '@/ai/flows/math-chatbot-flow'; 
+import { getMathChatbotResponse, type MathChatbotInput } from '@/ai/flows/math-chatbot-flow';
+import { preprocessWolframQuery, type PreprocessWolframQueryInput, type PreprocessWolframQueryOutput } from '@/ai/flows/preprocess-wolfram-query-flow';
+import { explainWolframSteps, type ExplainWolframStepsInput, type ExplainWolframStepsOutput } from '@/ai/flows/explain-wolfram-steps-flow';
 
 interface ActionResult<T> {
   data: T | null;
@@ -38,6 +40,14 @@ interface WolframQueryResult {
 
 interface WolframAlphaApiResponse {
   queryresult: WolframQueryResult;
+}
+
+// New return type for the enhanced Wolfram Alpha action
+export interface EnhancedWolframResult {
+  originalQuery: string;
+  cleanedQuery: string | null;
+  wolframPlaintextResult?: string | null; // Raw result from Wolfram
+  geminiExplanation?: ExplainWolframStepsOutput | null; // Gemini enhanced output
 }
 
 
@@ -383,27 +393,37 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
 }
 
 export async function fetchWolframAlphaStepsAction(
-  expression: string
-): Promise<ActionResult<string>> {
-  if (!expression || expression.trim() === '') {
+  userExpression: string
+): Promise<ActionResult<EnhancedWolframResult>> {
+  if (!userExpression || userExpression.trim() === '') {
     return { data: null, error: 'Expression cannot be empty.' };
   }
 
-  const WOLFRAM_APP_ID = 'LKRWWW-KW2L4V2652'; // Store securely in production
-  const encodedInput = encodeURIComponent(expression);
-  const apiUrl = `https://api.wolframalpha.com/v2/query?appid=${WOLFRAM_APP_ID}&input=${encodedInput}&format=plaintext&podstate=Step-by-step+solution&output=json`;
+  const WOLFRAM_APP_ID = 'LKRWWW-KW2L4V2652'; 
+  let cleanedQuery: string | null = null;
+  let wolframPlaintextResult: string | null = null;
+  let wolframPlaintextSteps: string | null = null;
 
   try {
+    // Step 1: Preprocess query with Gemini
+    const preprocessInput: PreprocessWolframQueryInput = { userQuery: userExpression };
+    const preprocessOutput: PreprocessWolframQueryOutput = await preprocessWolframQuery(preprocessInput);
+    cleanedQuery = preprocessOutput.cleanedQuery;
+
+    if (!cleanedQuery) {
+      return { data: null, error: 'AI failed to clean the query. Please try rephrasing.' };
+    }
+
+    // Step 2: Call WolframAlpha with the cleaned query
+    const encodedInput = encodeURIComponent(cleanedQuery);
+    const apiUrl = `https://api.wolframalpha.com/v2/query?appid=${WOLFRAM_APP_ID}&input=${encodedInput}&format=plaintext,mathml&podstate=Step-by-step+solution&podstate=Result&output=json&includepodid=Result&includepodid=Step-by-step+solution&includepodid=IndefiniteIntegral&includepodid=DefiniteIntegral`;
+    
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
-      // Attempt to read error body if possible
-      let errorBody = '';
-      try {
-        errorBody = await response.text();
-      } catch (e) { /* ignore if cannot read body */ }
+      let errorBody = ''; try { errorBody = await response.text(); } catch (e) {/* ignore */}
       console.error(`WolframAlpha API Error ${response.status}: ${response.statusText}`, errorBody);
-      return { data: null, error: `WolframAlpha API request failed with status ${response.status}: ${response.statusText}. ${errorBody}` };
+      return { data: null, error: `WolframAlpha API request failed with status ${response.status}. ${errorBody}` };
     }
 
     const data: WolframAlphaApiResponse = await response.json();
@@ -412,44 +432,66 @@ export async function fetchWolframAlphaStepsAction(
       if (data.queryresult.error && typeof data.queryresult.error === 'object') {
         return { data: null, error: `WolframAlpha Error: ${data.queryresult.error.msg} (Code: ${data.queryresult.error.code})` };
       }
-      return { data: null, error: 'WolframAlpha could not process the query. No specific error message provided.' };
+      return { data: null, error: 'WolframAlpha could not process the query. No specific error message.' };
     }
 
     if (!data.queryresult.pods || data.queryresult.pods.length === 0) {
-      return { data: null, error: 'No results (pods) returned from WolframAlpha.' };
+      return { data: { originalQuery: userExpression, cleanedQuery }, error: 'No results (pods) returned from WolframAlpha for the cleaned query.' };
     }
     
+    const resultPod = data.queryresult.pods.find(pod => pod.id === 'Result' || pod.id === 'IndefiniteIntegral' || pod.id === 'DefiniteIntegral');
+    if (resultPod && resultPod.subpods.length > 0) {
+      wolframPlaintextResult = resultPod.subpods[0].plaintext;
+    }
+
     const stepByStepPod = data.queryresult.pods.find(
-      pod => 
-        pod.id?.toLowerCase().includes('step-by-step solution') ||
-        pod.id?.toLowerCase().includes('step-by-step') ||
-        pod.title?.toLowerCase().includes('step-by-step solution') ||
-        (pod.id?.toLowerCase().includes('integral') && pod.subpods.some(sp => sp.title?.toLowerCase().includes('step-by-step')))
+      pod => pod.id?.toLowerCase().includes('step-by-step') || pod.title?.toLowerCase().includes('step-by-step solution')
     );
 
     if (stepByStepPod && stepByStepPod.subpods.length > 0) {
-      const steps = stepByStepPod.subpods
+      wolframPlaintextSteps = stepByStepPod.subpods
         .map(subpod => subpod.plaintext)
         .filter(text => text && text.trim() !== '')
-        .join('\n\n---\n\n'); 
-      return { data: steps || 'No step-by-step solution found in the designated pod.', error: null };
-    } else {
-      const integralPod = data.queryresult.pods.find(
-        pod => pod.id?.toLowerCase().includes('indefiniteintegral') || pod.id?.toLowerCase().includes('definiteintegral') || pod.title?.toLowerCase().includes('integral')
-      );
-      if (integralPod && integralPod.subpods.length > 0) {
-          const resultText = integralPod.subpods
-            .map(subpod => subpod.plaintext)
-            .filter(text => text && text.trim() !== '')
-            .join('\n\n');
-          return { data: `Result found (but not explicitly step-by-step):\n${resultText}`, error: null };
-      }
-      console.warn("WolframAlpha Full Response (for debugging - no specific steps pod found):", data);
-      return { data: null, error: 'No step-by-step solution or direct integral result pod found.' };
+        .join('\n\n---\n\n');
     }
 
+    if (!wolframPlaintextSteps && !wolframPlaintextResult) {
+      return { data: { originalQuery: userExpression, cleanedQuery }, error: 'WolframAlpha did not return a result or step-by-step solution for the cleaned query.' };
+    }
+    if (!wolframPlaintextResult) {
+        wolframPlaintextResult = "Result not explicitly found, see steps.";
+    }
+    if(!wolframPlaintextSteps){
+        wolframPlaintextSteps = "No detailed steps provided by WolframAlpha for this query.";
+    }
+
+
+    // Step 3: Explain steps and format result with Gemini
+    const explainInput: ExplainWolframStepsInput = {
+      wolframPlaintextSteps: wolframPlaintextSteps,
+      wolframPlaintextResult: wolframPlaintextResult,
+      originalQuery: userExpression, // or cleanedQuery, depending on desired context for Gemini
+    };
+    const geminiExplanation: ExplainWolframStepsOutput = await explainWolframSteps(explainInput);
+    
+    return { 
+      data: {
+        originalQuery: userExpression,
+        cleanedQuery,
+        wolframPlaintextResult,
+        geminiExplanation,
+      }, 
+      error: null 
+    };
+
   } catch (err: any) {
-    console.error('Error in fetchWolframAlphaStepsAction:', err);
-    return { data: null, error: `Server-side fetch error: ${err.message || 'An unknown error occurred during the API call.'}` };
+    console.error('Error in fetchWolframAlphaStepsAction pipeline:', err);
+    let errorMessage = `Server-side processing error: ${err.message || 'An unknown error occurred.'}`;
+    if (err.message?.toLowerCase().includes('fetch failed') || err.message?.toLowerCase().includes('econnrefused')) {
+      errorMessage = genkitUnreachableError;
+    } else if (err.message?.includes('quota')) {
+        errorMessage = 'An AI service API quota may have been exceeded.';
+    }
+    return { data: { originalQuery: userExpression, cleanedQuery, wolframPlaintextResult }, error: errorMessage };
   }
 }
