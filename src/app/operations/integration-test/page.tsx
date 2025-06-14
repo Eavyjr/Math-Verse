@@ -54,27 +54,27 @@ export default function IntegrationTestPage() {
 
     if (container) {
         const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
-        if (cleanedSteps) { // Only proceed if cleanedSteps has actual content
+        if (cleanedSteps) {
             container.innerHTML = cleanedSteps;
             if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-                try {
-                    (window as any).renderMathInElement(container, {
-                        delimiters: [
-                            { left: '$$', right: '$$', display: true },
-                            { left: '$', right: '$', display: false },
-                            { left: '\\(', right: '\\)', display: false },
-                            { left: '\\[', right: '\\]', display: true }
-                        ],
-                        throwOnError: false
-                    });
-                } catch (e) {
-                    console.error("Error during manual KaTeX re-render for steps:", e);
-                    // Optionally, set a fallback or error message in the container
-                    // container.innerHTML = `<p class="text-destructive">Error rendering math in steps.</p><pre>${cleanedSteps.replace(/</g, '&lt;')}</pre>`;
-                }
+                setTimeout(() => { // Added setTimeout
+                    try {
+                        (window as any).renderMathInElement(container, {
+                            delimiters: [
+                                { left: '$$', right: '$$', display: true },
+                                { left: '$', right: '$', display: false },
+                                { left: '\\(', right: '\\)', display: false },
+                                { left: '\\[', right: '\\]', display: true }
+                            ],
+                            throwOnError: false
+                        });
+                    } catch (e) {
+                        console.error("Error during KaTeX re-render for steps:", e);
+                    }
+                }, 0);
             }
         } else {
-            container.innerHTML = ""; // Clear if no steps or steps became empty after cleaning
+            container.innerHTML = ""; 
         }
     }
   }, [apiResponse?.geminiExplanation?.explainedSteps]);
@@ -85,25 +85,27 @@ export default function IntegrationTestPage() {
 
     if (container) {
         const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
-        if (cleanedHints) { // Only proceed if cleanedHints has actual content
+        if (cleanedHints) { 
             container.innerHTML = cleanedHints;
             if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-                try {
-                    (window as any).renderMathInElement(container, {
-                        delimiters: [
-                            { left: '$$', right: '$$', display: true },
-                            { left: '$', right: '$', display: false },
-                            { left: '\\(', right: '\\)', display: false },
-                            { left: '\\[', right: '\\]', display: true }
-                        ],
-                        throwOnError: false
-                    });
-                } catch (e) {
-                    console.error("Error during manual KaTeX re-render for hints:", e);
-                }
+                 setTimeout(() => { // Added setTimeout
+                    try {
+                        (window as any).renderMathInElement(container, {
+                            delimiters: [
+                                { left: '$$', right: '$$', display: true },
+                                { left: '$', right: '$', display: false },
+                                { left: '\\(', right: '\\)', display: false },
+                                { left: '\\[', right: '\\]', display: true }
+                            ],
+                            throwOnError: false
+                        });
+                    } catch (e) {
+                        console.error("Error during KaTeX re-render for hints:", e);
+                    }
+                }, 0);
             }
         } else {
-            container.innerHTML = ""; // Clear if no hints or hints became empty after cleaning
+            container.innerHTML = ""; 
         }
     }
   }, [apiResponse?.geminiExplanation?.additionalHints]);
@@ -282,4 +284,3 @@ export default function IntegrationTestPage() {
     </div>
   );
 }
-
