@@ -33,11 +33,12 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
   }
 };
 
-// Function to pass through content that might contain inline LaTeX
-const renderContentWithInlineMath = (content: string | undefined | null): string => {
+// Function to clean content and prepare it for rendering.
+// The actual KaTeX parsing for dynamic content is handled by useEffect + renderMathInElement.
+const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Content from Gemini should already have \(...\) for KaTeX auto-render or manual trigger
-  return content; 
+  // Remove form feed characters and any other potentially problematic non-standard characters if needed
+  return content.replace(//g, ''); 
 };
 
 
@@ -50,10 +51,13 @@ export default function IntegrationTestPage() {
   const stepsContainerRef = useRef<HTMLDivElement>(null);
   const hintsContainerRef = useRef<HTMLDivElement>(null);
 
+  // This useEffect handles re-rendering KaTeX when steps content changes
   useEffect(() => {
     if (apiResponse?.geminiExplanation?.explainedSteps && stepsContainerRef.current) {
       if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-        // console.log("Manually triggering renderMathInElement for steps container.");
+        const cleanedSteps = cleanAndPrepareContentForDisplay(apiResponse.geminiExplanation.explainedSteps);
+        stepsContainerRef.current.innerHTML = cleanedSteps; // Set cleaned HTML
+        
         try {
           (window as any).renderMathInElement(stepsContainerRef.current, {
             delimiters: [
@@ -67,16 +71,17 @@ export default function IntegrationTestPage() {
         } catch (e) {
           console.error("Error during manual KaTeX re-render for steps:", e);
         }
-      } else {
-        // console.warn("renderMathInElement not available for manual steps re-render.");
       }
     }
   }, [apiResponse?.geminiExplanation?.explainedSteps]);
 
+  // This useEffect handles re-rendering KaTeX when hints content changes
   useEffect(() => {
     if (apiResponse?.geminiExplanation?.additionalHints && hintsContainerRef.current) {
       if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-        // console.log("Manually triggering renderMathInElement for hints container.");
+        const cleanedHints = cleanAndPrepareContentForDisplay(apiResponse.geminiExplanation.additionalHints);
+        hintsContainerRef.current.innerHTML = cleanedHints; // Set cleaned HTML
+        
         try {
           (window as any).renderMathInElement(hintsContainerRef.current, {
             delimiters: [
@@ -90,8 +95,6 @@ export default function IntegrationTestPage() {
         } catch (e) {
           console.error("Error during manual KaTeX re-render for hints:", e);
         }
-      } else {
-        // console.warn("renderMathInElement not available for manual hints re-render.");
       }
     }
   }, [apiResponse?.geminiExplanation?.additionalHints]);
@@ -224,7 +227,8 @@ export default function IntegrationTestPage() {
                         <div
                           ref={stepsContainerRef} 
                           className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                          dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.explainedSteps) }} />
+                           // Content is set by useEffect
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -240,7 +244,8 @@ export default function IntegrationTestPage() {
                         <div
                           ref={hintsContainerRef} 
                           className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                          dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.additionalHints) }} />
+                          // Content is set by useEffect
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
