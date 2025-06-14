@@ -17,6 +17,30 @@ interface ActionResult<T> {
 
 const genkitUnreachableError = 'Failed to connect to the AI service (Genkit). Please ensure it is running and accessible (e.g., via `pnpm genkit:dev`).';
 
+// Types for WolframAlpha API response structure (simplified)
+interface WolframPod {
+  title: string;
+  id: string;
+  subpods: Array<{
+    title: string;
+    plaintext: string;
+    img?: { src: string; alt: string; title: string; width: number; height: number; type: string; };
+  }>;
+}
+
+interface WolframQueryResult {
+  success: boolean;
+  error: false | { code: string; msg: string; };
+  numpods: number;
+  pods?: WolframPod[];
+  // ... other fields
+}
+
+interface WolframAlphaApiResponse {
+  queryresult: WolframQueryResult;
+}
+
+
 export async function handleClassifyExpressionAction(
   expression: string
 ): Promise<ActionResult<ClassifyExpressionOutput>> {
@@ -358,3 +382,74 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
   }
 }
 
+export async function fetchWolframAlphaStepsAction(
+  expression: string
+): Promise<ActionResult<string>> {
+  if (!expression || expression.trim() === '') {
+    return { data: null, error: 'Expression cannot be empty.' };
+  }
+
+  const WOLFRAM_APP_ID = 'LKRWWW-KW2L4V2652'; // Store securely in production
+  const encodedInput = encodeURIComponent(expression);
+  const apiUrl = `https://api.wolframalpha.com/v2/query?appid=${WOLFRAM_APP_ID}&input=${encodedInput}&format=plaintext&podstate=Step-by-step+solution&output=json`;
+
+  try {
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      // Attempt to read error body if possible
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch (e) { /* ignore if cannot read body */ }
+      console.error(`WolframAlpha API Error ${response.status}: ${response.statusText}`, errorBody);
+      return { data: null, error: `WolframAlpha API request failed with status ${response.status}: ${response.statusText}. ${errorBody}` };
+    }
+
+    const data: WolframAlphaApiResponse = await response.json();
+
+    if (!data.queryresult.success) {
+      if (data.queryresult.error && typeof data.queryresult.error === 'object') {
+        return { data: null, error: `WolframAlpha Error: ${data.queryresult.error.msg} (Code: ${data.queryresult.error.code})` };
+      }
+      return { data: null, error: 'WolframAlpha could not process the query. No specific error message provided.' };
+    }
+
+    if (!data.queryresult.pods || data.queryresult.pods.length === 0) {
+      return { data: null, error: 'No results (pods) returned from WolframAlpha.' };
+    }
+    
+    const stepByStepPod = data.queryresult.pods.find(
+      pod => 
+        pod.id?.toLowerCase().includes('step-by-step solution') ||
+        pod.id?.toLowerCase().includes('step-by-step') ||
+        pod.title?.toLowerCase().includes('step-by-step solution') ||
+        (pod.id?.toLowerCase().includes('integral') && pod.subpods.some(sp => sp.title?.toLowerCase().includes('step-by-step')))
+    );
+
+    if (stepByStepPod && stepByStepPod.subpods.length > 0) {
+      const steps = stepByStepPod.subpods
+        .map(subpod => subpod.plaintext)
+        .filter(text => text && text.trim() !== '')
+        .join('\n\n---\n\n'); 
+      return { data: steps || 'No step-by-step solution found in the designated pod.', error: null };
+    } else {
+      const integralPod = data.queryresult.pods.find(
+        pod => pod.id?.toLowerCase().includes('indefiniteintegral') || pod.id?.toLowerCase().includes('definiteintegral') || pod.title?.toLowerCase().includes('integral')
+      );
+      if (integralPod && integralPod.subpods.length > 0) {
+          const resultText = integralPod.subpods
+            .map(subpod => subpod.plaintext)
+            .filter(text => text && text.trim() !== '')
+            .join('\n\n');
+          return { data: `Result found (but not explicitly step-by-step):\n${resultText}`, error: null };
+      }
+      console.warn("WolframAlpha Full Response (for debugging - no specific steps pod found):", data);
+      return { data: null, error: 'No step-by-step solution or direct integral result pod found.' };
+    }
+
+  } catch (err: any) {
+    console.error('Error in fetchWolframAlphaStepsAction:', err);
+    return { data: null, error: `Server-side fetch error: ${err.message || 'An unknown error occurred during the API call.'}` };
+  }
+}
