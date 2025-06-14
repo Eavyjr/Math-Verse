@@ -11,10 +11,10 @@ import MathWorkstationTabs from '@/components/landing/math-workstation-tabs';
 import FunTriviaSection from '@/components/landing/fun-trivia-section';
 import NewsletterForm from '@/components/landing/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Brain, Layers, ArrowRight } from 'lucide-react'; // Added Layers and ArrowRight
+import { AlertCircle, Brain, Layers, ArrowRight, TestTubeDiagonal } from 'lucide-react'; // Added Layers, ArrowRight, TestTubeDiagonal
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added Card components
-import Link from 'next/link'; // Added Link
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [aiResponse, setAiResponse] = useState<ClassifyExpressionOutput | null>(null);
@@ -111,8 +111,8 @@ export default function HomePage() {
         <MathWorkstationTabs />
       </section>
 
-      {/* Mathematical Model Generator Card */}
-      <section className="w-full max-w-2xl mx-auto">
+      {/* Mathematical Model Generator Card & Integration Test Card */}
+      <section className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1">
           <CardHeader>
             <CardTitle className="flex items-center text-2xl text-primary">
@@ -120,7 +120,7 @@ export default function HomePage() {
               Mathematical Model Generator
             </CardTitle>
             <CardDescription>
-              Create, explore, and analyze various mathematical models with AI assistance. (Coming Soon)
+              Define problems, generate mathematical models, and explore parameters with AI assistance.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -132,6 +132,31 @@ export default function HomePage() {
             <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               <Link href="/model-generator">
                 Explore Model Generator
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1">
+          <CardHeader>
+            <CardTitle className="flex items-center text-2xl text-primary">
+              <TestTubeDiagonal className="mr-3 h-7 w-7 text-accent" />
+              WolframAlpha Integration Test
+            </CardTitle>
+            <CardDescription>
+              Test WolframAlpha API integration for step-by-step solutions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter an integration problem (e.g., "integrate x^2 dx") to fetch and display step-by-step solutions directly from WolframAlpha. This page demonstrates API interaction.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Link href="/operations/integration-test">
+                Go to Integration Test
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
