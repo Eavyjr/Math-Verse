@@ -2,10 +2,13 @@
 'use server';
 /**
  * @fileOverview Performs integration operations using an AI model.
+ * This flow definition is now primarily for defining the input/output types
+ * for the client-side page, as the actual solving logic is now handled by
+ * the WolframAlpha+Gemini pipeline in actions.ts.
  *
- * - performIntegration - A function that handles definite and indefinite integrals.
- * - IntegrationInput - The input type for the performIntegration function.
- * - IntegrationOutput - The return type for the performIntegration function.
+ * - performIntegration - (No longer directly called for solving, types are key)
+ * - IntegrationInput - The input type for the integration operation.
+ * - IntegrationOutput - The return type expected by the integration page.
  */
 
 import {ai}from '@/ai/genkit';
@@ -29,41 +32,42 @@ const IntegrationOutputSchema = z.object({
   steps: z.string().optional().describe("A detailed and complete step-by-step explanation of how the result was obtained, from start to finish. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\", \"Substitution Method\"). This should be formatted as readable text. Use simple LaTeX for ALL mathematical expressions, symbols, variables, and numbers within steps, ensuring they are wrapped in `\\(...\\)` delimiters (e.g., `\\(x^2\\)`, `\\(\\int u \\, du\\)`). If no detailed steps are applicable (e.g., direct lookup), provide a brief explanation like 'Direct integration lookup.'"),
   originalQuery: IntegrationInputSchema.describe("The original input parameters for the integration."),
   plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its integral might show."),
+  additionalHints: z.string().optional().describe("Additional educational hints or insights about the integration problem. Mathematical notation here should also use inline LaTeX delimiters."),
 });
 export type IntegrationOutput = z.infer<typeof IntegrationOutputSchema>;
 
+// This flow is no longer the primary one called by the action for solving.
+// It's kept for type reference consistency if any part of the system still expects it.
+// The actual solving logic is now in actions.ts, using the Wolfram+Gemini pipeline.
 export async function performIntegration(
   input: IntegrationInput
 ): Promise<IntegrationOutput> {
-  return performIntegrationFlow(input);
+  console.warn("DEPRECATED: performIntegrationFlow directly called. The system should be using the WolframAlpha pipeline via handlePerformIntegrationAction in actions.ts.");
+  // Fallback behavior or throw error
+  return {
+    integralResult: "Error: Deprecated flow called.",
+    steps: "This integration method is outdated. Please use the main UI.",
+    originalQuery: input,
+    plotHint: "Cannot generate plot hint via deprecated flow.",
+    additionalHints: "Cannot generate hints via deprecated flow."
+  };
 }
 
-const systemPrompt = `You are an expert calculus assistant specialized in performing integrations.
+// Original prompt logic (now superseded by Wolfram+Gemini via explainWolframStepsFlow)
+const systemPromptDEPRECATED = `You are an expert calculus assistant specialized in performing integrations.
 Given a function, a variable of integration, and optionally bounds for a definite integral, calculate the integral.
-
-- The 'integralResult' field in your output MUST contain ONLY the resulting mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any explanations, apologies, conversational text, or delimiters like \\(...\\) or \\[...\\] in this 'integralResult' field.
-- For indefinite integrals (when isDefinite is false), ALWAYS add "+ C" to the 'integralResult' string (e.g., "x^3/3 + C").
-- For definite integrals (when isDefinite is true), evaluate the integral from the lowerBound to the upperBound.
-- Provide a detailed and COMPLETE step-by-step explanation of how you arrived at the result in the 'steps' field. Aim to provide steps for all integrations. Ensure the derivation is carried through to the final answer. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method", "Evaluating at bounds"). Format these steps clearly for readability. If, in rare cases, an integral is a direct lookup with no intermediate steps possible (e.g., \\(\\int dx = x + C\\) ), then state "Direct integration lookup." in the steps field, but otherwise, always provide the derivation.
-  **Crucially, ALL mathematical notation within the 'steps' field must be enclosed in the standard inline LaTeX delimiters (e.g., \\\\(...\\\\) as shown in the examples below)**. This includes, but is not limited to:
-    - Variables (e.g., \\\\(x\\\\), \\\\(u\\\\), \\\\(dv\\\\)).
-    - Numbers that are part of a mathematical context (e.g., coefficients like \\\\(2\\\\) in \\\\(2x\\\\)).
-    - Operators and symbols (e.g., \\\\(+\\\\), \\\\(-\\\\), \\\\(\\int\\\\), \\\\(\\frac{d}{dx}\\\\)).
-    - Full expressions (e.g., \\\\(x^2 + C\\\\), \\\\(\\frac{1}{2} \\ln|u|\\\\)).
-    - Constants of integration (e.g., \\\\(C\\\\)).
-  Do not leave any mathematical symbol or expression outside of these delimiters within the steps.
-  Ensure the steps are not truncated or abbreviated.
-- Provide a brief 'plotHint' describing what a visualization of the function and its integral might look like (e.g., "A parabola and its cubic antiderivative"). This is for a textual description, not for generating an actual plot.
-
-Handle the input function and variable carefully.
-The 'originalQuery' field in the output should be an echo of the input you received.
+Output Requirements:
+- 'integralResult': ONLY the resulting mathematical expression/value for LaTeX (e.g., "x^3/3 + C"). For indefinite integrals, ALWAYS add "+ C".
+- 'steps': Detailed step-by-step explanation. For EACH step, state the rule applied. ALL math in steps (variables, numbers, symbols like \\(\\int\\), expressions) MUST be wrapped in inline LaTeX delimiters \\(...\\).
+- 'plotHint': Brief text describing what a plot of the function and its integral might show.
+- 'originalQuery': Echo of the input.
 `;
 
-const integrationPrompt = ai.definePrompt({
-  name: 'integrationPrompt',
+const integrationPromptDEPRECATED = ai.definePrompt({
+  name: 'integrationPromptDEPRECATED', // Renamed to avoid conflict if ever run
   input: {schema: IntegrationInputSchema},
-  output: {schema: IntegrationOutputSchema},
-  system: systemPrompt,
+  output: {schema: IntegrationOutputSchema.omit({ additionalHints: true }) }, // Old schema didn't have hints
+  system: systemPromptDEPRECATED,
   prompt: `Function: {{{functionString}}}
 Variable of Integration: {{{variable}}}
 Is Definite: {{{isDefinite}}}
@@ -72,9 +76,8 @@ Lower Bound: {{{lowerBound}}}
 Upper Bound: {{{upperBound}}}
 {{/if}}
 
-Perform the integration based on these details. Provide the result, detailed and complete steps (stating the rule for each step and ensuring no truncation), and a plot hint.
-Ensure 'originalQuery' in your output accurately reflects these input parameters.
-The 'integralResult' field MUST BE only the pure LaTeX expression. All mathematical expressions, symbols, variables, and numbers in the 'steps' field MUST BE formatted with inline MathJax/KaTeX delimiters \\\\(...\\\\).`,
+Perform the integration. Provide the result, detailed steps, and a plot hint.
+Ensure 'originalQuery' reflects input. 'integralResult' is pure LaTeX. All math in 'steps' uses \\(...\\) delimiters.`,
   config: {
     temperature: 0.1, 
     safetySettings: [ 
@@ -86,14 +89,14 @@ The 'integralResult' field MUST BE only the pure LaTeX expression. All mathemati
   }
 });
 
-const performIntegrationFlow = ai.defineFlow(
+const performIntegrationFlowDEPRECATED = ai.defineFlow(
   {
-    name: 'performIntegrationFlow',
+    name: 'performIntegrationFlowDEPRECATED', // Renamed
     inputSchema: IntegrationInputSchema,
-    outputSchema: IntegrationOutputSchema,
+    outputSchema: IntegrationOutputSchema.omit({ additionalHints: true }),
   },
   async (input) => {
-    const {output} = await integrationPrompt(input);
+    const {output} = await integrationPromptDEPRECATED(input);
     if (!output) {
       throw new Error('AI model did not return a valid output for the integration operation.');
     }
@@ -103,4 +106,3 @@ const performIntegrationFlow = ai.defineFlow(
     };
   }
 );
-

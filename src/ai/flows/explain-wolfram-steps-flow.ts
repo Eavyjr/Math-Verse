@@ -22,6 +22,7 @@ const ExplainWolframStepsOutputSchema = z.object({
   explainedSteps: z.string().describe("A clear, student-friendly explanation of WolframAlpha's steps. All mathematical notation within these explanations MUST be enclosed in inline LaTeX delimiters, e.g., \\(x^2\\) or \\(\\int f(x) dx\\)."),
   formattedResult: z.string().describe("The final mathematical result, cleaned and formatted as a LaTeX string (without delimiters). E.g., 'x^3/3 + C' or '\\sin(x)'. For definite integrals, this should be the final numerical or symbolic value."),
   additionalHints: z.string().optional().describe('Any additional educational hints, common pitfalls, or interesting insights related to the integration problem. Mathematical notation here should also use inline LaTeX delimiters.'),
+  plotHint: z.string().optional().describe("A brief textual description of what a plot of the original function and its integral might look like (e.g., 'A parabola and its cubic antiderivative'). This is for a textual description, not for generating an actual plot.")
 });
 export type ExplainWolframStepsOutput = z.infer<typeof ExplainWolframStepsOutputSchema>;
 
@@ -47,6 +48,8 @@ Given the original query (if provided), the WolframAlpha plaintext steps, and th
 
 3.  **Provide Additional Hints (Optional but encouraged)**: Offer 1-2 brief, helpful insights, common pitfalls related to this type of integration, or connections to other mathematical concepts. Format math in hints with \\(...\\) as well.
 
+4.  **Provide Plot Hint (Optional)**: Briefly describe what a visualization of the original function and its integral might look like (e.g., "The original function is a line, its integral is a parabola").
+
 Focus on clarity, accuracy, and educational value.
 `;
 
@@ -64,12 +67,12 @@ WolframAlpha Plaintext Steps:
 WolframAlpha Plaintext Result:
 {{{wolframPlaintextResult}}}
 
-Please provide your enhanced explanation, formatted LaTeX result, and any additional hints based on the system instructions.
+Please provide your enhanced explanation, formatted LaTeX result, any additional hints, and a plot hint based on the system instructions.
 Ensure all math in your 'explainedSteps' and 'additionalHints' is wrapped in \\(...\\) delimiters.
 Ensure 'formattedResult' is ONLY the LaTeX string of the mathematical answer.
 `,
   config: {
-    temperature: 0.3, // Slightly more creative for explanations
+    temperature: 0.3, 
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -89,13 +92,14 @@ const explainWolframStepsFlow = ai.defineFlow(
     const { output } = await explainWolframStepsPrompt(input);
     if (!output || !output.explainedSteps || !output.formattedResult) {
       console.error('explainWolframStepsFlow: AI returned null or incomplete output.');
-      // Fallback or error structure
       return {
         explainedSteps: "Could not generate explanation for the steps at this time.",
-        formattedResult: input.wolframPlaintextResult, // Fallback to raw result
+        formattedResult: input.wolframPlaintextResult, 
         additionalHints: "No additional hints available.",
+        plotHint: "Plot hint not available.",
       };
     }
     return output;
   }
 );
+

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import "katex/dist/katex.min.css"; 
@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb } from 'lucide-react';
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line } from 'recharts';
@@ -25,6 +25,7 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
+  // Remove outer KaTeX delimiters if already present to avoid double rendering issues
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
@@ -37,34 +38,15 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error for main result:", e, "Original string:", latexString);
-    return cleanLatexString;
+    // Sanitize and return the original string if KaTeX fails
+    return latexString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 };
 
-const renderStepsContent = (stepsString: string | undefined): string => {
-  if (!stepsString) return "";
-  console.log("renderStepsContent input:", stepsString);
-
-  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g);
-  
-  const htmlParts = parts.map((part, index) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    }
-  });
-  const finalHtml = htmlParts.join('');
-  console.log("renderStepsContent output HTML:", finalHtml);
-  return finalHtml;
+const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
+  if (!content) return "";
+  // Remove form feed characters () and trim whitespace
+  return content.replace(//g, '').trim(); 
 };
 
 interface PlotDataItem {
@@ -76,24 +58,26 @@ interface PlotDataItem {
 const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undefined): string => {
   if (!latexStr) return "";
   let str = latexStr.trim();
-  // Remove outer delimiters if present
   if ((str.startsWith('\\(') && str.endsWith('\\)')) || (str.startsWith('\\[') && str.endsWith('\\]'))) {
     str = str.substring(2, str.length - 2).trim();
   }
-  // Replace common LaTeX functions with math.js compatible syntax
-  // This is a basic replacement list and might need expansion
   str = str.replace(/\\sin/g, 'sin')
            .replace(/\\cos/g, 'cos')
            .replace(/\\tan/g, 'tan')
-           .replace(/\\ln/g, 'log') // math.js uses log for natural log
+           .replace(/\\ln/g, 'log') 
            .replace(/\\log_{10}/g, 'log10')
            .replace(/\\exp/g, 'exp')
            .replace(/\\sqrt{(.*?)}/g, 'sqrt($1)')
            .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
            .replace(/\\cdot/g, '*')
            .replace(/\^/g, '^');
-  // Remove "+ C" from indefinite integrals for plotting
-  str = str.replace(/\s*\+\s*C\s*$/i, '');
+  str = str.replace(/\s*\+\s*C\s*$/i, ''); // Remove "+ C"
+  // Attempt to handle constants like C, C1, C_1 for plotting purposes
+  // For plotting, we'll assume C=0 or C=1 if not specified.
+  // Using a regex to replace C, C1, C_1, c, c1, c_1 etc. not preceded/followed by alphanumeric chars with (0)
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
+  str = str.replace(/(?<![a-zA-Z0-9_])c(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
+
   return str;
 };
 
@@ -112,6 +96,9 @@ export default function IntegrationCalculatorPage() {
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [chartData, setChartData] = useState<PlotDataItem[] | null>(null);
   const [plotError, setPlotError] = useState<string | null>(null);
+
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
+  const hintsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const func = functionString || 'f(x)';
@@ -140,7 +127,6 @@ export default function IntegrationCalculatorPage() {
         return;
       }
       if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "" && !isNaN(parseFloat(apiResponse.integralResult))) {
-         // If integral is a constant number, no function to plot for integral
          setPlotError("Integral is a constant value, no function to plot for the integral. Original function plotted if possible.");
       } else if (!integralFuncStr) {
          setPlotError("Integral result string is missing or not plottable.");
@@ -166,7 +152,7 @@ export default function IntegrationCalculatorPage() {
           const xVal = xMin + i * step;
           let originalY: number | undefined = undefined;
           let integralY: number | undefined = undefined;
-          const scope = { [plotVar]: xVal, C: 0 }; // Assume C=0 for plotting indefinite integral
+          const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; 
           
           try {
             originalY = compiledOriginal.evaluate(scope);
@@ -201,6 +187,60 @@ export default function IntegrationCalculatorPage() {
       setPlotError(null);
     }
   }, [apiResponse]);
+
+  useEffect(() => {
+    const container = stepsContainerRef.current;
+    const stepsContent = apiResponse?.steps;
+    if (container && stepsContent) {
+      const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
+      if (cleanedSteps.trim()) {
+        container.innerHTML = cleanedSteps;
+        if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+          setTimeout(() => {
+            try {
+              (window as any).renderMathInElement(container, {
+                delimiters: [
+                  { left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false },
+                  { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }
+                ], throwOnError: false
+              });
+            } catch (e) { console.error("Error rendering KaTeX in steps:", e); }
+          }, 0);
+        }
+      } else {
+        container.innerHTML = "";
+      }
+    } else if (container) {
+      container.innerHTML = "";
+    }
+  }, [apiResponse?.steps]);
+
+  useEffect(() => {
+    const container = hintsContainerRef.current;
+    const hintsContent = apiResponse?.additionalHints;
+    if (container && hintsContent) {
+      const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
+      if (cleanedHints.trim()) {
+        container.innerHTML = cleanedHints;
+        if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+          setTimeout(() => {
+            try {
+              (window as any).renderMathInElement(container, {
+                delimiters: [
+                  { left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false },
+                  { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }
+                ], throwOnError: false
+              });
+            } catch (e) { console.error("Error rendering KaTeX in hints:", e); }
+          }, 0);
+        }
+      } else {
+        container.innerHTML = "";
+      }
+    } else if (container) {
+      container.innerHTML = "";
+    }
+  }, [apiResponse?.additionalHints]);
 
 
   const handleSubmit = async () => {
@@ -302,10 +342,10 @@ export default function IntegrationCalculatorPage() {
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
             <Sigma className="h-8 w-8 mr-3" />
-            Integration Calculator
+            Enhanced Integration Calculator
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Calculate definite and indefinite integrals with AI assistance. Results and steps provided.
+            Calculate integrals using WolframAlpha, with explanations and hints powered by Gemini.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -454,7 +494,7 @@ export default function IntegrationCalculatorPage() {
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
-                  Integration Result
+                  Integration Result & Explanation
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6 p-6 text-lg">
@@ -475,20 +515,37 @@ export default function IntegrationCalculatorPage() {
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
-                  <Accordion type="single" collapsible className="w-full mt-4">
+                  <Accordion type="single" collapsible className="w-full mt-4" defaultValue="steps">
                     <AccordionItem value="steps">
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Info className="mr-2 h-5 w-5" /> Show Steps
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
+                           ref={stepsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                           dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
                         />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 )}
+
+                {apiResponse.additionalHints && apiResponse.additionalHints.trim() !== "" && (
+                  <Accordion type="single" collapsible className="w-full mt-2">
+                    <AccordionItem value="hints">
+                      <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                        <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div 
+                           ref={hintsContainerRef}
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+
 
                 {(chartData || plotError || apiResponse.plotHint) && (
                     <Accordion type="single" collapsible className="w-full mt-4" defaultValue='plot-info'>
@@ -539,7 +596,7 @@ export default function IntegrationCalculatorPage() {
                 )}
                 
                 <p className="mt-4 text-xs text-muted-foreground italic">
-                  Mathematical expressions are rendered using KaTeX.
+                  Mathematical expressions are rendered using KaTeX. Pipeline: User Input &rarr; Gemini (Preprocess) &rarr; WolframAlpha &rarr; Gemini (Explain & Format).
                 </p>
               </CardContent>
             </Card>
@@ -547,10 +604,11 @@ export default function IntegrationCalculatorPage() {
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50">
             <p className="text-sm text-muted-foreground">
-                This tool uses an AI model to perform integration. Results and steps may vary. For best results, use standard mathematical notation (e.g., <code className="text-xs">x^2</code>, <code className="text-xs">sin(x)</code>, <code className="text-xs">exp(x)</code>).
+                This tool uses an AI model and WolframAlpha to perform integration. Results and steps may vary. For best results, use standard mathematical notation.
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
