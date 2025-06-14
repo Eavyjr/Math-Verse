@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -18,16 +18,14 @@ import { Separator } from '@/components/ui/separator';
 const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean = false): string => {
   if (!mathString) return "";
   let cleanLatexString = mathString.trim();
-  // Do not remove delimiters if they are intentionally part of Gemini's explanation text
   // This function is primarily for the 'formattedResult' which should be raw LaTeX.
-  // For 'explainedSteps' and 'additionalHints', KaTeX auto-render relies on \(...\)
   
   try {
     return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
       output: 'html',
-      macros: { "\\dd": "\\mathrm{d}"} // common macro for derivatives/integrals
+      macros: { "\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", mathString);
@@ -35,15 +33,10 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
   }
 };
 
-// Function to render content that might contain inline LaTeX
+// Function to pass through content that might contain inline LaTeX
 const renderContentWithInlineMath = (content: string | undefined | null): string => {
   if (!content) return "";
-  // KaTeX auto-render is expected to handle \(...\) and \[...\]
-  // This function just ensures basic HTML safety for non-math parts.
-  // The actual rendering to math is done by KaTeX auto-render script or manual calls.
-  // For now, we'll assume the content is safe enough to be directly set,
-  // relying on Gemini providing safe HTML-compatible output with LaTeX delimiters.
-  // More robust: use a markdown-to-html converter that supports KaTeX.
+  // Content from Gemini should already have \(...\) for KaTeX auto-render or manual trigger
   return content; 
 };
 
@@ -53,6 +46,56 @@ export default function IntegrationTestPage() {
   const [apiResponse, setApiResponse] = useState<EnhancedWolframResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
+  const hintsContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (apiResponse?.geminiExplanation?.explainedSteps && stepsContainerRef.current) {
+      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+        // console.log("Manually triggering renderMathInElement for steps container.");
+        try {
+          (window as any).renderMathInElement(stepsContainerRef.current, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ],
+            throwOnError: false
+          });
+        } catch (e) {
+          console.error("Error during manual KaTeX re-render for steps:", e);
+        }
+      } else {
+        // console.warn("renderMathInElement not available for manual steps re-render.");
+      }
+    }
+  }, [apiResponse?.geminiExplanation?.explainedSteps]);
+
+  useEffect(() => {
+    if (apiResponse?.geminiExplanation?.additionalHints && hintsContainerRef.current) {
+      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+        // console.log("Manually triggering renderMathInElement for hints container.");
+        try {
+          (window as any).renderMathInElement(hintsContainerRef.current, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ],
+            throwOnError: false
+          });
+        } catch (e) {
+          console.error("Error during manual KaTeX re-render for hints:", e);
+        }
+      } else {
+        // console.warn("renderMathInElement not available for manual hints re-render.");
+      }
+    }
+  }, [apiResponse?.geminiExplanation?.additionalHints]);
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,7 +113,7 @@ export default function IntegrationTestPage() {
 
       if (actionResult.error) {
         setError(actionResult.error);
-        if(actionResult.data) setApiResponse(actionResult.data); // Still set data if error occurred mid-pipeline
+        if(actionResult.data) setApiResponse(actionResult.data); 
       } else if (actionResult.data) {
         setApiResponse(actionResult.data);
       } else {
@@ -95,7 +138,7 @@ export default function IntegrationTestPage() {
       <Card className="shadow-xl rounded-lg overflow-hidden">
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
-            <Wand2 className="h-8 w-8 mr-3" /> {/* Changed Icon */}
+            <Wand2 className="h-8 w-8 mr-3" />
             AI-Enhanced Integration Solver
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
@@ -178,8 +221,10 @@ export default function IntegrationTestPage() {
                         <Brain className="mr-2 h-5 w-5"/> Gemini&apos;s Explanation of Steps
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto render-math"
-                             dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.explainedSteps) }} />
+                        <div
+                          ref={stepsContainerRef} 
+                          className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
+                          dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.explainedSteps) }} />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -192,8 +237,10 @@ export default function IntegrationTestPage() {
                        <TestTubeDiagonal className="mr-2 h-5 w-5"/> Additional Hints & Insights
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto render-math"
-                             dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.additionalHints) }} />
+                        <div
+                          ref={hintsContainerRef} 
+                          className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
+                          dangerouslySetInnerHTML={{ __html: renderContentWithInlineMath(apiResponse.geminiExplanation.additionalHints) }} />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
