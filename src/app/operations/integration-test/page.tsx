@@ -18,7 +18,6 @@ import { Separator } from '@/components/ui/separator';
 const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean = false): string => {
   if (!mathString) return "";
   let cleanLatexString = mathString.trim();
-  // This function is primarily for the 'formattedResult' which should be raw LaTeX.
   
   try {
     return katex.renderToString(cleanLatexString, {
@@ -33,12 +32,10 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
   }
 };
 
-// Function to clean content and prepare it for rendering.
-// The actual KaTeX parsing for dynamic content is handled by useEffect + renderMathInElement.
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Remove form feed characters and any other potentially problematic non-standard characters if needed
-  return content.replace(//g, ''); 
+  // Remove form feed characters () and trim whitespace
+  return content.replace(//g, '').trim(); 
 };
 
 
@@ -51,51 +48,63 @@ export default function IntegrationTestPage() {
   const stepsContainerRef = useRef<HTMLDivElement>(null);
   const hintsContainerRef = useRef<HTMLDivElement>(null);
 
-  // This useEffect handles re-rendering KaTeX when steps content changes
   useEffect(() => {
-    if (apiResponse?.geminiExplanation?.explainedSteps && stepsContainerRef.current) {
-      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-        const cleanedSteps = cleanAndPrepareContentForDisplay(apiResponse.geminiExplanation.explainedSteps);
-        stepsContainerRef.current.innerHTML = cleanedSteps; // Set cleaned HTML
-        
-        try {
-          (window as any).renderMathInElement(stepsContainerRef.current, {
-            delimiters: [
-              { left: '$$', right: '$$', display: true },
-              { left: '$', right: '$', display: false },
-              { left: '\\(', right: '\\)', display: false },
-              { left: '\\[', right: '\\]', display: true }
-            ],
-            throwOnError: false
-          });
-        } catch (e) {
-          console.error("Error during manual KaTeX re-render for steps:", e);
+    const container = stepsContainerRef.current;
+    const stepsContent = apiResponse?.geminiExplanation?.explainedSteps;
+
+    if (container) {
+        const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
+        if (cleanedSteps) { // Only proceed if cleanedSteps has actual content
+            container.innerHTML = cleanedSteps;
+            if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+                try {
+                    (window as any).renderMathInElement(container, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false },
+                            { left: '\\(', right: '\\)', display: false },
+                            { left: '\\[', right: '\\]', display: true }
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.error("Error during manual KaTeX re-render for steps:", e);
+                    // Optionally, set a fallback or error message in the container
+                    // container.innerHTML = `<p class="text-destructive">Error rendering math in steps.</p><pre>${cleanedSteps.replace(/</g, '&lt;')}</pre>`;
+                }
+            }
+        } else {
+            container.innerHTML = ""; // Clear if no steps or steps became empty after cleaning
         }
-      }
     }
   }, [apiResponse?.geminiExplanation?.explainedSteps]);
 
-  // This useEffect handles re-rendering KaTeX when hints content changes
   useEffect(() => {
-    if (apiResponse?.geminiExplanation?.additionalHints && hintsContainerRef.current) {
-      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-        const cleanedHints = cleanAndPrepareContentForDisplay(apiResponse.geminiExplanation.additionalHints);
-        hintsContainerRef.current.innerHTML = cleanedHints; // Set cleaned HTML
-        
-        try {
-          (window as any).renderMathInElement(hintsContainerRef.current, {
-            delimiters: [
-              { left: '$$', right: '$$', display: true },
-              { left: '$', right: '$', display: false },
-              { left: '\\(', right: '\\)', display: false },
-              { left: '\\[', right: '\\]', display: true }
-            ],
-            throwOnError: false
-          });
-        } catch (e) {
-          console.error("Error during manual KaTeX re-render for hints:", e);
+    const container = hintsContainerRef.current;
+    const hintsContent = apiResponse?.geminiExplanation?.additionalHints;
+
+    if (container) {
+        const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
+        if (cleanedHints) { // Only proceed if cleanedHints has actual content
+            container.innerHTML = cleanedHints;
+            if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+                try {
+                    (window as any).renderMathInElement(container, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false },
+                            { left: '\\(', right: '\\)', display: false },
+                            { left: '\\[', right: '\\]', display: true }
+                        ],
+                        throwOnError: false
+                    });
+                } catch (e) {
+                    console.error("Error during manual KaTeX re-render for hints:", e);
+                }
+            }
+        } else {
+            container.innerHTML = ""; // Clear if no hints or hints became empty after cleaning
         }
-      }
     }
   }, [apiResponse?.geminiExplanation?.additionalHints]);
 
@@ -227,7 +236,6 @@ export default function IntegrationTestPage() {
                         <div
                           ref={stepsContainerRef} 
                           className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                           // Content is set by useEffect
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -244,7 +252,6 @@ export default function IntegrationTestPage() {
                         <div
                           ref={hintsContainerRef} 
                           className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                          // Content is set by useEffect
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -275,3 +282,4 @@ export default function IntegrationTestPage() {
     </div>
   );
 }
+
