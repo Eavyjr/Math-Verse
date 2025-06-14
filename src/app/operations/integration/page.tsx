@@ -45,8 +45,8 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Remove form feed characters () and trim whitespace
-  return content.replace(//g, '').trim(); 
+  // Remove form feed characters (\f) and trim whitespace
+  return content.replace(/\f/g, '').trim(); 
 };
 
 interface PlotDataItem {
