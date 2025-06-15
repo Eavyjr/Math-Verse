@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb } from 'lucide-react';
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
@@ -43,8 +44,7 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Replace form feed characters and then newlines with <br />
-  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim(); 
+  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim();
 };
 
 
@@ -117,7 +117,7 @@ export default function IntegrationCalculatorPage() {
       return;
     }
     
-    setPlotError(null); // Reset plot error at the beginning of an attempt
+    setPlotError(null); 
     let currentPlotError: string | null = null;
 
     const originalFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.originalQuery.functionString);
@@ -141,8 +141,6 @@ export default function IntegrationCalculatorPage() {
     const isIntegralNumeric = apiResponse.integralResult && !isNaN(parseFloat(apiResponse.integralResult)) && integralFuncStr === parseFloat(apiResponse.integralResult).toString();
 
     if (isIntegralNumeric) {
-      // Integral is a number, so it won't be plotted as a function.
-      // This is fine, we'll just plot the original if possible.
       if(!currentPlotError) currentPlotError = "Integral is a constant value; only original function will be plotted if possible.";
     } else if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "") {
       if(!currentPlotError) currentPlotError = "Integral result is not a plottable function.";
@@ -178,7 +176,7 @@ export default function IntegrationCalculatorPage() {
         } catch (e) { /* ignore eval error for this point */ }
       }
 
-      if (compiledIntegral && !isIntegralNumeric) { // Don't plot integral if it's just a number
+      if (compiledIntegral && !isIntegralNumeric) { 
         try {
           integralY = compiledIntegral.evaluate(scope);
           if (typeof integralY !== 'number' || isNaN(integralY) || !isFinite(integralY)) integralY = undefined;
@@ -192,7 +190,7 @@ export default function IntegrationCalculatorPage() {
 
     if (data.length > 1) { 
       setChartData(data);
-      setPlotError(currentPlotError); // Set any non-fatal errors (like one function failing to plot)
+      setPlotError(currentPlotError); 
     } else {
       setChartData(null);
       setPlotError(currentPlotError || "Not enough valid data points to generate a plot for either function.");
@@ -203,52 +201,76 @@ export default function IntegrationCalculatorPage() {
   useEffect(() => {
     const container = stepsContainerRef.current;
     const currentStepsContent = apiResponse?.steps;
+    console.log("[StepsEffect] Fired. Current steps:", currentStepsContent ? currentStepsContent.substring(0,50)+"..." : "null");
 
     if (container) {
       const cleanedSteps = cleanAndPrepareContentForDisplay(currentStepsContent);
+      console.log("[StepsEffect] Cleaned steps:", cleanedSteps ? cleanedSteps.substring(0,50)+"..." : "empty");
       if (cleanedSteps && cleanedSteps.trim()) {
         container.innerHTML = cleanedSteps;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          setTimeout(() => { // Give browser a tick to render innerHTML
+          console.log("[StepsEffect] Attempting KaTeX render on steps container.");
+          setTimeout(() => {
             try {
               (window as any).renderMathInElement(container, {
                 delimiters: [
-                  { left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false },
-                  { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }
-                ], throwOnError: false
+                  { left: '$$', right: '$$', display: true },
+                  { left: '$', right: '$', display: false }, 
+                  { left: '\\(', right: '\\)', display: false },
+                  { left: '\\[', right: '\\]', display: true }
+                ],
+                throwOnError: false
               });
+              console.log("[StepsEffect] KaTeX render on steps complete (or attempted).");
             } catch (e) { console.error("Error rendering KaTeX in steps:", e); }
           }, 0);
+        } else {
+           console.warn("[StepsEffect] renderMathInElement not found.");
         }
       } else {
         container.innerHTML = ""; 
+        console.log("[StepsEffect] Steps content was empty after cleaning or null.");
       }
+    } else {
+      console.warn("[StepsEffect] Steps container ref was null.");
     }
   }, [apiResponse?.steps]);
 
   useEffect(() => {
     const container = hintsContainerRef.current;
     const currentHintsContent = apiResponse?.additionalHints;
-    
+    console.log("[HintsEffect] Fired. Current hints:", currentHintsContent ? currentHintsContent.substring(0,50)+"..." : "null");
+
     if (container) {
       const cleanedHints = cleanAndPrepareContentForDisplay(currentHintsContent);
-      if (cleanedHints && cleanedHints.trim()) { 
+      console.log("[HintsEffect] Cleaned hints:", cleanedHints ? cleanedHints.substring(0,50)+"..." : "empty");
+      if (cleanedHints && cleanedHints.trim()) {
         container.innerHTML = cleanedHints;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          setTimeout(() => { // Give browser a tick to render innerHTML
+          console.log("[HintsEffect] Attempting KaTeX render on hints container.");
+          setTimeout(() => {
             try {
               (window as any).renderMathInElement(container, {
                 delimiters: [
-                  { left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false },
-                  { left: '\\(', right: '\\)', display: false }, { left: '\\[', right: '\\]', display: true }
-                ], throwOnError: false
+                  { left: '$$', right: '$$', display: true },
+                  { left: '$', right: '$', display: false },
+                  { left: '\\(', right: '\\)', display: false },
+                  { left: '\\[', right: '\\]', display: true }
+                ],
+                throwOnError: false
               });
+              console.log("[HintsEffect] KaTeX render on hints complete (or attempted).");
             } catch (e) { console.error("Error rendering KaTeX in hints:", e); }
           }, 0);
+        } else {
+          console.warn("[HintsEffect] renderMathInElement not found.");
         }
       } else {
         container.innerHTML = ""; 
+        console.log("[HintsEffect] Hints content was empty after cleaning or null.");
       }
+    } else {
+      console.warn("[HintsEffect] Hints container ref was null.");
     }
   }, [apiResponse?.additionalHints]);
 
@@ -530,7 +552,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Info className="mr-2 h-5 w-5" /> Show Steps
                       </AccordionTrigger>
-                      <AccordionContent>
+                      <AccordionContent key={apiResponse.steps}> {/* Key to force re-mount */}
                         <div 
                            ref={stepsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto" 
@@ -546,7 +568,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
                       </AccordionTrigger>
-                      <AccordionContent>
+                      <AccordionContent key={apiResponse.additionalHints}> {/* Key to force re-mount */}
                         <div 
                            ref={hintsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto"
@@ -621,4 +643,3 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
-
