@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb } from 'lucide-react';
@@ -25,7 +25,6 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
-  // Remove outer KaTeX delimiters if already present to avoid double rendering issues
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
@@ -38,15 +37,14 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error for main result:", e, "Original string:", latexString);
-    // Sanitize and return the original string if KaTeX fails
     return latexString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 };
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Remove form feed characters (\f) and trim whitespace
-  return content.replace(/\f/g, '').trim(); 
+  // Remove form feed characters (\f), then replace newlines with <br />, then trim
+  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim(); 
 };
 
 interface PlotDataItem {
@@ -71,10 +69,7 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
            .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
            .replace(/\\cdot/g, '*')
            .replace(/\^/g, '^');
-  str = str.replace(/\s*\+\s*C\s*$/i, ''); // Remove "+ C"
-  // Attempt to handle constants like C, C1, C_1 for plotting purposes
-  // For plotting, we'll assume C=0 or C=1 if not specified.
-  // Using a regex to replace C, C1, C_1, c, c1, c_1 etc. not preceded/followed by alphanumeric chars with (0)
+  str = str.replace(/\s*\+\s*C\s*$/i, ''); 
   str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
   str = str.replace(/(?<![a-zA-Z0-9_])c(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
 
@@ -191,7 +186,7 @@ export default function IntegrationCalculatorPage() {
   useEffect(() => {
     const container = stepsContainerRef.current;
     const stepsContent = apiResponse?.steps;
-    if (container && stepsContent) {
+    if (container) {
       const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
       if (cleanedSteps.trim()) {
         container.innerHTML = cleanedSteps;
@@ -208,17 +203,15 @@ export default function IntegrationCalculatorPage() {
           }, 0);
         }
       } else {
-        container.innerHTML = "";
+        container.innerHTML = ""; 
       }
-    } else if (container) {
-      container.innerHTML = "";
     }
   }, [apiResponse?.steps]);
 
   useEffect(() => {
     const container = hintsContainerRef.current;
     const hintsContent = apiResponse?.additionalHints;
-    if (container && hintsContent) {
+    if (container) {
       const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
       if (cleanedHints.trim()) {
         container.innerHTML = cleanedHints;
@@ -237,8 +230,6 @@ export default function IntegrationCalculatorPage() {
       } else {
         container.innerHTML = "";
       }
-    } else if (container) {
-      container.innerHTML = "";
     }
   }, [apiResponse?.additionalHints]);
 
@@ -523,7 +514,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent>
                         <div 
                            ref={stepsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -539,7 +530,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent>
                         <div 
                            ref={hintsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                         />
                       </AccordionContent>
                     </AccordionItem>
