@@ -9,6 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { gpt35Turbo } from 'genkitx-openai'; // Import the specific model
 import { z } from 'genkit';
 
 const ExplainWolframStepsInputSchema = z.object({
@@ -55,7 +56,7 @@ Focus on clarity, accuracy, and educational value.
 
 const explainWolframStepsPrompt = ai.definePrompt({
   name: 'explainWolframStepsPrompt',
-  model: 'gpt-3.5-turbo', // Changed to use direct OpenAI model name, assuming genkitx-openai supports it
+  model: gpt35Turbo, // Use the imported model object
   input: { schema: ExplainWolframStepsInputSchema },
   output: { schema: ExplainWolframStepsOutputSchema },
   system: systemPrompt,
@@ -73,13 +74,8 @@ Ensure all math in your 'explainedSteps' and 'additionalHints' is wrapped in \\(
 Ensure 'formattedResult' is ONLY the LaTeX string of the mathematical answer.
 `,
   config: {
-    temperature: 0.3, 
-    safetySettings: [ 
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-    ],
+    temperature: 0.3,
+    // Removed safetySettings as they are typically Gemini-specific
   },
 });
 
@@ -90,17 +86,35 @@ const explainWolframStepsFlow = ai.defineFlow(
     outputSchema: ExplainWolframStepsOutputSchema,
   },
   async (input) => {
-    const { output } = await explainWolframStepsPrompt(input);
-    if (!output || !output.explainedSteps || !output.formattedResult) {
-      console.error('explainWolframStepsFlow: AI returned null or incomplete output.');
+    try {
+      const { output } = await explainWolframStepsPrompt(input);
+      if (!output || !output.explainedSteps || !output.formattedResult) {
+        console.error('explainWolframStepsFlow: AI returned null or incomplete output.', output);
+        // Attempt to return a more graceful fallback but still indicate an issue.
+        return {
+          explainedSteps: "Could not generate a full explanation for the steps at this time. The result from WolframAlpha is provided.",
+          formattedResult: input.wolframPlaintextResult || "Result not available from WolframAlpha.", 
+          additionalHints: "No additional hints available due to an issue processing the steps.",
+          plotHint: "Plot hint not available due to an issue processing the steps.",
+        };
+      }
+      return output;
+    } catch (error: any) {
+      console.error('explainWolframStepsFlow: Error calling explainWolframStepsPrompt -', error.message, error.stack);
+      let userFriendlyMessage = "An unexpected error occurred while trying to explain the solution with the AI model.";
+      if (error.message && error.message.toLowerCase().includes('api key')) {
+        userFriendlyMessage = "AI model API key is missing or invalid. Please check configuration.";
+      } else if (error.message && error.message.toLowerCase().includes('quota')) {
+        userFriendlyMessage = "AI model API quota exceeded. Please try again later.";
+      }
+      // Return a structured error within the expected output schema.
       return {
-        explainedSteps: "Could not generate explanation for the steps at this time.",
-        formattedResult: input.wolframPlaintextResult, 
-        additionalHints: "No additional hints available.",
-        plotHint: "Plot hint not available.",
+        explainedSteps: `Error during AI explanation: ${userFriendlyMessage}`,
+        formattedResult: input.wolframPlaintextResult || "Result from WolframAlpha (explanation failed).",
+        additionalHints: "Explanation process encountered an error.",
+        plotHint: "Explanation process encountered an error."
       };
     }
-    return output;
   }
 );
 

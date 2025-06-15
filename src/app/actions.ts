@@ -1,3 +1,4 @@
+
 'use server';
 
 import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
@@ -139,21 +140,22 @@ export async function handlePerformIntegrationAction(
     }
   }
 
-  const WOLFRAM_APP_ID = 'LKRWWW-KW2L4V2652'; // Store securely in production
+  const WOLFRAM_APP_ID = 'LKRWWW-KW2L4V2652'; 
   let userQueryForGemini = `integrate ${input.functionString} d${input.variable || 'x'}`;
   if (input.isDefinite) {
     userQueryForGemini += ` from ${input.lowerBound} to ${input.upperBound}`;
   }
 
   try {
-    // Step 1: Preprocess query with Gemini
+    // Step 1: Preprocess query with Gemini (or another model if desired)
     const preprocessInput: PreprocessWolframQueryInput = { userQuery: userQueryForGemini };
     const preprocessOutput = await preprocessWolframQuery(preprocessInput);
     const cleanedQuery = preprocessOutput.cleanedQuery;
 
     if (!cleanedQuery) {
-      return { data: null, error: 'AI failed to clean the query for WolframAlpha. Please try rephrasing.' };
+      return { data: null, error: 'AI (preprocess) failed to clean the query for WolframAlpha. Please try rephrasing.' };
     }
+    console.log("[Action:Integration] Preprocessed query for Wolfram:", cleanedQuery);
 
     // Step 2: Call WolframAlpha
     const encodedWolframInput = encodeURIComponent(cleanedQuery);
@@ -164,6 +166,7 @@ export async function handlePerformIntegrationAction(
       throw new Error(`WolframAlpha API request failed with status ${wolframResponse.status}: ${wolframResponse.statusText}`);
     }
     const wolframData: WolframAlphaApiResponse = await wolframResponse.json();
+    console.log("[Action:Integration] WolframAlpha response success:", wolframData.queryresult.success);
 
     if (!wolframData.queryresult.success) {
       const wolframErrorMsg = wolframData.queryresult.error && typeof wolframData.queryresult.error === 'object' 
@@ -190,45 +193,49 @@ export async function handlePerformIntegrationAction(
         .join('\n\n---\n\n');
     }
 
-    if (!wolframPlaintextResult && !wolframPlaintextSteps) {
-      return { data: null, error: "WolframAlpha did not return a result or step-by-step solution for the cleaned query." };
-    }
-    // Ensure we pass strings to Gemini, even if empty or default, to avoid null/undefined issues.
     const finalWolframResult = wolframPlaintextResult || "Result information not available from WolframAlpha.";
     const finalWolframSteps = wolframPlaintextSteps || "Step-by-step information not available from WolframAlpha for this query.";
+    console.log("[Action:Integration] Data for Gemini explanation: Result length:", finalWolframResult.length, "Steps length:", finalWolframSteps.length);
 
-    // Step 3: Explain steps and format result with Gemini
+
+    // Step 3: Explain steps and format result with AI (now potentially OpenAI)
     const explainInput: ExplainWolframStepsInput = {
       wolframPlaintextSteps: finalWolframSteps,
       wolframPlaintextResult: finalWolframResult,
       originalQuery: userQueryForGemini,
     };
+    console.log("[Action:Integration] Calling explainWolframSteps flow with input:", explainInput);
     const geminiExplanation = await explainWolframSteps(explainInput);
+    console.log("[Action:Integration] Received explanation from AI flow:", geminiExplanation);
     
-    if (!geminiExplanation || !geminiExplanation.formattedResult) {
-        return { data: null, error: "AI explanation step failed to produce a formatted result."};
+    if (!geminiExplanation || !geminiExplanation.formattedResult || geminiExplanation.explainedSteps.startsWith("Error during AI explanation:")) {
+        const explanationError = geminiExplanation?.explainedSteps || "AI explanation step failed to produce a valid output or encountered an error.";
+        console.error("[Action:Integration] Error from explainWolframSteps:", explanationError);
+        return { data: null, error: `AI Explanation Error: ${explanationError}` };
     }
 
     const finalOutput: IntegrationOutput = {
       integralResult: geminiExplanation.formattedResult,
       steps: geminiExplanation.explainedSteps,
-      originalQuery: input, // The original IntegrationInput from the client
+      originalQuery: input, 
       plotHint: geminiExplanation.plotHint,
       additionalHints: geminiExplanation.additionalHints,
     };
 
     return { data: finalOutput, error: null };
 
-  } catch (e) {
-    console.error('Error in handlePerformIntegrationAction pipeline:', e);
-    let errorMessage = 'An error occurred while performing the integration. Please try again.';
+  } catch (e: any) {
+    console.error('[Action:handlePerformIntegrationAction] Pipeline error:', e.message, e.stack);
+    let errorMessage = 'An error occurred while performing the integration.';
     if (e instanceof Error) {
       if (e.message.toLowerCase().includes('fetch failed') || e.message.toLowerCase().includes('econnrefused')) {
         errorMessage = genkitUnreachableError;
+      } else if (e.message.toLowerCase().includes('api key') || e.message.toLowerCase().includes('auth')) {
+        errorMessage = 'AI service authentication error. Please check API key and configuration.';
       } else if (e.message.includes('quota')) {
-        errorMessage = 'API quota exceeded. Please try again later.';
+        errorMessage = 'An API quota may have been exceeded. Please try again later.';
       } else {
-        errorMessage = `An AI processing error occurred: ${e.message}`;
+        errorMessage = `Processing error: ${e.message}`;
       }
     }
     return { data: null, error: errorMessage };
@@ -546,7 +553,7 @@ export async function fetchWolframAlphaStepsAction(
       data: {
         originalQuery: userExpression,
         cleanedQuery,
-        wolframPlaintextResult: finalWolframResult, // Return the potentially modified fallback
+        wolframPlaintextResult: finalWolframResult, 
         geminiExplanation,
       }, 
       error: null 
