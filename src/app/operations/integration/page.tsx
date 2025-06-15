@@ -39,13 +39,15 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   }
 };
 
-const renderKatexEnabledContent = (contentString: string | undefined | null): string => {
-  if (!contentString) return "";
-  // Regex to find \(...\) or \[...\] - removed 's' flag
-  const parts = contentString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
+// Updated to match algebra/page.tsx's renderStepsContent
+const renderKatexEnabledContent = (stepsString: string | undefined | null): string => {
+  if (!stepsString) return "";
+  console.log("IntegrationPage renderKatexEnabledContent input:", stepsString);
+
+  // Regex to find \(...\) or \[...\] - using greedy .+? from algebra page
+  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g); 
   
-  const htmlParts = parts.map((part) => {
-    if (!part) return ""; // Skip empty strings that can result from split
+  const htmlParts = parts.map((part, index) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
@@ -54,15 +56,16 @@ const renderKatexEnabledContent = (contentString: string | undefined | null): st
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
-      // Sanitize plain text parts for safe HTML insertion
+      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        // Fallback to sanitized original part if KaTeX fails catastrophically (though throwOnError:false should prevent this)
+        console.error("IntegrationPage KaTeX steps rendering error for part:", part, e);
         return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
     }
   });
-  return htmlParts.join('');
+  const finalHtml = htmlParts.join('');
+  console.log("IntegrationPage renderKatexEnabledContent output HTML:", finalHtml);
+  return finalHtml;
 };
 
 
@@ -256,7 +259,7 @@ export default function IntegrationCalculatorPage() {
       if (actionResult.error) {
         setError(actionResult.error);
       } else if (actionResult.data) {
-        console.log("Raw AI Steps Received:", actionResult.data.steps); // Crucial log for debugging
+        console.log("Raw AI Steps Received:", actionResult.data.steps); // This log remains crucial
         setApiResponse(actionResult.data);
       } else {
         setError('Received no data from the server. Please try again.');
@@ -493,7 +496,7 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent> 
                         <div 
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                            dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.steps) }} 
                         />
                       </AccordionContent>
@@ -509,7 +512,7 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent> 
                         <div 
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
                            dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.additionalHints) }}
                         />
                       </AccordionContent>
@@ -575,7 +578,7 @@ export default function IntegrationCalculatorPage() {
             </Card>
           )}
         </CardContent>
-         <CardFooter className="p-6 bg-secondary/50">
+         <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground">
                 This tool uses an AI model to perform integration and provide step-by-step explanations. For best results, use standard mathematical notation.
             </p>
