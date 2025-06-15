@@ -70,7 +70,7 @@ Ensure the 'result' output is concise and strictly the mathematical result. The 
 
 const performAlgebraicOperationPrompt = ai.definePrompt({
   name: 'performAlgebraicOperationPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: AlgebraicOperationInputSchema},
   output: {schema: AlgebraicOperationOutputSchema},
   system: systemPrompt,
@@ -108,3 +108,4 @@ const performAlgebraicOperationFlow = ai.defineFlow(
     };
   }
 );
+

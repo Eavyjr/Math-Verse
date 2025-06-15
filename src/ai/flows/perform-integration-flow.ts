@@ -54,7 +54,7 @@ If the integral is too complex or cannot be expressed in elementary terms, state
 
 const integrationPrompt = ai.definePrompt({
   name: 'performIntegrationPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: IntegrationInputSchema},
   output: {schema: IntegrationOutputSchema.omit({originalQuery: true})}, // AI doesn't generate originalQuery
   system: systemPrompt,
@@ -106,3 +106,4 @@ const performIntegrationFlow = ai.defineFlow(
     };
   }
 );
+

@@ -47,7 +47,7 @@ Given a function, a variable of differentiation, and the order of the derivative
 
 const differentiationPrompt = ai.definePrompt({
   name: 'differentiationPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: DifferentiationInputSchema},
   output: {schema: DifferentiationOutputSchema},
   system: systemPrompt,
@@ -87,3 +87,4 @@ const performDifferentiationFlow = ai.defineFlow(
     };
   }
 );
+

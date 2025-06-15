@@ -29,7 +29,7 @@ export async function preprocessWolframQuery(
 
 const preprocessWolframQueryPrompt = ai.definePrompt({
   name: 'preprocessWolframQueryPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: { schema: PreprocessWolframQueryInputSchema },
   output: { schema: PreprocessWolframQueryOutputSchema },
   prompt: `Given the user's query about an integration problem, rephrase it into a concise query string suitable for WolframAlpha's integration engine.
@@ -65,3 +65,4 @@ const preprocessWolframQueryFlow = ai.defineFlow(
     return output;
   }
 );
+

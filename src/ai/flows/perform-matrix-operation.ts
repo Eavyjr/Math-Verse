@@ -88,7 +88,7 @@ Be precise with matrix formatting in the result when returning a JSON stringifie
 
 const matrixOperationPrompt = ai.definePrompt({
   name: 'matrixOperationPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: MatrixOperationInputSchema},
   output: {schema: MatrixOperationOutputSchema},
   system: systemPrompt,
@@ -139,3 +139,4 @@ const performMatrixOperationFlow = ai.defineFlow(
     };
   }
 );
+

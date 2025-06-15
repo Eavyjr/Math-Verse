@@ -81,7 +81,7 @@ If an input vector is empty or invalid based on the operation, the 'result' shou
 
 const vectorOperationPrompt = ai.definePrompt({
     name: 'vectorOperationPrompt',
-    model: 'googleai/gemini-1.5-flash-latest',
+    model: 'googleai/gemini-2.0-flash',
     input: { schema: VectorOperationInputSchema },
     output: { schema: VectorOperationOutputSchema.omit({ originalQuery: true }) }, 
     system: systemPrompt,
@@ -141,3 +141,4 @@ const performVectorOperationFlow = ai.defineFlow(
     };
   }
 );
+

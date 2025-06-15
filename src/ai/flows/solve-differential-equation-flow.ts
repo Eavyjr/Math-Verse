@@ -54,7 +54,7 @@ If the equation is too complex or unsolvable with standard methods, clearly stat
 
 const solveDifferentialEquationPrompt = ai.definePrompt({
   name: 'solveDifferentialEquationPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
   input: { schema: DESolutionInputSchema },
   output: {
     schema: DESolutionOutputSchema, 
@@ -113,3 +113,4 @@ export async function solveDifferentialEquation(input: DESolutionInput): Promise
   
   return {...output, originalQuery: input };
 }
+
