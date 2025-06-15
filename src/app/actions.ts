@@ -1,4 +1,3 @@
-
 'use server';
 
 import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
@@ -194,13 +193,14 @@ export async function handlePerformIntegrationAction(
     if (!wolframPlaintextResult && !wolframPlaintextSteps) {
       return { data: null, error: "WolframAlpha did not return a result or step-by-step solution for the cleaned query." };
     }
-    wolframPlaintextResult = wolframPlaintextResult || "Result not explicitly found, see steps.";
-    wolframPlaintextSteps = wolframPlaintextSteps || "No detailed steps provided by WolframAlpha for this query.";
+    // Ensure we pass strings to Gemini, even if empty or default, to avoid null/undefined issues.
+    const finalWolframResult = wolframPlaintextResult || "Result information not available from WolframAlpha.";
+    const finalWolframSteps = wolframPlaintextSteps || "Step-by-step information not available from WolframAlpha for this query.";
 
     // Step 3: Explain steps and format result with Gemini
     const explainInput: ExplainWolframStepsInput = {
-      wolframPlaintextSteps,
-      wolframPlaintextResult,
+      wolframPlaintextSteps: finalWolframSteps,
+      wolframPlaintextResult: finalWolframResult,
       originalQuery: userQueryForGemini,
     };
     const geminiExplanation = await explainWolframSteps(explainInput);
@@ -529,22 +529,15 @@ export async function fetchWolframAlphaStepsAction(
         .filter(text => text && text.trim() !== '')
         .join('\n\n---\n\n');
     }
-
-    if (!wolframPlaintextSteps && !wolframPlaintextResult) {
-      return { data: { originalQuery: userExpression, cleanedQuery }, error: 'WolframAlpha did not return a result or step-by-step solution for the cleaned query.' };
-    }
-    if (!wolframPlaintextResult) {
-        wolframPlaintextResult = "Result not explicitly found, see steps.";
-    }
-    if(!wolframPlaintextSteps){
-        wolframPlaintextSteps = "No detailed steps provided by WolframAlpha for this query.";
-    }
+    
+    const finalWolframResult = wolframPlaintextResult || "Result information not available from WolframAlpha.";
+    const finalWolframSteps = wolframPlaintextSteps || "Step-by-step information not available from WolframAlpha for this query.";
 
 
     // Step 3: Explain steps and format result with Gemini
     const explainInput: ExplainWolframStepsInput = {
-      wolframPlaintextSteps: wolframPlaintextSteps,
-      wolframPlaintextResult: wolframPlaintextResult,
+      wolframPlaintextSteps: finalWolframSteps,
+      wolframPlaintextResult: finalWolframResult,
       originalQuery: userExpression, 
     };
     const geminiExplanation: ExplainWolframStepsOutput = await explainWolframSteps(explainInput);
@@ -553,7 +546,7 @@ export async function fetchWolframAlphaStepsAction(
       data: {
         originalQuery: userExpression,
         cleanedQuery,
-        wolframPlaintextResult,
+        wolframPlaintextResult: finalWolframResult, // Return the potentially modified fallback
         geminiExplanation,
       }, 
       error: null 

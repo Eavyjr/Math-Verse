@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,7 +9,7 @@ import { create, all, type MathJsStatic } from 'mathjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -18,7 +17,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, 
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const math: MathJsStatic = create(all);
 
@@ -42,14 +41,10 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   }
 };
 
-// Updated to replace newlines with <br /> and then remove form feeds
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // First, replace all newline characters with <br />
-  let cleaned = content.replace(/\n/g, '<br />');
-  // Then, remove all form feed characters
-  cleaned = cleaned.replace(/\f/g, '');
-  return cleaned.trim();
+  // Replace form feed characters and then newlines with <br />
+  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim(); 
 };
 
 
@@ -116,77 +111,93 @@ export default function IntegrationCalculatorPage() {
   }, [functionString, variable, integralType, lowerBound, upperBound]);
 
   useEffect(() => {
-    if (apiResponse?.originalQuery?.functionString && apiResponse?.integralResult) {
-      setPlotError(null);
-      const originalFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.originalQuery.functionString);
-      const integralFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.integralResult);
-      const plotVar = apiResponse.originalQuery.variable || 'x';
-
-      if (!originalFuncStr) {
-        setPlotError("Original function string is missing for plotting.");
-        setChartData(null);
-        return;
-      }
-      if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "" && !isNaN(parseFloat(apiResponse.integralResult))) {
-         setPlotError("Integral is a constant value, no function to plot for the integral. Original function plotted if possible.");
-      } else if (!integralFuncStr) {
-         setPlotError("Integral result string is missing or not plottable.");
-      }
-      
-      try {
-        const compiledOriginal = math.compile(originalFuncStr);
-        let compiledIntegral: any = null;
-        if (integralFuncStr) {
-           try {
-             compiledIntegral = math.compile(integralFuncStr);
-           } catch (e: any) {
-             console.warn("Error compiling integral function for plot:", e);
-             setPlotError(`Could not plot integral: ${e.message}. Original function might still be plotted.`);
-           }
-        }
-        
-        const data: PlotDataItem[] = [];
-        const xMin = -5; const xMax = 5; const points = 100;
-        const step = (xMax - xMin) / (points - 1);
-
-        for (let i = 0; i < points; i++) {
-          const xVal = xMin + i * step;
-          let originalY: number | undefined = undefined;
-          let integralY: number | undefined = undefined;
-          const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; 
-          
-          try {
-            originalY = compiledOriginal.evaluate(scope);
-            if (typeof originalY !== 'number' || isNaN(originalY) || !isFinite(originalY)) originalY = undefined;
-          } catch (e) { /* ignore eval error for this point */ }
-
-          if (compiledIntegral) {
-            try {
-              integralY = compiledIntegral.evaluate(scope);
-              if (typeof integralY !== 'number' || isNaN(integralY) || !isFinite(integralY)) integralY = undefined;
-            } catch (e) { /* ignore eval error for this point */ }
-          }
-          
-          if (originalY !== undefined || integralY !== undefined) {
-            data.push({ x: parseFloat(xVal.toFixed(3)), original: originalY, integral: integralY });
-          }
-        }
-        if (data.length > 1) { 
-          setChartData(data);
-        } else {
-          if (!plotError) setPlotError("Not enough valid data points to generate a plot.");
-          setChartData(null);
-        }
-
-      } catch (e: any) {
-        console.error("Error compiling/evaluating original function for plot:", e);
-        if (!plotError) setPlotError(`Could not plot original function: ${e.message}. Ensure functions use standard notation (e.g. x^2, sin(x)).`);
-        setChartData(null);
-      }
-    } else {
+    if (!apiResponse?.originalQuery?.functionString || !apiResponse?.integralResult) {
       setChartData(null);
       setPlotError(null);
+      return;
     }
+    
+    setPlotError(null); // Reset plot error at the beginning of an attempt
+    let currentPlotError: string | null = null;
+
+    const originalFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.originalQuery.functionString);
+    const integralFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.integralResult);
+    const plotVar = apiResponse.originalQuery.variable || 'x';
+
+    let compiledOriginal: any = null;
+    let compiledIntegral: any = null;
+
+    if (!originalFuncStr) {
+      currentPlotError = "Original function string is missing or invalid for plotting.";
+    } else {
+      try {
+        compiledOriginal = math.compile(originalFuncStr);
+      } catch (e: any) {
+        console.error("Error compiling original function for plot:", e);
+        currentPlotError = `Could not plot original function: ${e.message}. Ensure standard notation.`;
+      }
+    }
+
+    const isIntegralNumeric = apiResponse.integralResult && !isNaN(parseFloat(apiResponse.integralResult)) && integralFuncStr === parseFloat(apiResponse.integralResult).toString();
+
+    if (isIntegralNumeric) {
+      // Integral is a number, so it won't be plotted as a function.
+      // This is fine, we'll just plot the original if possible.
+      if(!currentPlotError) currentPlotError = "Integral is a constant value; only original function will be plotted if possible.";
+    } else if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "") {
+      if(!currentPlotError) currentPlotError = "Integral result is not a plottable function.";
+    } else if (integralFuncStr) {
+       try {
+         compiledIntegral = math.compile(integralFuncStr);
+       } catch (e: any) {
+         console.warn("Error compiling integral function for plot:", e);
+         if(!currentPlotError) currentPlotError = `Could not plot integral: ${e.message}. Original function might still be plotted.`;
+       }
+    }
+    
+    if (!compiledOriginal && !compiledIntegral) {
+      setChartData(null);
+      setPlotError(currentPlotError || "Neither original function nor integral could be prepared for plotting.");
+      return;
+    }
+      
+    const data: PlotDataItem[] = [];
+    const xMin = -5; const xMax = 5; const points = 100;
+    const step = (xMax - xMin) / (points - 1);
+
+    for (let i = 0; i < points; i++) {
+      const xVal = xMin + i * step;
+      let originalY: number | undefined = undefined;
+      let integralY: number | undefined = undefined;
+      const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; 
+      
+      if (compiledOriginal) {
+        try {
+          originalY = compiledOriginal.evaluate(scope);
+          if (typeof originalY !== 'number' || isNaN(originalY) || !isFinite(originalY)) originalY = undefined;
+        } catch (e) { /* ignore eval error for this point */ }
+      }
+
+      if (compiledIntegral && !isIntegralNumeric) { // Don't plot integral if it's just a number
+        try {
+          integralY = compiledIntegral.evaluate(scope);
+          if (typeof integralY !== 'number' || isNaN(integralY) || !isFinite(integralY)) integralY = undefined;
+        } catch (e) { /* ignore eval error for this point */ }
+      }
+      
+      if (originalY !== undefined || integralY !== undefined) {
+        data.push({ x: parseFloat(xVal.toFixed(3)), original: originalY, integral: integralY });
+      }
+    }
+
+    if (data.length > 1) { 
+      setChartData(data);
+      setPlotError(currentPlotError); // Set any non-fatal errors (like one function failing to plot)
+    } else {
+      setChartData(null);
+      setPlotError(currentPlotError || "Not enough valid data points to generate a plot for either function.");
+    }
+
   }, [apiResponse]);
 
   useEffect(() => {
@@ -198,7 +209,7 @@ export default function IntegrationCalculatorPage() {
       if (cleanedSteps && cleanedSteps.trim()) {
         container.innerHTML = cleanedSteps;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          setTimeout(() => {
+          setTimeout(() => { // Give browser a tick to render innerHTML
             try {
               (window as any).renderMathInElement(container, {
                 delimiters: [
@@ -224,7 +235,7 @@ export default function IntegrationCalculatorPage() {
       if (cleanedHints && cleanedHints.trim()) { 
         container.innerHTML = cleanedHints;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          setTimeout(() => {
+          setTimeout(() => { // Give browser a tick to render innerHTML
             try {
               (window as any).renderMathInElement(container, {
                 delimiters: [
@@ -562,11 +573,11 @@ export default function IntegrationCalculatorPage() {
                               {plotError && (
                                 <Alert variant="destructive" className="mb-4">
                                   <AlertTriangle className="h-4 w-4" />
-                                  <AlertTitle>Plotting Error</AlertTitle>
+                                  <AlertTitle>Plotting Error/Info</AlertTitle>
                                   <AlertDescription>{plotError}</AlertDescription>
                                 </Alert>
                               )}
-                              {chartData && chartData.length > 0 && !plotError ? (
+                              {chartData && chartData.length > 0 ? (
                                 <div className="h-[400px] w-full">
                                   <ChartContainer config={chartConfig} className="h-full w-full">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -610,3 +621,4 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
+
