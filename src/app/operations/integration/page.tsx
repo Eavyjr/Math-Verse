@@ -44,6 +44,7 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
+  // Only remove form feed characters. Newlines will be handled by CSS.
   return content.replace(/\f/g, '').trim(); 
 };
 
@@ -100,8 +101,8 @@ export default function IntegrationCalculatorPage() {
   const katexDelimiters = [
     { left: '$$', right: '$$', display: true },
     { left: '$', right: '$', display: false },
-    { left: '\\[', right: '\\]', display: true }, // Correct for JS
-    { left: '\\(', right: '\\)', display: false }  // Correct for JS
+    { left: '\\[', right: '\\]', display: true },
+    { left: '\\(', right: '\\)', display: false }
   ];
 
   useEffect(() => {
@@ -209,14 +210,14 @@ export default function IntegrationCalculatorPage() {
   useEffect(() => {
     const container = stepsContainerRef.current;
     const stepsContent = apiResponse?.steps;
-    console.log("[IntegrationPage StepsEffect] Fired. Key:", stepsContent ? stepsContent.substring(0,10) : "no-steps");
+    console.log("[IntegrationPage StepsEffect] Fired. Key:", stepsContent ? stepsContent.substring(0,20) : "no-steps");
   
     if (container) {
       const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
       if (cleanedSteps && cleanedSteps.trim()) {
         container.innerHTML = cleanedSteps;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          console.log("[IntegrationPage StepsEffect] Attempting KaTeX render on steps container via ref.");
+          console.log("[IntegrationPage StepsEffect] Attempting KaTeX render on steps container.");
           setTimeout(() => {
             try {
               (window as any).renderMathInElement(container, {
@@ -236,19 +237,19 @@ export default function IntegrationCalculatorPage() {
         console.log("[IntegrationPage StepsEffect] Steps content was empty after cleaning or null, container cleared.");
       }
     }
-  }, [apiResponse?.steps]); // Added key to re-trigger on content change
+  }, [apiResponse?.steps]); 
 
   useEffect(() => {
     const container = hintsContainerRef.current;
     const hintsContent = apiResponse?.additionalHints;
-    console.log("[IntegrationPage HintsEffect] Fired. Key:", hintsContent ? hintsContent.substring(0,10) : "no-hints");
+    console.log("[IntegrationPage HintsEffect] Fired. Key:", hintsContent ? hintsContent.substring(0,20) : "no-hints");
   
     if (container) {
       const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
       if (cleanedHints && cleanedHints.trim()) {
         container.innerHTML = cleanedHints;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          console.log("[IntegrationPage HintsEffect] Attempting KaTeX render on hints container via ref.");
+          console.log("[IntegrationPage HintsEffect] Attempting KaTeX render on hints container.");
           setTimeout(() => {
             try {
               (window as any).renderMathInElement(container, {
@@ -268,7 +269,7 @@ export default function IntegrationCalculatorPage() {
         console.log("[IntegrationPage HintsEffect] Hints content was empty after cleaning or null, container cleared.");
       }
     }
-  }, [apiResponse?.additionalHints]); // Added key to re-trigger on content change
+  }, [apiResponse?.additionalHints]); 
 
 
   const handleSubmit = async () => {
@@ -548,7 +549,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Info className="mr-2 h-5 w-5" /> Show Steps
                       </AccordionTrigger>
-                      <AccordionContent key={apiResponse.steps}> {/* Key to force re-mount */}
+                      <AccordionContent key={apiResponse.steps}> 
                         <div 
                            ref={stepsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap" 
@@ -564,7 +565,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
                       </AccordionTrigger>
-                      <AccordionContent key={apiResponse.additionalHints}> {/* Key to force re-mount */}
+                      <AccordionContent key={apiResponse.additionalHints}> 
                         <div 
                            ref={hintsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
