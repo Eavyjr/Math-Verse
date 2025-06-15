@@ -25,42 +25,46 @@ const math: MathJsStatic = create(all);
 const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
-
-  // Only strip if it's the *entire* string that's delimited, not if delimiters are mid-string
-  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
-      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
-    // This case is for when the AI *incorrectly* adds delimiters to integralResult
-    // For steps/hints, we expect user content to have inline delimiters, so this is okay
-  }
   
   try {
     return katex.renderToString(cleanLatexString, {
       throwOnError: false,
       displayMode: displayMode,
-      output: 'html', // Ensure HTML output for dangerouslySetInnerHTML
-      macros: {"\\dd": "\\mathrm{d}"} // Custom macro for differential d
+      output: 'html', 
+      macros: {"\\dd": "\\mathrm{d}"} 
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", latexString);
-    // Sanitize if KaTeX fails
     return latexString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 };
 
-const renderStepsAndHints = (content: string | undefined | null): string => {
-  if (!content) return "";
-  // This function expects content to already have inline \(...\) LaTeX delimiters.
-  // KaTeX's auto-render or manual rendering on elements with these delimiters will handle it.
-  // We just need to ensure the base string is safe for HTML.
-  // A more robust approach might involve a markdown parser that supports KaTeX.
+const renderKatexEnabledContent = (contentString: string | undefined | null): string => {
+  if (!contentString) return "";
+  // Regex to find \(...\) or \[...\]
+  // It captures the delimiter and the content, or non-LaTeX parts
+  const parts = contentString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/gs);
   
-  // Basic sanitization for non-KaTeX parts (though KaTeX should handle its own parts)
-  let html = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  
-  // KaTeX will be applied by the KatexLoader component or a manual call if needed.
-  // For now, just return the HTML-safe string with its existing LaTeX delimiters.
-  return html; 
+  const htmlParts = parts.map((part) => {
+    if (!part) return ""; // Skip empty strings that can result from split
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      // Sanitize plain text parts for safe HTML insertion
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+        console.error("KaTeX rendering error for part:", part, e);
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+    }
+  });
+  return htmlParts.join('');
 };
+
 
 interface PlotDataItem {
   x: number;
@@ -71,25 +75,20 @@ interface PlotDataItem {
 const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undefined): string => {
   if (!latexStr) return "";
   let str = latexStr.trim();
-  // AI is instructed to provide integralResult WITHOUT delimiters.
-  // So, no need to strip them here for integralResult.
   
   str = str.replace(/\\sin/g, 'sin')
            .replace(/\\cos/g, 'cos')
            .replace(/\\tan/g, 'tan')
-           .replace(/\\ln/g, 'log') // Natural log
-           .replace(/\\log_{10}/g, 'log10') // Log base 10
+           .replace(/\\ln/g, 'log') 
+           .replace(/\\log_{10}/g, 'log10') 
            .replace(/\\exp/g, 'exp')
            .replace(/\\sqrt{(.*?)}/g, 'sqrt($1)')
            .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
            .replace(/\\cdot/g, '*')
            .replace(/\^/g, '^')
            .replace(/\\pi/g, 'pi');
-  // Remove "+ C" or "+C" from the end for plotting indefinite integrals
   str = str.replace(/\s*\+\s*C\s*$/i, ''); 
-  // Attempt to handle constants like C, C1, C_1 for plotting purposes
-  // For plotting, we'll assume C=0 if not specified
-  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)'); // Default C, C1, C_2 etc. to 0
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)'); 
   str = str.replace(/(?<![a-zA-Z0-9_])c(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
 
 
@@ -111,17 +110,7 @@ export default function IntegrationCalculatorPage() {
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [chartData, setChartData] = useState<PlotDataItem[] | null>(null);
   const [plotError, setPlotError] = useState<string | null>(null);
-
-  const stepsContainerRef = useRef<HTMLDivElement>(null);
-  const hintsContainerRef = useRef<HTMLDivElement>(null);
   
-  const katexDelimiters = [
-    { left: '$$', right: '$$', display: true },
-    { left: '$', right: '$', display: false },
-    { left: '\\[', right: '\\]', display: true },
-    { left: '\\(', right: '\\)', display: false }
-  ];
-
   useEffect(() => {
     const func = functionString || 'f(x)';
     const v = variable || 'x';
@@ -129,9 +118,9 @@ export default function IntegrationCalculatorPage() {
     if (integralType === 'definite') {
       const lb = lowerBound || 'a';
       const ub = upperBound || 'b';
-      latexPreview = `\\int_{${lb}}^{${ub}} ${func} \\, \\mathrm{d}${v}`; // Use \\mathrm{d}
+      latexPreview = `\\int_{${lb}}^{${ub}} ${func} \\, \\mathrm{d}${v}`; 
     } else {
-      latexPreview = `\\int ${func} \\, \\mathrm{d}${v}`; // Use \\mathrm{d}
+      latexPreview = `\\int ${func} \\, \\mathrm{d}${v}`; 
     }
     setPreviewHtml(renderMath(latexPreview, true));
   }, [functionString, variable, integralType, lowerBound, upperBound]);
@@ -147,7 +136,6 @@ export default function IntegrationCalculatorPage() {
     let currentPlotError: string | null = null;
 
     const originalFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.originalQuery.functionString);
-    // integralResult from AI should be pure LaTeX, ready for MathJS after stripping common notations
     const integralFuncStr = stripLatexDelimitersAndPrepareForMathJS(apiResponse.integralResult);
     const plotVar = apiResponse.originalQuery.variable || 'x';
 
@@ -165,13 +153,11 @@ export default function IntegrationCalculatorPage() {
       }
     }
     
-    // Check if integralResult is a number (e.g., definite integral result)
     const isIntegralNumeric = apiResponse.integralResult && !isNaN(parseFloat(apiResponse.integralResult)) && integralFuncStr === parseFloat(apiResponse.integralResult).toString();
 
     if (isIntegralNumeric) {
       if(!currentPlotError) currentPlotError = "Integral is a constant value; only original function will be plotted if possible.";
     } else if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "" && !apiResponse.integralResult.toLowerCase().includes("error") && !apiResponse.integralResult.toLowerCase().includes("non-elementary")) {
-      // If integralFuncStr is empty but integralResult has content that's not an error.
       if(!currentPlotError) currentPlotError = "Integral result is not a plottable function (e.g., non-elementary).";
     } else if (integralFuncStr) { 
        try {
@@ -196,7 +182,7 @@ export default function IntegrationCalculatorPage() {
       const xVal = xMin + i * step;
       let originalY: number | undefined = undefined;
       let integralY: number | undefined = undefined;
-      const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; // Default constants to 0 for plotting
+      const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; 
       
       if (compiledOriginal) {
         try {
@@ -205,7 +191,7 @@ export default function IntegrationCalculatorPage() {
         } catch (e) { /* ignore eval error for this point */ }
       }
 
-      if (compiledIntegral && !isIntegralNumeric) { // Don't try to evaluate if it's just a number
+      if (compiledIntegral && !isIntegralNumeric) { 
         try {
           integralY = compiledIntegral.evaluate(scope);
           if (typeof integralY !== 'number' || isNaN(integralY) || !isFinite(integralY)) integralY = undefined;
@@ -219,62 +205,13 @@ export default function IntegrationCalculatorPage() {
 
     if (data.length > 1) { 
       setChartData(data);
-      setPlotError(currentPlotError); // Keep any informational error if one function failed but other plotted
+      setPlotError(currentPlotError); 
     } else {
       setChartData(null);
       setPlotError(currentPlotError || "Not enough valid data points to generate a plot for either function.");
     }
 
   }, [apiResponse]);
-
-  // Effect to render KaTeX for steps
-  useEffect(() => {
-    const container = stepsContainerRef.current;
-    const stepsContent = apiResponse?.steps;
-  
-    if (container && stepsContent) {
-      container.innerHTML = renderStepsAndHints(stepsContent); // Use the new helper
-      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-        setTimeout(() => { // Ensure DOM is updated
-          try {
-            (window as any).renderMathInElement(container, {
-              delimiters: katexDelimiters,
-              throwOnError: false,
-            });
-          } catch (e) {
-            console.error("Error rendering KaTeX in steps:", e);
-          }
-        }, 0);
-      }
-    } else if (container) {
-      container.innerHTML = ""; // Clear if no steps
-    }
-  }, [apiResponse?.steps]); 
-
-  // Effect to render KaTeX for additional hints
-  useEffect(() => {
-    const container = hintsContainerRef.current;
-    const hintsContent = apiResponse?.additionalHints;
-  
-    if (container && hintsContent) {
-      container.innerHTML = renderStepsAndHints(hintsContent); // Use the new helper
-      if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-         setTimeout(() => { // Ensure DOM is updated
-          try {
-            (window as any).renderMathInElement(container, {
-              delimiters: katexDelimiters,
-              throwOnError: false,
-            });
-          } catch (e) {
-            console.error("Error rendering KaTeX in hints:", e);
-          }
-        }, 0);
-      }
-    } else if (container) {
-      container.innerHTML = ""; // Clear if no hints
-    }
-  }, [apiResponse?.additionalHints]); 
-
 
   const handleSubmit = async () => {
     if (!functionString.trim()) {
@@ -315,7 +252,6 @@ export default function IntegrationCalculatorPage() {
     };
 
     try {
-      // Call the updated action that uses the direct Gemini flow
       const actionResult = await handlePerformIntegrationAction(input);
       if (actionResult.error) {
         setError(actionResult.error);
@@ -554,10 +490,10 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Info className="mr-2 h-5 w-5" /> Show Steps
                       </AccordionTrigger>
-                      <AccordionContent key={apiResponse.steps}> 
+                      <AccordionContent> 
                         <div 
-                           ref={stepsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap" 
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
+                           dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.steps) }} 
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -570,10 +506,10 @@ export default function IntegrationCalculatorPage() {
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
                         <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
                       </AccordionTrigger>
-                      <AccordionContent key={apiResponse.additionalHints}> 
+                      <AccordionContent> 
                         <div 
-                           ref={hintsContainerRef}
                            className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
+                           dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.additionalHints) }}
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -592,7 +528,7 @@ export default function IntegrationCalculatorPage() {
                             <CardHeader>
                                 <CardTitle className="text-lg">Visualizing the Functions</CardTitle>
                                 {apiResponse.plotHint && 
-                                 <CardDescription dangerouslySetInnerHTML={{__html: renderStepsAndHints(apiResponse.plotHint)}} />
+                                 <CardDescription dangerouslySetInnerHTML={{__html: renderKatexEnabledContent(apiResponse.plotHint)}} />
                                 }
                             </CardHeader>
                             <CardContent>
