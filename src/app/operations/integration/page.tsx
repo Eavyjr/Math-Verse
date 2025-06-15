@@ -26,6 +26,7 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
   let cleanLatexString = latexString.trim();
 
+  // Remove existing delimiters if present, to avoid double-rendering issues from direct KaTeX and auto-render
   if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
       (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
     cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
@@ -38,13 +39,15 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
     });
   } catch (e) {
     console.error("Katex rendering error for main result:", e, "Original string:", latexString);
+    // Fallback: return sanitized original string
     return latexString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 };
 
+// Updated: Only remove form feed characters. Newlines will be handled by CSS whitespace-pre-wrap.
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim();
+  return content.replace(/\f/g, '').trim(); 
 };
 
 
@@ -60,18 +63,21 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
   if ((str.startsWith('\\(') && str.endsWith('\\)')) || (str.startsWith('\\[') && str.endsWith('\\]'))) {
     str = str.substring(2, str.length - 2).trim();
   }
+  // Standardize math functions and pi for math.js
   str = str.replace(/\\sin/g, 'sin')
            .replace(/\\cos/g, 'cos')
            .replace(/\\tan/g, 'tan')
-           .replace(/\\ln/g, 'log') 
+           .replace(/\\ln/g, 'log') // math.js uses log for natural log
            .replace(/\\log_{10}/g, 'log10')
            .replace(/\\exp/g, 'exp')
            .replace(/\\sqrt{(.*?)}/g, 'sqrt($1)')
            .replace(/\\frac{(.*?)}{(.*?)}/g, '($1)/($2)')
            .replace(/\\cdot/g, '*')
-           .replace(/\^/g, '^');
+           .replace(/\^/g, '^')
+           .replace(/\\pi/g, 'pi');
+  // Remove "+ C" for plotting indefinite integrals, and other constants like C1, C_2
   str = str.replace(/\s*\+\s*C\s*$/i, ''); 
-  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)'); // Default C, C1, C_2 etc. to 0 for plotting
   str = str.replace(/(?<![a-zA-Z0-9_])c(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
 
   return str;
@@ -138,17 +144,21 @@ export default function IntegrationCalculatorPage() {
       }
     }
 
+    // Check if integral result is a number (common for definite integrals)
     const isIntegralNumeric = apiResponse.integralResult && !isNaN(parseFloat(apiResponse.integralResult)) && integralFuncStr === parseFloat(apiResponse.integralResult).toString();
 
     if (isIntegralNumeric) {
+      // For definite integrals, the result is a number, no function to plot for the integral.
       if(!currentPlotError) currentPlotError = "Integral is a constant value; only original function will be plotted if possible.";
     } else if (!integralFuncStr && apiResponse.integralResult && apiResponse.integralResult.trim() !== "") {
+      // If integralFuncStr is empty but there was an integralResult, it means it wasn't plottable.
       if(!currentPlotError) currentPlotError = "Integral result is not a plottable function.";
-    } else if (integralFuncStr) {
+    } else if (integralFuncStr) { // Only try to compile if it's not numeric and not empty
        try {
          compiledIntegral = math.compile(integralFuncStr);
        } catch (e: any) {
          console.warn("Error compiling integral function for plot:", e);
+         // Don't overwrite originalFuncStr error if it exists
          if(!currentPlotError) currentPlotError = `Could not plot integral: ${e.message}. Original function might still be plotted.`;
        }
     }
@@ -167,7 +177,7 @@ export default function IntegrationCalculatorPage() {
       const xVal = xMin + i * step;
       let originalY: number | undefined = undefined;
       let integralY: number | undefined = undefined;
-      const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; 
+      const scope = { [plotVar]: xVal, C: 0, c: 0, C1: 0, c1: 0, C2: 0, c2: 0 }; // Handle common integration constants
       
       if (compiledOriginal) {
         try {
@@ -176,7 +186,7 @@ export default function IntegrationCalculatorPage() {
         } catch (e) { /* ignore eval error for this point */ }
       }
 
-      if (compiledIntegral && !isIntegralNumeric) { 
+      if (compiledIntegral && !isIntegralNumeric) { // Don't try to evaluate integral if it's just a number
         try {
           integralY = compiledIntegral.evaluate(scope);
           if (typeof integralY !== 'number' || isNaN(integralY) || !isFinite(integralY)) integralY = undefined;
@@ -188,9 +198,9 @@ export default function IntegrationCalculatorPage() {
       }
     }
 
-    if (data.length > 1) { 
+    if (data.length > 1) { // Need at least 2 points to draw a line
       setChartData(data);
-      setPlotError(currentPlotError); 
+      setPlotError(currentPlotError); // Set any non-fatal plot error (e.g. one func failed)
     } else {
       setChartData(null);
       setPlotError(currentPlotError || "Not enough valid data points to generate a plot for either function.");
@@ -201,57 +211,19 @@ export default function IntegrationCalculatorPage() {
   useEffect(() => {
     const container = stepsContainerRef.current;
     const currentStepsContent = apiResponse?.steps;
-    console.log("[StepsEffect] Fired. Current steps:", currentStepsContent ? currentStepsContent.substring(0,50)+"..." : "null");
+    console.log("[IntegrationPage StepsEffect] Fired. Key:", currentStepsContent ? currentStepsContent.substring(0,10) : "no-steps");
 
     if (container) {
       const cleanedSteps = cleanAndPrepareContentForDisplay(currentStepsContent);
-      console.log("[StepsEffect] Cleaned steps:", cleanedSteps ? cleanedSteps.substring(0,50)+"..." : "empty");
+      console.log("[IntegrationPage StepsEffect] Cleaned steps for innerHTML:", cleanedSteps ? cleanedSteps.substring(0,100)+"..." : "EMPTY_OR_NULL");
       if (cleanedSteps && cleanedSteps.trim()) {
-        container.innerHTML = cleanedSteps;
+        container.innerHTML = cleanedSteps; 
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          console.log("[StepsEffect] Attempting KaTeX render on steps container.");
+          console.log("[IntegrationPage StepsEffect] Attempting KaTeX render on steps container via ref.");
           setTimeout(() => {
             try {
               (window as any).renderMathInElement(container, {
-                delimiters: [
-                  { left: '$$', right: '$$', display: true },
-                  { left: '$', right: '$', display: false }, 
-                  { left: '\\(', right: '\\)', display: false },
-                  { left: '\\[', right: '\\]', display: true }
-                ],
-                throwOnError: false
-              });
-              console.log("[StepsEffect] KaTeX render on steps complete (or attempted).");
-            } catch (e) { console.error("Error rendering KaTeX in steps:", e); }
-          }, 0);
-        } else {
-           console.warn("[StepsEffect] renderMathInElement not found.");
-        }
-      } else {
-        container.innerHTML = ""; 
-        console.log("[StepsEffect] Steps content was empty after cleaning or null.");
-      }
-    } else {
-      console.warn("[StepsEffect] Steps container ref was null.");
-    }
-  }, [apiResponse?.steps]);
-
-  useEffect(() => {
-    const container = hintsContainerRef.current;
-    const currentHintsContent = apiResponse?.additionalHints;
-    console.log("[HintsEffect] Fired. Current hints:", currentHintsContent ? currentHintsContent.substring(0,50)+"..." : "null");
-
-    if (container) {
-      const cleanedHints = cleanAndPrepareContentForDisplay(currentHintsContent);
-      console.log("[HintsEffect] Cleaned hints:", cleanedHints ? cleanedHints.substring(0,50)+"..." : "empty");
-      if (cleanedHints && cleanedHints.trim()) {
-        container.innerHTML = cleanedHints;
-        if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-          console.log("[HintsEffect] Attempting KaTeX render on hints container.");
-          setTimeout(() => {
-            try {
-              (window as any).renderMathInElement(container, {
-                delimiters: [
+                 delimiters: [
                   { left: '$$', right: '$$', display: true },
                   { left: '$', right: '$', display: false },
                   { left: '\\(', right: '\\)', display: false },
@@ -259,18 +231,53 @@ export default function IntegrationCalculatorPage() {
                 ],
                 throwOnError: false
               });
-              console.log("[HintsEffect] KaTeX render on hints complete (or attempted).");
-            } catch (e) { console.error("Error rendering KaTeX in hints:", e); }
+              console.log("[IntegrationPage StepsEffect] KaTeX render on steps complete (or attempted).");
+            } catch (e) { console.error("Error rendering KaTeX in steps:", e); }
           }, 0);
         } else {
-          console.warn("[HintsEffect] renderMathInElement not found.");
+           console.warn("[IntegrationPage StepsEffect] renderMathInElement not found or steps container is null.");
         }
       } else {
         container.innerHTML = ""; 
-        console.log("[HintsEffect] Hints content was empty after cleaning or null.");
+        console.log("[IntegrationPage StepsEffect] Steps content was empty after cleaning or null, container cleared.");
       }
-    } else {
-      console.warn("[HintsEffect] Hints container ref was null.");
+    }
+  }, [apiResponse?.steps]);
+
+  useEffect(() => {
+    const container = hintsContainerRef.current;
+    const currentHintsContent = apiResponse?.additionalHints;
+    console.log("[IntegrationPage HintsEffect] Fired. Key:", currentHintsContent ? currentHintsContent.substring(0,10) : "no-hints");
+
+    if (container) {
+      const cleanedHints = cleanAndPrepareContentForDisplay(currentHintsContent);
+      console.log("[IntegrationPage HintsEffect] Cleaned hints for innerHTML:", cleanedHints ? cleanedHints.substring(0,100)+"..." : "EMPTY_OR_NULL");
+
+      if (cleanedHints && cleanedHints.trim()) {
+        container.innerHTML = cleanedHints;
+        if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
+          console.log("[IntegrationPage HintsEffect] Attempting KaTeX render on hints container via ref.");
+          setTimeout(() => {
+            try {
+              (window as any).renderMathInElement(container, {
+                 delimiters: [
+                  { left: '$$', right: '$$', display: true },
+                  { left: '$', right: '$', display: false },
+                  { left: '\\(', right: '\\)', display: false },
+                  { left: '\\[', right: '\\]', display: true }
+                ],
+                throwOnError: false
+              });
+              console.log("[IntegrationPage HintsEffect] KaTeX render on hints complete (or attempted).");
+            } catch (e) { console.error("Error rendering KaTeX in hints:", e); }
+          }, 0);
+        } else {
+          console.warn("[IntegrationPage HintsEffect] renderMathInElement not found or hints container is null.");
+        }
+      } else {
+        container.innerHTML = "";
+        console.log("[IntegrationPage HintsEffect] Hints content was empty after cleaning or null, container cleared.");
+      }
     }
   }, [apiResponse?.additionalHints]);
 
@@ -343,6 +350,7 @@ export default function IntegrationCalculatorPage() {
   
   const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
     if (!query) return "";
+    // Ensure backslashes in functionString are properly escaped for LaTeX string
     const funcStr = query.functionString.replace(/\\/g, '\\\\'); 
     const varStr = query.variable.replace(/\\/g, '\\\\');
     
@@ -531,7 +539,7 @@ export default function IntegrationCalculatorPage() {
               </CardHeader>
               <CardContent className="space-y-6 p-6 text-lg">
                 <div>
-                  <span className="font-semibold text-muted-foreground">Original Query: </span>
+                  <span className="font-semibold text-muted-foreground">Original Query: </span> 
                   <span 
                     className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto"
                     dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery), false) }}
@@ -555,7 +563,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent key={apiResponse.steps}> {/* Key to force re-mount */}
                         <div 
                            ref={stepsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto" 
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap" 
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -571,7 +579,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent key={apiResponse.additionalHints}> {/* Key to force re-mount */}
                         <div 
                            ref={hintsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto whitespace-pre-wrap"
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -643,3 +651,4 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
+
