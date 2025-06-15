@@ -41,9 +41,8 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
 
 const renderKatexEnabledContent = (contentString: string | undefined | null): string => {
   if (!contentString) return "";
-  // Regex to find \(...\) or \[...\]
-  // It captures the delimiter and the content, or non-LaTeX parts
-  const parts = contentString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/gs);
+  // Regex to find \(...\) or \[...\] - removed 's' flag
+  const parts = contentString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); 
   
   const htmlParts = parts.map((part) => {
     if (!part) return ""; // Skip empty strings that can result from split
@@ -58,8 +57,9 @@ const renderKatexEnabledContent = (contentString: string | undefined | null): st
       // Sanitize plain text parts for safe HTML insertion
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
-        console.error("KaTeX rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+        console.error("KaTeX steps rendering error for part:", part, e);
+        // Fallback to sanitized original part if KaTeX fails catastrophically (though throwOnError:false should prevent this)
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
     }
   });
   return htmlParts.join('');
@@ -256,6 +256,7 @@ export default function IntegrationCalculatorPage() {
       if (actionResult.error) {
         setError(actionResult.error);
       } else if (actionResult.data) {
+        console.log("Raw AI Steps Received:", actionResult.data.steps); // Crucial log for debugging
         setApiResponse(actionResult.data);
       } else {
         setError('Received no data from the server. Please try again.');
