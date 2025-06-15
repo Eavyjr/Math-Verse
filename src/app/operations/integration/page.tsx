@@ -1,23 +1,24 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
-import "katex/dist/katex.min.css"; 
+import 'katex/dist/katex.min.css'; 
 import { create, all, type MathJsStatic } from 'mathjs';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb } from 'lucide-react';
 import { handlePerformIntegrationAction } from '@/app/actions';
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
-import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line } from 'recharts';
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 const math: MathJsStatic = create(all);
 
@@ -41,11 +42,16 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   }
 };
 
+// Updated to replace newlines with <br /> and then remove form feeds
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Remove form feed characters (\f), then replace newlines with <br />, then trim
-  return content.replace(/\f/g, '').replace(/\n/g, '<br />').trim(); 
+  // First, replace all newline characters with <br />
+  let cleaned = content.replace(/\n/g, '<br />');
+  // Then, remove all form feed characters
+  cleaned = cleaned.replace(/\f/g, '');
+  return cleaned.trim();
 };
+
 
 interface PlotDataItem {
   x: number;
@@ -185,10 +191,11 @@ export default function IntegrationCalculatorPage() {
 
   useEffect(() => {
     const container = stepsContainerRef.current;
-    const stepsContent = apiResponse?.steps;
+    const currentStepsContent = apiResponse?.steps;
+
     if (container) {
-      const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
-      if (cleanedSteps.trim()) {
+      const cleanedSteps = cleanAndPrepareContentForDisplay(currentStepsContent);
+      if (cleanedSteps && cleanedSteps.trim()) {
         container.innerHTML = cleanedSteps;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
           setTimeout(() => {
@@ -210,10 +217,11 @@ export default function IntegrationCalculatorPage() {
 
   useEffect(() => {
     const container = hintsContainerRef.current;
-    const hintsContent = apiResponse?.additionalHints;
+    const currentHintsContent = apiResponse?.additionalHints;
+    
     if (container) {
-      const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
-      if (cleanedHints.trim()) {
+      const cleanedHints = cleanAndPrepareContentForDisplay(currentHintsContent);
+      if (cleanedHints && cleanedHints.trim()) { 
         container.innerHTML = cleanedHints;
         if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
           setTimeout(() => {
@@ -228,7 +236,7 @@ export default function IntegrationCalculatorPage() {
           }, 0);
         }
       } else {
-        container.innerHTML = "";
+        container.innerHTML = ""; 
       }
     }
   }, [apiResponse?.additionalHints]);
@@ -514,7 +522,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent>
                         <div 
                            ref={stepsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto" 
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -530,7 +538,7 @@ export default function IntegrationCalculatorPage() {
                       <AccordionContent>
                         <div 
                            ref={hintsContainerRef}
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 overflow-x-auto"
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -568,8 +576,8 @@ export default function IntegrationCalculatorPage() {
                                         <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
                                         <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
                                         <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                        <Line type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
-                                        <Line type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
+                                        <RechartsLine type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
+                                        <RechartsLine type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
                                       </LineChart>
                                     </ResponsiveContainer>
                                   </ChartContainer>
@@ -602,4 +610,3 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
-
