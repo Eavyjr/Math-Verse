@@ -1,11 +1,15 @@
+import { config } from 'dotenv';
+config(); // Load environment variables from .env or .env.local
+
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-// import {openai} from '@genkit-ai/openai'; // Import the OpenAI plugin - Commented out due to install issues
+import openAI from 'genkitx-openai'; // Corrected import based on user feedback
 
 export const ai = genkit({
   plugins: [
     googleAI(),
-    // openai(), // Initialize the OpenAI plugin - Commented out due to install issues
+    openAI({ // Corrected plugin usage
+      apiKey: process.env.OPENAI_API_KEY, // Will be read from environment variables
+    }),
   ],
-  model: 'googleai/gemini-2.0-flash', // Default model for the app remains Gemini
 });

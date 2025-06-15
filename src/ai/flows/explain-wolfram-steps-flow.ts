@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Takes WolframAlpha results and explains them using Gemini.
+ * @fileOverview Takes WolframAlpha results and explains them using an AI model.
  *
  * - explainWolframSteps - A function that enhances WolframAlpha output.
  * - ExplainWolframStepsInput - The input type.
@@ -55,6 +55,7 @@ Focus on clarity, accuracy, and educational value.
 
 const explainWolframStepsPrompt = ai.definePrompt({
   name: 'explainWolframStepsPrompt',
+  model: 'gpt-3.5-turbo', // Changed to use direct OpenAI model name, assuming genkitx-openai supports it
   input: { schema: ExplainWolframStepsInputSchema },
   output: { schema: ExplainWolframStepsOutputSchema },
   system: systemPrompt,
@@ -73,7 +74,7 @@ Ensure 'formattedResult' is ONLY the LaTeX string of the mathematical answer.
 `,
   config: {
     temperature: 0.3, 
-    safetySettings: [
+    safetySettings: [ 
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
