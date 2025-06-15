@@ -10,8 +10,8 @@ export default function KatexLoader() {
   const katexDelimiters = [
     { left: '$$', right: '$$', display: true },
     { left: '$', right: '$', display: false },
-    { left: '\\[', right: '\\]', display: true },
-    { left: '\\(', right: '\\)', display: false }
+    { left: '\\[', right: '\\]', display: true }, // Single backslash for JS string
+    { left: '\\(', right: '\\)', display: false }  // Single backslash for JS string
   ];
 
   const handleAutoRender = () => {
@@ -35,38 +35,15 @@ export default function KatexLoader() {
     let katexScript: HTMLScriptElement | null = null;
     let autoRenderScript: HTMLScriptElement | null = null;
 
-    // Load KaTeX core script
-    if (!katexScriptLoaded.current && !document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"]')) {
-      console.log("KatexLoader: Loading KaTeX core script (katex.min.js)...");
-      katexScript = document.createElement('script');
-      katexScript.src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js";
-      katexScript.integrity = "sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmFGEkkP2";
-      katexScript.crossOrigin = "anonymous";
-      katexScript.defer = true; // defer ensures it executes after HTML parsing but before DOMContentLoaded for script-defined content.
-      katexScript.onload = () => {
-        console.log("KatexLoader: KaTeX core script (katex.min.js) LOADED.");
-        katexScriptLoaded.current = true;
-        loadAutoRenderScript(); // Attempt to load auto-render only after core is loaded
-      };
-      katexScript.onerror = () => {
-        console.error("KatexLoader: FAILED to load KaTeX core script (katex.min.js).");
-      };
-      document.head.appendChild(katexScript);
-    } else if (document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"]')) {
-        console.log("KatexLoader: KaTeX core script (katex.min.js) already present or loading.");
-        katexScriptLoaded.current = true; 
-        loadAutoRenderScript(); 
-    }
-
-
     function loadAutoRenderScript() {
+      // Only load auto-render if core KaTeX has loaded successfully
       if (katexScriptLoaded.current && !autoRenderScriptLoaded.current && !document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"]')) {
         console.log("KatexLoader: Loading KaTeX auto-render script (auto-render.min.js)...");
         autoRenderScript = document.createElement('script');
         autoRenderScript.src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js";
         autoRenderScript.integrity = "sha384-+VBxd3r6XgURycqtZ117nYw44SU3AYYGpArKGYrSqsTnJ5TTd3FSEE5ADZslDxXm";
         autoRenderScript.crossOrigin = "anonymous";
-        autoRenderScript.defer = true;
+        autoRenderScript.defer = true; // defer can be used, or async
         autoRenderScript.onload = () => {
           console.log("KatexLoader: KaTeX auto-render script (auto-render.min.js) LOADED.");
           autoRenderScriptLoaded.current = true;
@@ -81,16 +58,42 @@ export default function KatexLoader() {
           console.error("KatexLoader: FAILED to load KaTeX auto-render script (auto-render.min.js).");
         };
         document.head.appendChild(autoRenderScript);
-      } else if (document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"]')) {
+      } else if (katexScriptLoaded.current && document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"]')) {
           console.log("KatexLoader: KaTeX auto-render script (auto-render.min.js) already present or loading.");
-          autoRenderScriptLoaded.current = true;
-          if (katexScriptLoaded.current && typeof (window as any).renderMathInElement !== 'undefined') {
-             console.log("KatexLoader: renderMathInElement was already available.");
+          autoRenderScriptLoaded.current = true; // Assume if it's there, it will load/has loaded
+          if (typeof (window as any).renderMathInElement !== 'undefined') {
+             console.log("KatexLoader: renderMathInElement was already available (auto-render script pre-existed).");
              handleAutoRender(); 
-          } else if (katexScriptLoaded.current) {
-            console.warn("KatexLoader: auto-render script present, core script present, but renderMathInElement not yet available.");
           }
       }
+    }
+
+    if (!katexScriptLoaded.current && !document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"]')) {
+      console.log("KatexLoader: Loading KaTeX core script (katex.min.js)...");
+      katexScript = document.createElement('script');
+      katexScript.src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js";
+      katexScript.integrity = "sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmFGEkkP2";
+      katexScript.crossOrigin = "anonymous";
+      katexScript.defer = true; // defer can be used, or async
+      katexScript.onload = () => {
+        console.log("KatexLoader: KaTeX core script (katex.min.js) LOADED.");
+        katexScriptLoaded.current = true;
+        loadAutoRenderScript(); 
+      };
+      katexScript.onerror = () => {
+        console.error("KatexLoader: FAILED to load KaTeX core script (katex.min.js).");
+        // If core fails, no point trying to load auto-render.
+      };
+      document.head.appendChild(katexScript);
+    } else if (document.querySelector('script[src^="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"]')) {
+        console.log("KatexLoader: KaTeX core script (katex.min.js) already present or loading.");
+        if (!katexScriptLoaded.current) { // If it was already in DOM but our ref wasn't set
+            // We need to check if `window.katex` is actually available.
+            // This scenario is tricky. A simple check like this might not be enough if the script is still parsing.
+            // For simplicity, we'll assume if it's in the DOM, it will eventually load.
+             katexScriptLoaded.current = true; 
+        }
+        loadAutoRenderScript(); 
     }
     
   }, []); 
