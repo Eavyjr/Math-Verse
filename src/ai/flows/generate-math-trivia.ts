@@ -31,6 +31,7 @@ export async function generateMathTrivia(input: GenerateMathTriviaInput): Promis
 
 const prompt = ai.definePrompt({
   name: 'generateMathTriviaPrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: GenerateMathTriviaInputSchema},
   output: {schema: GenerateMathTriviaOutputSchema},
   prompt: `You are a math trivia generator. Generate a random math fact, puzzle, or historical insight based on the topic: {{{topic}}}. Keep it concise and engaging.`,
@@ -61,4 +62,3 @@ const generateMathTriviaFlow = ai.defineFlow(
     }
   }
 );
-

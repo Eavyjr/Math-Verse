@@ -31,6 +31,7 @@ export async function classifyExpression(
 
 const classifyExpressionPrompt = ai.definePrompt({
   name: 'classifyExpressionPrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: ClassifyExpressionInputSchema},
   output: {
     schema: z.object({

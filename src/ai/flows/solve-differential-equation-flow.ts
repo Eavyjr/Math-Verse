@@ -54,8 +54,8 @@ If the equation is too complex or unsolvable with standard methods, clearly stat
 
 const solveDifferentialEquationPrompt = ai.definePrompt({
   name: 'solveDifferentialEquationPrompt',
-  // model: 'openai/gpt-3.5-turbo', // Example: If using OpenAI
-  inputSchema: DESolutionInputSchema,
+  model: 'googleai/gemini-1.5-flash-latest',
+  input: { schema: DESolutionInputSchema },
   output: {
     schema: DESolutionOutputSchema, 
   },
@@ -101,11 +101,11 @@ export async function solveDifferentialEquation(input: DESolutionInput): Promise
 
   // Check if all key informational fields are null or empty
   const allKeyFieldsEmpty = 
-    (output.classification === null || output.classification.trim() === "") &&
-    (output.solutionMethod === null || output.solutionMethod.trim() === "") &&
-    (output.generalSolution === null || output.generalSolution.trim() === "") &&
-    (output.particularSolution === null || output.particularSolution === undefined || output.particularSolution.trim() === "") &&
-    (output.steps === null || output.steps.trim() === "");
+    (output.classification === null || (typeof output.classification === 'string' && output.classification.trim() === "")) &&
+    (output.solutionMethod === null || (typeof output.solutionMethod === 'string' && output.solutionMethod.trim() === "")) &&
+    (output.generalSolution === null || (typeof output.generalSolution === 'string' && output.generalSolution.trim() === "")) &&
+    (output.particularSolution === null || output.particularSolution === undefined || (typeof output.particularSolution === 'string' && output.particularSolution.trim() === "")) &&
+    (output.steps === null || (typeof output.steps === 'string' && output.steps.trim() === ""));
 
   if (allKeyFieldsEmpty) {
     throw new Error('AI model returned a response, but all key information fields (classification, method, solution, steps) were empty or null. Please try a different or more specific equation.');

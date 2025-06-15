@@ -1,3 +1,4 @@
+
 npmdd .# MathVerse
 
 This project is the MathVerse application, your universe for mathematical exploration and AI assistance.
@@ -21,7 +22,8 @@ This project uses [pnpm](https://pnpm.io/) as the package manager.
     NEXT_PUBLIC_FIREBASE_PROJECT_ID="YOUR_PROJECT_ID"
     # ... other Firebase variables ...
 
-    # OPENAI_API_KEY="YOUR_OPENAI_KEY" # If using OpenAI
+    # WOLFRAM_ALPHA_APP_ID="YOUR_WOLFRAM_APP_ID" # Optional, for integration-test page
+    # GEMINI_API_KEY="YOUR_GOOGLE_GEMINI_API_KEY" # If using Gemini directly in Cloud Functions or for specific flows
     ```
     Ensure `.env.local` is added to your `.gitignore` file.
 

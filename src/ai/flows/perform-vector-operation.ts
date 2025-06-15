@@ -68,7 +68,7 @@ Operation Specific Instructions:
 - magnitudeA: Calculate the magnitude (length or norm) of Vector A. Formula: \\\\(|A| = \\sqrt{\\sum A_i^2}\\\\).
 - normalizeA: Normalize Vector A to a unit vector. Formula: \\\\(\\hat{A} = \\frac{A}{|A|}\\\\). If magnitude is 0, result should be an error string "Error: Cannot normalize a zero vector."
 - add: Add Vector A and Vector B. (e.g., \\\\(A+B = [A_x+B_x, A_y+B_y, ... ]\\\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
-- subtract: Subtract Vector B from Vector A. (e.g., \\\\(A-B = [A_x-B_x, A_y-B_y, ... ]\\\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
+- subtract: Subtract Vector B from Vector A. (e.g., \\\\(A-B = [A_x-B_x, A_y+B_y, ... ]\\\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
 - scalarMultiplyA: Multiply Vector A by the scalar 'k'. (e.g., \\\\(kA = [k A_x, k A_y, ... ]\\\\)). Result is a vector.
 - dotProduct: Calculate the dot product (scalar product) of Vector A and Vector B. (e.g., \\\\(A \\cdot B = \\sum A_i B_i\\\\)). Result is a number. Vectors must have the same dimension, otherwise, result is an error string.
 - crossProduct: Calculate the cross product of Vector A and Vector B. (e.g., \\\\(A \\times B\\\\)). Result is a vector. Both Vector A and Vector B MUST be 3D vectors. If not, result is an error string "Error: Cross product is only defined for 3D vectors." For \\\\(A = [A_x, A_y, A_z]\\\\) and \\\\(B = [B_x, B_y, B_z]\\\\), the result is \\\\([A_y B_z - A_z B_y, A_z B_x - A_x B_z, A_x B_y - A_y B_x]\\\\).
@@ -81,6 +81,7 @@ If an input vector is empty or invalid based on the operation, the 'result' shou
 
 const vectorOperationPrompt = ai.definePrompt({
     name: 'vectorOperationPrompt',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: VectorOperationInputSchema },
     output: { schema: VectorOperationOutputSchema.omit({ originalQuery: true }) }, 
     system: systemPrompt,
@@ -140,4 +141,3 @@ const performVectorOperationFlow = ai.defineFlow(
     };
   }
 );
-

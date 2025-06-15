@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Brain, Sigma, Wand2 } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma } from 'lucide-react';
 import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/actions'; 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from '@/components/ui/separator';
@@ -34,7 +34,6 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Remove form feed characters () and trim whitespace
   return content.replace(//g, '').trim(); 
 };
 
@@ -46,69 +45,24 @@ export default function IntegrationTestPage() {
   const [error, setError] = useState<string | null>(null);
 
   const stepsContainerRef = useRef<HTMLDivElement>(null);
-  const hintsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = stepsContainerRef.current;
-    const stepsContent = apiResponse?.geminiExplanation?.explainedSteps;
+    // Display WolframAlpha steps directly if Gemini explanation is not available
+    const stepsContent = apiResponse?.wolframPlaintextSteps;
 
     if (container) {
         const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
         if (cleanedSteps) {
-            container.innerHTML = cleanedSteps;
-            if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-                setTimeout(() => { // Added setTimeout
-                    try {
-                        (window as any).renderMathInElement(container, {
-                            delimiters: [
-                                { left: '$$', right: '$$', display: true },
-                                { left: '$', right: '$', display: false },
-                                { left: '\\(', right: '\\)', display: false },
-                                { left: '\\[', right: '\\]', display: true }
-                            ],
-                            throwOnError: false
-                        });
-                    } catch (e) {
-                        console.error("Error during KaTeX re-render for steps:", e);
-                    }
-                }, 0);
-            }
+            // Since Wolfram steps are plaintext and might contain math-like strings
+            // that are not necessarily valid LaTeX, we'll render them as preformatted text.
+            // For more advanced rendering, one might try to parse and convert, but that's complex.
+            container.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace;">${cleanedSteps.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
         } else {
             container.innerHTML = ""; 
         }
     }
-  }, [apiResponse?.geminiExplanation?.explainedSteps]);
-
-  useEffect(() => {
-    const container = hintsContainerRef.current;
-    const hintsContent = apiResponse?.geminiExplanation?.additionalHints;
-
-    if (container) {
-        const cleanedHints = cleanAndPrepareContentForDisplay(hintsContent);
-        if (cleanedHints) { 
-            container.innerHTML = cleanedHints;
-            if (typeof window !== 'undefined' && (window as any).renderMathInElement) {
-                 setTimeout(() => { // Added setTimeout
-                    try {
-                        (window as any).renderMathInElement(container, {
-                            delimiters: [
-                                { left: '$$', right: '$$', display: true },
-                                { left: '$', right: '$', display: false },
-                                { left: '\\(', right: '\\)', display: false },
-                                { left: '\\[', right: '\\]', display: true }
-                            ],
-                            throwOnError: false
-                        });
-                    } catch (e) {
-                        console.error("Error during KaTeX re-render for hints:", e);
-                    }
-                }, 0);
-            }
-        } else {
-            container.innerHTML = ""; 
-        }
-    }
-  }, [apiResponse?.geminiExplanation?.additionalHints]);
+  }, [apiResponse?.wolframPlaintextSteps]);
 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -152,11 +106,11 @@ export default function IntegrationTestPage() {
       <Card className="shadow-xl rounded-lg overflow-hidden">
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
-            <Wand2 className="h-8 w-8 mr-3" />
-            AI-Enhanced Integration Solver
+            <TestTubeDiagonal className="h-8 w-8 mr-3" />
+            WolframAlpha Integration Test
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Enter an integration problem (e.g., "integrate x^2 dx"). Gemini refines your query for WolframAlpha, then explains the solution.
+            Test the pipeline: User Query → AI Preprocessing → WolframAlpha → Display.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -180,7 +134,7 @@ export default function IntegrationTestPage() {
               ) : (
                 <Send className="mr-2 h-5 w-5" />
               )}
-              {isLoading ? 'Processing with AI...' : 'Solve & Explain'}
+              {isLoading ? 'Processing...' : 'Solve with WolframAlpha'}
             </Button>
           </form>
 
@@ -188,7 +142,7 @@ export default function IntegrationTestPage() {
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
-                AI is processing your request...
+                Processing your request...
               </p>
             </div>
           )}
@@ -220,19 +174,20 @@ export default function IntegrationTestPage() {
                   </div>
                 )}
                 
-                {apiResponse.geminiExplanation?.formattedResult && (
+                {apiResponse.wolframPlaintextResult && (
                   <div>
-                    <h3 className="text-xl font-semibold text-primary mb-2">Formatted Result:</h3>
+                    <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
+                    {/* Assuming wolframPlaintextResult might be LaTeX or just text. Attempt KaTeX. */}
                     <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto"
-                         dangerouslySetInnerHTML={{ __html: renderKaTeX(apiResponse.geminiExplanation.formattedResult, true) }} />
+                         dangerouslySetInnerHTML={{ __html: renderKaTeX(apiResponse.wolframPlaintextResult, true) }} />
                   </div>
                 )}
 
-                {apiResponse.geminiExplanation?.explainedSteps && (
+                {apiResponse.wolframPlaintextSteps && (
                   <Accordion type="single" collapsible className="w-full" defaultValue="steps">
                     <AccordionItem value="steps">
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                        <Brain className="mr-2 h-5 w-5"/> Gemini&apos;s Explanation of Steps
+                        WolframAlpha Steps
                       </AccordionTrigger>
                       <AccordionContent>
                         <div
@@ -243,33 +198,10 @@ export default function IntegrationTestPage() {
                     </AccordionItem>
                   </Accordion>
                 )}
-
-                 {apiResponse.geminiExplanation?.additionalHints && (
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="hints">
-                      <AccordionTrigger className="text-lg font-semibold text-primary hover:no-underline">
-                       <TestTubeDiagonal className="mr-2 h-5 w-5"/> Additional Hints & Insights
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div
-                          ref={hintsContainerRef} 
-                          className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                )}
-
-                {apiResponse.wolframPlaintextResult && !apiResponse.geminiExplanation && (
-                    <div>
-                        <h3 className="text-lg font-semibold text-muted-foreground">Raw WolframAlpha Result:</h3>
-                        <pre className="whitespace-pre-wrap p-2 bg-secondary rounded-md text-xs">{apiResponse.wolframPlaintextResult}</pre>
-                    </div>
-                )}
               </CardContent>
                <CardFooter className="p-4 bg-secondary/50 border-t">
                   <p className="text-xs text-muted-foreground">
-                    Original query processed by Gemini, sent to WolframAlpha, then results explained and formatted by Gemini. Math rendered with KaTeX.
+                    Original query processed by an AI, sent to WolframAlpha. Math rendered with KaTeX.
                   </p>
               </CardFooter>
             </Card>
@@ -277,7 +209,7 @@ export default function IntegrationTestPage() {
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
           <p className="text-xs text-muted-foreground">
-            This page demonstrates a multi-step AI pipeline for solving integration problems. Results depend on interpretations by both Gemini and WolframAlpha.
+            This page demonstrates a multi-step pipeline for solving integration problems. Results depend on interpretations by the AI preprocessor and WolframAlpha.
           </p>
         </CardFooter>
       </Card>
