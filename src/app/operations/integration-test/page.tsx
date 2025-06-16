@@ -38,7 +38,7 @@ const cleanAndPrepareContentForDisplay = (content: string | undefined | null): s
   if (!content) return "";
   // Replace form feed character (often shows as ^L or invisible box) with a newline for better readability in <pre>
   // Also trim leading/trailing whitespace.
-  return content.replace(//g, '\n').trim(); 
+  return content.replace(/\f/g, '\n').trim(); 
 };
 
 
@@ -163,7 +163,7 @@ export default function IntegrationTestPage() {
                   </div>
                 )}
                 
-                {apiResponse.wolframPlaintextResult && apiResponse.wolframPlaintextResult !== "Result information not available from WolframAlpha." ? (
+                {apiResponse.wolframPlaintextResult && apiResponse.wolframPlaintextResult !== "Result information not available from WolframAlpha." && apiResponse.wolframPlaintextResult !== "Result might be embedded in steps below or not clearly separated." ? (
                   <div>
                     <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
                     <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto"
@@ -179,7 +179,7 @@ export default function IntegrationTestPage() {
 
                 <Separator />
 
-                {apiResponse.wolframPlaintextSteps && apiResponse.wolframPlaintextSteps !== "Step-by-step information not available from WolframAlpha for this query." ? (
+                {apiResponse.wolframPlaintextSteps && apiResponse.wolframPlaintextSteps !== "Step-by-step information not available from WolframAlpha for this query." && apiResponse.wolframPlaintextSteps !== "Steps were part of the answer block; main content shown above." ? (
                   <Accordion type="single" collapsible className="w-full" defaultValue="steps">
                     <AccordionItem value="steps">
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
@@ -219,4 +219,5 @@ export default function IntegrationTestPage() {
     </div>
   );
 }
+
 
