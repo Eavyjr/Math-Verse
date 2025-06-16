@@ -44,27 +44,6 @@ export default function IntegrationTestPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const stepsContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = stepsContainerRef.current;
-    // Display WolframAlpha steps directly if Gemini explanation is not available
-    const stepsContent = apiResponse?.wolframPlaintextSteps;
-
-    if (container) {
-        const cleanedSteps = cleanAndPrepareContentForDisplay(stepsContent);
-        if (cleanedSteps) {
-            // Since Wolfram steps are plaintext and might contain math-like strings
-            // that are not necessarily valid LaTeX, we'll render them as preformatted text.
-            // For more advanced rendering, one might try to parse and convert, but that's complex.
-            container.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace;">${cleanedSteps.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
-        } else {
-            container.innerHTML = ""; 
-        }
-    }
-  }, [apiResponse?.wolframPlaintextSteps]);
-
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!expression.trim()) {
@@ -177,7 +156,6 @@ export default function IntegrationTestPage() {
                 {apiResponse.wolframPlaintextResult && (
                   <div>
                     <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
-                    {/* Assuming wolframPlaintextResult might be LaTeX or just text. Attempt KaTeX. */}
                     <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto"
                          dangerouslySetInnerHTML={{ __html: renderKaTeX(apiResponse.wolframPlaintextResult, true) }} />
                   </div>
@@ -190,10 +168,9 @@ export default function IntegrationTestPage() {
                         WolframAlpha Steps
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div
-                          ref={stepsContainerRef} 
-                          className="prose prose-sm dark:prose-invert max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto"
-                        />
+                        <pre className="max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto text-sm">
+                          {cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextSteps)}
+                        </pre>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
