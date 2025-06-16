@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma, HelpCircle } from 'lucide-react';
 import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/actions'; 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from '@/components/ui/separator';
@@ -28,13 +28,17 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", mathString);
+    // Sanitize for safety if KaTeX fails
     return mathString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
   }
 };
 
+// Function to clean form feed characters and trim whitespace
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  return content.replace(//g, '').trim(); 
+  // Replace form feed character (often shows as ^L or invisible box) with a newline for better readability in <pre>
+  // Also trim leading/trailing whitespace.
+  return content.replace(//g, '\n').trim(); 
 };
 
 
@@ -48,6 +52,7 @@ export default function IntegrationTestPage() {
     e.preventDefault();
     if (!expression.trim()) {
       setError('Please enter a mathematical expression.');
+      setApiResponse(null);
       return;
     }
 
@@ -60,11 +65,11 @@ export default function IntegrationTestPage() {
 
       if (actionResult.error) {
         setError(actionResult.error);
-        if(actionResult.data) setApiResponse(actionResult.data); 
+        if(actionResult.data) setApiResponse(actionResult.data); // Display partial data if available on error
       } else if (actionResult.data) {
         setApiResponse(actionResult.data);
       } else {
-        setError('Received no data or error from the server.');
+        setError('Received no data or error from the server. Please check the logs.');
       }
 
     } catch (err: any) {
@@ -90,6 +95,7 @@ export default function IntegrationTestPage() {
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
             Test the pipeline: User Query → AI Preprocessing → WolframAlpha → Display.
+            This tool directly queries WolframAlpha for integration solutions and step-by-step breakdowns.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -102,8 +108,12 @@ export default function IntegrationTestPage() {
                 id="expression-input"
                 type="text"
                 value={expression}
-                onChange={(e) => setExpression(e.target.value)}
-                placeholder="e.g., integral of x*sin(x) dx from 0 to pi"
+                onChange={(e) => {
+                  setExpression(e.target.value);
+                  setError(null); // Clear previous error on new input
+                  setApiResponse(null); // Clear previous response
+                }}
+                placeholder="e.g., integrate x*sin(x) dx from 0 to pi"
                 className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
               />
             </div>
@@ -121,7 +131,7 @@ export default function IntegrationTestPage() {
             <div className="flex items-center justify-center p-8 rounded-md bg-muted">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-xl font-medium text-foreground">
-                Processing your request...
+                Querying WolframAlpha...
               </p>
             </div>
           )}
@@ -148,20 +158,28 @@ export default function IntegrationTestPage() {
                 </div>
                 {apiResponse.cleanedQuery && (
                   <div>
-                    <h3 className="text-lg font-semibold text-muted-foreground">Query sent to WolframAlpha:</h3>
+                    <h3 className="text-lg font-semibold text-muted-foreground">Query Sent to WolframAlpha:</h3>
                     <p className="p-2 bg-secondary rounded-md text-sm font-mono">{apiResponse.cleanedQuery}</p>
                   </div>
                 )}
                 
-                {apiResponse.wolframPlaintextResult && (
+                {apiResponse.wolframPlaintextResult && apiResponse.wolframPlaintextResult !== "Result information not available from WolframAlpha." ? (
                   <div>
                     <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
                     <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto"
                          dangerouslySetInnerHTML={{ __html: renderKaTeX(apiResponse.wolframPlaintextResult, true) }} />
                   </div>
+                ) : !error && (
+                    <Alert variant="default" className="border-muted-foreground/50">
+                        <HelpCircle className="h-5 w-5 text-muted-foreground"/>
+                        <AlertTitle>Result from WolframAlpha</AlertTitle>
+                        <AlertDescription>{apiResponse.wolframPlaintextResult || "No specific result pod was returned by WolframAlpha for this query."}</AlertDescription>
+                    </Alert>
                 )}
 
-                {apiResponse.wolframPlaintextSteps && (
+                <Separator />
+
+                {apiResponse.wolframPlaintextSteps && apiResponse.wolframPlaintextSteps !== "Step-by-step information not available from WolframAlpha for this query." ? (
                   <Accordion type="single" collapsible className="w-full" defaultValue="steps">
                     <AccordionItem value="steps">
                       <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
@@ -174,11 +192,18 @@ export default function IntegrationTestPage() {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                ) : !error && (
+                    <Alert variant="default" className="border-muted-foreground/50">
+                        <HelpCircle className="h-5 w-5 text-muted-foreground"/>
+                        <AlertTitle>Steps from WolframAlpha</AlertTitle>
+                        <AlertDescription>{apiResponse.wolframPlaintextSteps || "No step-by-step solution pod was returned by WolframAlpha for this query."}</AlertDescription>
+                    </Alert>
                 )}
+
               </CardContent>
                <CardFooter className="p-4 bg-secondary/50 border-t">
                   <p className="text-xs text-muted-foreground">
-                    Original query processed by an AI, sent to WolframAlpha. Math rendered with KaTeX.
+                    Original query processed by an AI, sent to WolframAlpha. Math rendered with KaTeX. Solution & steps are direct from WolframAlpha.
                   </p>
               </CardFooter>
             </Card>
@@ -187,9 +212,11 @@ export default function IntegrationTestPage() {
         <CardFooter className="p-6 bg-secondary/50 border-t">
           <p className="text-xs text-muted-foreground">
             This page demonstrates a multi-step pipeline for solving integration problems. Results depend on interpretations by the AI preprocessor and WolframAlpha.
+            If WolframAlpha cannot solve or parse the query, it may return suggestions or an error.
           </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
