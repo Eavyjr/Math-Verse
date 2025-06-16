@@ -28,17 +28,41 @@ const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean
     });
   } catch (e) {
     console.error("Katex rendering error:", e, "Original string:", mathString);
-    // Sanitize for safety if KaTeX fails
     return mathString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
   }
 };
 
-// Function to clean form feed characters and trim whitespace
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
-  // Replace form feed character (often shows as ^L or invisible box) with a newline for better readability in <pre>
-  // Also trim leading/trailing whitespace.
   return content.replace(/\f/g, '\n').trim(); 
+};
+
+const renderWolframStepsWithKatex = (stepsString: string | undefined | null): string => {
+  if (!stepsString) return "";
+  console.log("renderWolframStepsWithKatex input:", stepsString);
+
+  // Regex to find \(...\) or \[...\]
+  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); // Non-greedy match for content within delimiters
+  
+  const htmlParts = parts.map((part) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      // Sanitize plain text parts
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+        console.error("KaTeX steps rendering error for part:", part, e);
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
+    }
+  });
+  const finalHtml = htmlParts.join('');
+  console.log("renderWolframStepsWithKatex output HTML:", finalHtml);
+  return finalHtml;
 };
 
 
@@ -65,7 +89,7 @@ export default function IntegrationTestPage() {
 
       if (actionResult.error) {
         setError(actionResult.error);
-        if(actionResult.data) setApiResponse(actionResult.data); // Display partial data if available on error
+        if(actionResult.data) setApiResponse(actionResult.data); 
       } else if (actionResult.data) {
         setApiResponse(actionResult.data);
       } else {
@@ -110,8 +134,8 @@ export default function IntegrationTestPage() {
                 value={expression}
                 onChange={(e) => {
                   setExpression(e.target.value);
-                  setError(null); // Clear previous error on new input
-                  setApiResponse(null); // Clear previous response
+                  setError(null); 
+                  setApiResponse(null); 
                 }}
                 placeholder="e.g., integrate x*sin(x) dx from 0 to pi"
                 className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
@@ -186,9 +210,10 @@ export default function IntegrationTestPage() {
                         WolframAlpha Steps
                       </AccordionTrigger>
                       <AccordionContent>
-                        <pre className="max-w-none p-4 bg-secondary rounded-md whitespace-pre-wrap overflow-x-auto text-sm">
-                          {cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextSteps)}
-                        </pre>
+                        <div 
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                          dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextSteps)) }}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
@@ -219,5 +244,4 @@ export default function IntegrationTestPage() {
     </div>
   );
 }
-
 
