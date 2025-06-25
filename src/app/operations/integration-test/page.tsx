@@ -15,23 +15,6 @@ import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from '@/components/ui/separator';
 
-const renderKaTeX = (mathString: string | undefined | null, displayMode: boolean = false): string => {
-  if (!mathString) return "";
-  let cleanLatexString = mathString.trim();
-  
-  try {
-    return katex.renderToString(cleanLatexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-      output: 'html',
-      macros: { "\\dd": "\\mathrm{d}"} 
-    });
-  } catch (e) {
-    console.error("Katex rendering error:", e, "Original string:", mathString);
-    return mathString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-  }
-};
-
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
   return content.replace(/\f/g, '\n').trim(); 
@@ -190,8 +173,8 @@ export default function IntegrationTestPage() {
                 {apiResponse.wolframPlaintextResult && apiResponse.wolframPlaintextResult !== "Result information not available from WolframAlpha." && apiResponse.wolframPlaintextResult !== "Result might be embedded in steps below or not clearly separated." ? (
                   <div>
                     <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
-                    <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto"
-                         dangerouslySetInnerHTML={{ __html: renderKaTeX(apiResponse.wolframPlaintextResult, true) }} />
+                    <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto whitespace-pre-wrap"
+                         dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextResult)) }} />
                   </div>
                 ) : !error && (
                     <Alert variant="default" className="border-muted-foreground/50">
@@ -244,4 +227,3 @@ export default function IntegrationTestPage() {
     </div>
   );
 }
-
