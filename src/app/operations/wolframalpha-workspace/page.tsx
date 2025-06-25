@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -14,9 +13,12 @@ import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import katex from 'katex';
 import "katex/dist/katex.min.css";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
+  // Added form feed character replacement
   return content.replace(/\f/g, '\n').trim(); 
 };
 
@@ -57,9 +59,25 @@ const renderWolframStepsWithKatex = (stepsString: string | undefined | null): st
   return htmlParts.join('');
 };
 
+const operations = [
+  { value: 'general', label: 'General Query' },
+  { value: 'integrate', label: 'Integrate' },
+  { value: 'differentiate', label: 'Differentiate' },
+  { value: 'solve', label: 'Solve Equation' },
+  { value: 'simplify', label: 'Simplify Expression' },
+];
+
+const placeholders: { [key: string]: string } = {
+  general: 'e.g., population of Canada in 2020',
+  integrate: 'e.g., x*sin(x) dx',
+  differentiate: 'e.g., e^x * sin(x)',
+  solve: 'e.g., x^2 + 2x - 3 = 0',
+  simplify: 'e.g., (x+1)^2 - (x-1)^2',
+};
 
 export default function WolframAlphaWorkspacePage() {
   const [expression, setExpression] = useState<string>('');
+  const [selectedOperation, setSelectedOperation] = useState<string>('general');
   const [apiResponse, setApiResponse] = useState<EnhancedWolframResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +85,7 @@ export default function WolframAlphaWorkspacePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!expression.trim()) {
-      setError('Please enter a query.');
+      setError('Please enter an expression or equation.');
       setApiResponse(null);
       return;
     }
@@ -76,8 +94,13 @@ export default function WolframAlphaWorkspacePage() {
     setError(null);
     setApiResponse(null);
 
+    // Construct the full query based on the selected operation
+    const fullQuery = selectedOperation === 'general'
+      ? expression
+      : `${selectedOperation} ${expression}`;
+
     try {
-      const actionResult = await fetchWolframAlphaStepsAction(expression);
+      const actionResult = await fetchWolframAlphaStepsAction(fullQuery);
 
       if (actionResult.error) {
         setError(actionResult.error);
@@ -115,23 +138,41 @@ export default function WolframAlphaWorkspacePage() {
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="expression-input" className="block text-md font-semibold text-foreground mb-1">
-                Enter your query:
-              </Label>
-              <Input
-                id="expression-input"
-                type="text"
-                value={expression}
-                onChange={(e) => {
-                  setExpression(e.target.value);
-                  setError(null); 
-                  setApiResponse(null); 
-                }}
-                placeholder="e.g., integrate x*sin(x) dx, solve x^2+2x-3=0, d/dx(e^x*sin(x))"
-                className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="md:col-span-1">
+                    <Label htmlFor="operation-select" className="block text-md font-semibold text-foreground mb-1">
+                        Operation
+                    </Label>
+                    <Select value={selectedOperation} onValueChange={setSelectedOperation}>
+                        <SelectTrigger id="operation-select" className="text-base h-auto py-2.5">
+                            <SelectValue placeholder="Select an operation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {operations.map(op => (
+                            <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="md:col-span-2">
+                    <Label htmlFor="expression-input" className="block text-md font-semibold text-foreground mb-1">
+                        Input
+                    </Label>
+                    <Input
+                        id="expression-input"
+                        type="text"
+                        value={expression}
+                        onChange={(e) => {
+                            setExpression(e.target.value);
+                            setError(null); 
+                            setApiResponse(null); 
+                        }}
+                        placeholder={placeholders[selectedOperation]}
+                        className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
+                    />
+                </div>
             </div>
+
             <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
