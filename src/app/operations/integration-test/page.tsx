@@ -1,10 +1,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,41 +12,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma, HelpCircle } from 'lucide-react';
 import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/actions'; 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Separator } from '@/components/ui/separator';
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
   return content.replace(/\f/g, '\n').trim(); 
 };
-
-const renderWolframStepsWithKatex = (stepsString: string | undefined | null): string => {
-  if (!stepsString) return "";
-  console.log("renderWolframStepsWithKatex input:", stepsString);
-
-  // Regex to find \(...\) or \[...\]
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g); // Non-greedy match for content within delimiters
-  
-  const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      // Sanitize plain text parts
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    }
-  });
-  const finalHtml = htmlParts.join('');
-  console.log("renderWolframStepsWithKatex output HTML:", finalHtml);
-  return finalHtml;
-};
-
 
 export default function IntegrationTestPage() {
   const [expression, setExpression] = useState<string>('');
@@ -170,48 +139,57 @@ export default function IntegrationTestPage() {
                   </div>
                 )}
                 
-                {apiResponse.wolframPlaintextResult && apiResponse.wolframPlaintextResult !== "Result information not available from WolframAlpha." && apiResponse.wolframPlaintextResult !== "Result might be embedded in steps below or not clearly separated." ? (
-                  <div>
-                    <h3 className="text-xl font-semibold text-primary mb-2">WolframAlpha Result:</h3>
-                    <div className="p-3 bg-muted rounded-md text-lg overflow-x-auto whitespace-pre-wrap"
-                         dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextResult)) }} />
-                  </div>
-                ) : !error && (
-                    <Alert variant="default" className="border-muted-foreground/50">
-                        <HelpCircle className="h-5 w-5 text-muted-foreground"/>
-                        <AlertTitle>Result from WolframAlpha</AlertTitle>
-                        <AlertDescription>{apiResponse.wolframPlaintextResult || "No specific result pod was returned by WolframAlpha for this query."}</AlertDescription>
-                    </Alert>
-                )}
-
-                <Separator />
-
-                {apiResponse.wolframPlaintextSteps && apiResponse.wolframPlaintextSteps !== "Step-by-step information not available from WolframAlpha for this query." && apiResponse.wolframPlaintextSteps !== "Steps were part of the answer block; main content shown above." ? (
-                  <Accordion type="single" collapsible className="w-full" defaultValue="steps">
-                    <AccordionItem value="steps">
-                      <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                        WolframAlpha Steps
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div 
-                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                          dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(cleanAndPrepareContentForDisplay(apiResponse.wolframPlaintextSteps)) }}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
+                {apiResponse.pods.length > 0 ? (
+                  <Accordion type="multiple" defaultValue={['Result', 'Step-by-step solution']} className="w-full space-y-4">
+                    {apiResponse.pods.map(pod => (
+                      <AccordionItem value={pod.id} key={pod.id} className="border-b-0">
+                        <Card>
+                          <AccordionTrigger className="p-4 text-xl font-semibold text-primary hover:no-underline rounded-t-lg">
+                            <h3 className="text-left">{pod.title}</h3>
+                          </AccordionTrigger>
+                          <AccordionContent className="p-4 pt-0">
+                            <div className="space-y-4">
+                              {pod.subpods.map((subpod, index) => (
+                                <div key={index}>
+                                  {subpod.title && <h4 className="font-semibold text-md mb-2">{subpod.title}</h4>}
+                                  {subpod.img ? (
+                                    <div className="bg-white p-2 rounded-md inline-block">
+                                      <Image 
+                                        src={subpod.img.src} 
+                                        alt={subpod.img.alt || `WolframAlpha image for ${pod.title}`}
+                                        width={subpod.img.width}
+                                        height={subpod.img.height}
+                                        style={{
+                                          maxWidth: '100%',
+                                          height: 'auto', // Important for aspect ratio
+                                        }}
+                                        unoptimized
+                                      />
+                                    </div>
+                                  ) : (
+                                    <pre className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
+                                      {cleanAndPrepareContentForDisplay(subpod.plaintext)}
+                                    </pre>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </Card>
+                      </AccordionItem>
+                    ))}
                   </Accordion>
-                ) : !error && (
-                    <Alert variant="default" className="border-muted-foreground/50">
-                        <HelpCircle className="h-5 w-5 text-muted-foreground"/>
-                        <AlertTitle>Steps from WolframAlpha</AlertTitle>
-                        <AlertDescription>{apiResponse.wolframPlaintextSteps || "No step-by-step solution pod was returned by WolframAlpha for this query."}</AlertDescription>
-                    </Alert>
+                ) : (
+                  <Alert>
+                    <HelpCircle className="h-5 w-5"/>
+                    <AlertTitle>No Pods Returned</AlertTitle>
+                    <AlertDescription>WolframAlpha did not return any displayable content sections for this query.</AlertDescription>
+                  </Alert>
                 )}
-
               </CardContent>
                <CardFooter className="p-4 bg-secondary/50 border-t">
                   <p className="text-xs text-muted-foreground">
-                    Original query processed by an AI, sent to WolframAlpha. Math rendered with KaTeX. Solution & steps are direct from WolframAlpha.
+                    Original query processed by an AI, sent to WolframAlpha. Results displayed using images where available, with plaintext fallbacks.
                   </p>
               </CardFooter>
             </Card>

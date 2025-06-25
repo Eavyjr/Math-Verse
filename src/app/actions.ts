@@ -16,9 +16,9 @@ interface ActionResult<T> {
   error: string | null;
 }
 
-const genkitUnreachableError = 'Failed to connect to the AI service (Genkit). Please ensure it is running and accessible (e.g., via `pnpm genkit:dev`).';
+const genkitUnreachableError = 'Failed to connect to the AI service (Genkit). Please ensure it is running and accessible (e.g., `pnpm genkit:dev`).';
 
-// Types for WolframAlpha API response structure (simplified)
+// Types for WolframAlpha API response structure
 interface WolframSubpod {
   title: string;
   plaintext: string;
@@ -45,12 +45,30 @@ interface WolframAlphaApiResponse {
   queryresult: WolframQueryResult;
 }
 
+// NEW interfaces for structured Wolfram result
+export interface EnhancedSubpod {
+  title: string;
+  plaintext: string;
+  img?: {
+    src: string;
+    width: number;
+    height: number;
+    alt: string;
+  };
+}
+
+export interface EnhancedPod {
+  title: string;
+  id: string;
+  subpods: EnhancedSubpod[];
+}
+
 export interface EnhancedWolframResult {
   originalQuery: string;
   cleanedQuery: string | null;
-  wolframPlaintextResult?: string | null; 
-  wolframPlaintextSteps?: string | null; 
+  pods: EnhancedPod[];
 }
+
 
 // Helper for fetch with timeout
 const fetchWithTimeout = async (resource: RequestInfo | URL, options: RequestInit = {}, timeout: number = 20000): Promise<Response> => {
@@ -424,7 +442,11 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
 export async function fetchWolframAlphaStepsAction(
   userExpression: string
 ): Promise<ActionResult<EnhancedWolframResult>> {
-  const enhancedResultData: EnhancedWolframResult = { originalQuery: userExpression, cleanedQuery: null, wolframPlaintextResult: null, wolframPlaintextSteps: null };
+  const enhancedResultData: EnhancedWolframResult = { 
+    originalQuery: userExpression, 
+    cleanedQuery: null, 
+    pods: [] 
+  };
 
   if (!userExpression || userExpression.trim() === '') {
     return { data: enhancedResultData, error: 'Expression cannot be empty.' };
@@ -443,7 +465,8 @@ export async function fetchWolframAlphaStepsAction(
     console.log("[Action:WolframTest] Preprocessed query for Wolfram:", enhancedResultData.cleanedQuery);
 
     const encodedInput = encodeURIComponent(enhancedResultData.cleanedQuery);
-    const apiUrl = `https://api.wolframalpha.com/v2/query?appid=${WOLFRAM_APP_ID}&input=${encodedInput}&format=plaintext,mathml&podstate=Step-by-step+solution&podstate=Result&output=json&includepodid=Result&includepodid=Step-by-step+solution&includepodid=IndefiniteIntegral&includepodid=DefiniteIntegral&includepodid=Solution&includepodid=RootPlot&includepodid=Derivative`;
+    // Updated API URL to explicitly request image format
+    const apiUrl = `https://api.wolframalpha.com/v2/query?appid=${WOLFRAM_APP_ID}&input=${encodedInput}&format=plaintext,image,mathml&output=json`;
     
     const response = await fetchWithTimeout(apiUrl, {}, 20000);
 
@@ -475,45 +498,25 @@ export async function fetchWolframAlphaStepsAction(
       return { data: enhancedResultData, error: 'No results (pods) returned from WolframAlpha.' };
     }
     
-    const stepPod = data.queryresult.pods.find(
-      pod => pod.id?.toLowerCase().includes('step-by-step') || pod.title?.toLowerCase().includes('step-by-step solution')
-    );
+    const relevantPods: EnhancedPod[] = data.queryresult.pods
+      .filter(pod => pod.id !== "Input") // Filter out the input interpretation pod
+      .map(pod => ({
+        id: pod.id,
+        title: pod.title,
+        subpods: pod.subpods.map(subpod => ({
+          title: subpod.title,
+          plaintext: subpod.plaintext || '',
+          img: subpod.img ? {
+            src: subpod.img.src,
+            width: subpod.img.width,
+            height: subpod.img.height,
+            alt: subpod.img.alt,
+          } : undefined,
+        }))
+      }));
     
-    const resultPod = data.queryresult.pods.find(
-      pod => pod.id === 'Result' || pod.id === 'IndefiniteIntegral' || pod.id === 'DefiniteIntegral' || pod.id === 'Solution'
-    );
+    enhancedResultData.pods = relevantPods;
 
-    let fullStepText = "";
-    if (stepPod && stepPod.subpods.length > 0) {
-      fullStepText = stepPod.subpods.map(subpod => subpod.plaintext).filter(text => text && text.trim() !== '').join('\n\n---\n\n');
-    }
-
-    const answerMarkerRegex = /Answer:\s*(?:\|{1,2}\s*=\s*|=?\s*)/i;
-    let answerFromSteps: string | null = null;
-    let stepsOnly: string | null = fullStepText || null;
-
-    if (fullStepText) {
-      const match = fullStepText.match(answerMarkerRegex);
-      if (match && match.index !== undefined) {
-        answerFromSteps = fullStepText.substring(match.index + match[0].length).trim();
-        stepsOnly = fullStepText.substring(0, match.index).trim();
-      }
-    }
-
-    if (answerFromSteps) {
-      enhancedResultData.wolframPlaintextResult = answerFromSteps;
-      enhancedResultData.wolframPlaintextSteps = stepsOnly || "Steps were part of the answer block; main content shown above.";
-    } else if (resultPod && resultPod.subpods.length > 0) {
-      enhancedResultData.wolframPlaintextResult = resultPod.subpods.map(sp => sp.plaintext).join('\n');
-      enhancedResultData.wolframPlaintextSteps = fullStepText || "Step-by-step information not available from WolframAlpha for this query.";
-    } else if (fullStepText) { // Steps pod exists but no answer marker and no separate result pod
-      enhancedResultData.wolframPlaintextResult = "Result might be embedded in steps below or not clearly separated.";
-      enhancedResultData.wolframPlaintextSteps = fullStepText;
-    } else {
-      enhancedResultData.wolframPlaintextResult = "Result information not available from WolframAlpha.";
-      enhancedResultData.wolframPlaintextSteps = "Step-by-step information not available from WolframAlpha for this query.";
-    }
-    
     return { data: enhancedResultData, error: null };
 
   } catch (err: any) {
@@ -529,5 +532,3 @@ export async function fetchWolframAlphaStepsAction(
     return { data: enhancedResultData, error: errorMessage };
   }
 }
-
-
