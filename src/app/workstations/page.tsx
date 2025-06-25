@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
   Calculator, Sigma, Ratio, Grid3X3, Share2, FunctionSquare,
-  BarChartHorizontalBig, Shapes, Move3d, ArrowRight
+  BarChartHorizontalBig, Shapes, Move3d, ArrowRight, TestTubeDiagonal
 } from 'lucide-react';
 import React from 'react';
 
@@ -73,6 +73,13 @@ const workstations = [
     icon: <Move3d className="mr-3 h-6 w-6 text-accent" />,
     description: "Perform vector operations like dot product, cross product, addition, scalar multiplication, and more.",
     href: "/operations/vector-operations"
+  },
+  {
+    value: "wolframalpha-workspace",
+    title: "WolframAlpha Workspace",
+    icon: <TestTubeDiagonal className="mr-3 h-6 w-6 text-accent" />,
+    description: "Leverage the power of WolframAlpha's computational engine for any mathematical query.",
+    href: "/operations/wolframalpha-workspace"
   },
 ];
 

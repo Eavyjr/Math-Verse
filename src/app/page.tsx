@@ -142,21 +142,21 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="flex items-center text-2xl text-primary">
               <TestTubeDiagonal className="mr-3 h-7 w-7 text-accent" />
-              WolframAlpha Integration Test
+              WolframAlpha Workspace
             </CardTitle>
             <CardDescription>
-              Test WolframAlpha API integration for step-by-step solutions.
+              Leverage WolframAlpha's computational engine for complex queries and detailed, formatted solutions.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Enter an integration problem (e.g., "integrate x^2 dx") to fetch and display step-by-step solutions directly from WolframAlpha. This page demonstrates API interaction.
+              Enter any mathematical query (e.g., "integrate x^2 dx") to fetch and display step-by-step solutions directly from WolframAlpha, the gold standard in computational knowledge.
             </p>
           </CardContent>
           <CardFooter>
             <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/operations/integration-test">
-                Go to Integration Test
+              <Link href="/operations/wolframalpha-workspace">
+                Open WolframAlpha Workspace
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

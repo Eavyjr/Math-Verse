@@ -12,13 +12,53 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma, HelpCircle } from 'lucide-react';
 import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/actions'; 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import katex from 'katex';
+import "katex/dist/katex.min.css";
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
   return content.replace(/\f/g, '\n').trim(); 
 };
 
-export default function IntegrationTestPage() {
+const renderKaTeX = (mathString: string | undefined, displayMode: boolean = false): string => {
+    if (mathString === undefined || mathString === null || typeof mathString !== 'string') return "";
+    try {
+        return katex.renderToString(mathString, {
+            throwOnError: false,
+            displayMode: displayMode,
+        });
+    } catch (e) {
+        console.error("Katex rendering error:", e, "Original string:", mathString);
+        return mathString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+};
+
+const renderWolframStepsWithKatex = (stepsString: string | undefined | null): string => {
+  if (!stepsString) return "";
+  const cleanedString = cleanAndPrepareContentForDisplay(stepsString);
+  const parts = cleanedString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
+
+  const htmlParts = parts.map((part) => {
+    try {
+      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2);
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+      console.error("KaTeX steps rendering error for part:", part, e);
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  });
+
+  return htmlParts.join('');
+};
+
+
+export default function WolframAlphaWorkspacePage() {
   const [expression, setExpression] = useState<string>('');
   const [apiResponse, setApiResponse] = useState<EnhancedWolframResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -27,7 +67,7 @@ export default function IntegrationTestPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!expression.trim()) {
-      setError('Please enter a mathematical expression.');
+      setError('Please enter a query.');
       setApiResponse(null);
       return;
     }
@@ -67,18 +107,17 @@ export default function IntegrationTestPage() {
         <CardHeader className="bg-primary text-primary-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center">
             <TestTubeDiagonal className="h-8 w-8 mr-3" />
-            WolframAlpha Integration Test
+            WolframAlpha Workspace
           </CardTitle>
           <CardDescription className="text-primary-foreground/90 text-lg">
-            Test the pipeline: User Query → AI Preprocessing → WolframAlpha → Display.
-            This tool directly queries WolframAlpha for integration solutions and step-by-step breakdowns.
+            Leverage the power of WolframAlpha's computational engine. Enter any query for a detailed solution.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="expression-input" className="block text-md font-semibold text-foreground mb-1">
-                Enter Integration Problem:
+                Enter your query:
               </Label>
               <Input
                 id="expression-input"
@@ -89,7 +128,7 @@ export default function IntegrationTestPage() {
                   setError(null); 
                   setApiResponse(null); 
                 }}
-                placeholder="e.g., integrate x*sin(x) dx from 0 to pi"
+                placeholder="e.g., integrate x*sin(x) dx, solve x^2+2x-3=0, d/dx(e^x*sin(x))"
                 className="text-lg p-3 border-2 focus:border-accent focus:ring-accent"
               />
             </div>
@@ -161,15 +200,15 @@ export default function IntegrationTestPage() {
                                         height={subpod.img.height}
                                         style={{
                                           maxWidth: '100%',
-                                          height: 'auto', // Important for aspect ratio
+                                          height: 'auto',
                                         }}
                                         unoptimized
                                       />
                                     </div>
                                   ) : (
-                                    <pre className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
-                                      {cleanAndPrepareContentForDisplay(subpod.plaintext)}
-                                    </pre>
+                                    <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto"
+                                         dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(subpod.plaintext) }}>
+                                    </div>
                                   )}
                                 </div>
                               ))}
@@ -197,8 +236,7 @@ export default function IntegrationTestPage() {
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
           <p className="text-xs text-muted-foreground">
-            This page demonstrates a multi-step pipeline for solving integration problems. Results depend on interpretations by the AI preprocessor and WolframAlpha.
-            If WolframAlpha cannot solve or parse the query, it may return suggestions or an error.
+            This workspace demonstrates a multi-step pipeline for solving complex problems. Results depend on interpretations by the AI preprocessor and WolframAlpha.
           </p>
         </CardFooter>
       </Card>
