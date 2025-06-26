@@ -152,6 +152,7 @@ export default function GraphTheoryPage() {
       id: edge.id,
       source: edge.source,
       target: edge.target,
+      type: 'straight',
       label: isWeighted && edge.weight !== undefined ? edge.weight.toString() : undefined,
       animated: isDirected && edge.source !== edge.target,
       markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' } : undefined,
