@@ -56,11 +56,14 @@ export default function HomePage() {
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary">
               Welcome to <span className="text-accent">MathVerse</span>!
             </h1>
+            <h2 className="text-2xl md:text-3xl font-semibold text-foreground/90">
+                Your Universe for Mathematical Exploration and AI Assistance.
+            </h2>
             <p className="text-lg md:text-xl text-foreground/80 leading-relaxed">
-              Your ultimate companion for exploring the universe of mathematics. From classifying complex expressions with AI insights to solving intricate problems across various domains like algebra, calculus, and graph theory, MathVerse empowers you to learn, experiment, and conquer math challenges.
+                From solving algebraic equations and calculating complex integrals to visualizing 3D transformations and running graph theory algorithms, MathVerse is your all-in-one interactive toolkit. Get instant AI-powered guidance, step-by-step solutions, and dynamic visualizations.
             </p>
             <p className="text-lg md:text-xl text-foreground/80 leading-relaxed">
-              Dive into our interactive workstations, get step-by-step solutions, and visualize mathematical concepts like never before.
+                Explore our specialized workstations for algebra, calculus, linear algebra, and statistics. Or leverage the computational power of WolframAlpha for any query. Start by classifying an expression with our AI below, or jump straight into a workstation.
             </p>
           </div>
           <div className="pt-4">
