@@ -23,7 +23,7 @@ import {
   AlertTriangle,
   SearchCheck,
   Route,
-  SquareMousePointer, // Changed from MousePointerSquare based on previous successful fix for another component
+  SquareMousePointer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -165,7 +165,7 @@ export default function GraphTheoryPage() {
 
     setRfNodesState(newRfNodesData);
     setRfEdgesState(newRfEdgesData);
-  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]); // Corrected dependency array
+  }, [nodes, edges, isDirected, isWeighted, setRfNodesState, setRfEdgesState]);
 
   useEffect(() => {
     if (nodes.length === 0) { setAdjacencyMatrix([]); return; }
@@ -232,7 +232,7 @@ export default function GraphTheoryPage() {
       }
       return { ...e, style: isPathEdge ? highlightedEdgeStyle : defaultEdgeStyle, animated: isPathEdge || (isDirected && e.source !== e.target && !isPathEdge) };
     }));
-  }, [isDirected, setRfNodesState, setRfEdgesState]); // Removed stable style consts from deps
+  }, [isDirected, setRfNodesState, setRfEdgesState]);
 
   const clearAllAlgorithmVisuals = useCallback(() => {
     setFoundPathBFS(null); setErrorBFS(null); setStartNodeBFS(''); setEndNodeBFS('');
@@ -544,7 +544,14 @@ export default function GraphTheoryPage() {
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 border rounded-md bg-secondary/30"><div><Label className="block text-md font-semibold text-foreground mb-1">Graph Type</Label><Select value={isDirected ? "directed" : "undirected"} onValueChange={(val) => setIsDirected(val === "directed")}><SelectTrigger className="w-full"><SelectValue placeholder="Select graph directionality" /></SelectTrigger><SelectContent><SelectItem value="undirected">Undirected</SelectItem><SelectItem value="directed">Directed</SelectItem></SelectContent></Select></div><div><Label className="block text-md font-semibold text-foreground mb-1">Edge Weight</Label><Select value={isWeighted ? "weighted" : "unweighted"} onValueChange={(val) => { setIsWeighted(val === "weighted"); if (val === "unweighted") setNewEdgeWeight(''); }}><SelectTrigger className="w-full"><SelectValue placeholder="Select edge weight type" /></SelectTrigger><SelectContent><SelectItem value="unweighted">Unweighted</SelectItem><SelectItem value="weighted">Weighted</SelectItem></SelectContent></Select></div></div>
           <Tabs defaultValue="grid-editor" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b"><TabsTrigger value="grid-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><LayoutGrid className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger><TabsTrigger value="canvas-editor" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><SquareMousePointer className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger><TabsTrigger value="algorithms" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger><TabsTrigger value="properties" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger></TabsList>
+            <div className="overflow-x-auto no-scrollbar border-b bg-card">
+                <TabsList className="inline-flex w-full min-w-max justify-start rounded-none bg-transparent p-0">
+                    <TabsTrigger value="grid-editor" className="whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-sm"><LayoutGrid className="mr-2 h-5 w-5" /> Grid Editor</TabsTrigger>
+                    <TabsTrigger value="canvas-editor" className="whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-sm"><SquareMousePointer className="mr-2 h-5 w-5" /> Visual Editor</TabsTrigger>
+                    <TabsTrigger value="algorithms" className="whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-sm"><Settings2 className="mr-2 h-5 w-5" /> Algorithms</TabsTrigger>
+                    <TabsTrigger value="properties" className="whitespace-nowrap rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-sm"><BookOpen className="mr-2 h-5 w-5" /> Properties & Learn</TabsTrigger>
+                </TabsList>
+            </div>
             <TabsContent value="grid-editor" className="mt-4 min-h-[600px] space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full md:min-h-[calc(100vh-var(--header-height,60px)-250px)]"><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderEdgeInputTable()}</div><div className="md:col-span-1 h-full min-h-[400px] md:min-h-0">{renderGraphVisualization()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderAdjacencyMatrix()}</div><div className="md:col-span-1 h-full min-h-[300px] md:min-h-0">{renderIncidenceMatrix()}</div></div>{renderGraphProperties()}</TabsContent>
             <TabsContent value="canvas-editor" className="mt-4 min-h-[600px]">{renderVisualEditorTab()}</TabsContent>
             <TabsContent value="algorithms" className="mt-4 min-h-[600px]">{renderAlgorithmsTab()}</TabsContent>
