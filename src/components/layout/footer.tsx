@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { Facebook, Mail, Github, Linkedin } from 'lucide-react';
+import { Facebook, Mail, Github } from 'lucide-react';
 import NewsletterForm from '@/components/landing/newsletter-form';
 
 export default function Footer() {
@@ -33,14 +33,14 @@ export default function Footer() {
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-primary">Follow Us</h3>
             <div className="flex space-x-4">
-              <Link href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-accent transition-colors">
+              <Link href="https://www.facebook.com/eavy.official" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-accent transition-colors">
                 <Facebook className="h-6 w-6" />
               </Link>
-              <Link href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-muted-foreground hover:text-accent transition-colors">
+              <Link href="https://github.com/Eavyjr" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-muted-foreground hover:text-accent transition-colors">
                 <Github className="h-6 w-6" />
               </Link>
-              <Link href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-accent transition-colors">
-                <Linkedin className="h-6 w-6" />
+              <Link href="mailto:eavyjr@gmail.com" aria-label="Email Eavy" className="text-muted-foreground hover:text-accent transition-colors">
+                <Mail className="h-6 w-6" />
               </Link>
             </div>
           </div>
