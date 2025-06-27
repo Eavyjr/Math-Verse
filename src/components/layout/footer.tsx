@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { Facebook, Mail, Github } from 'lucide-react';
+import { Facebook, Mail, Github, Info } from 'lucide-react';
 import NewsletterForm from '@/components/landing/newsletter-form';
 
 export default function Footer() {
@@ -17,16 +17,17 @@ export default function Footer() {
             <NewsletterForm variant="inline" />
           </div>
 
-          {/* Contact Us & Quick Links (Example) */}
+          {/* Contact Us & Quick Links */}
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-primary">Get In Touch</h3>
-             <p className="text-sm text-muted-foreground">
-              Have questions or feedback? We&apos;d love to hear from you.
-            </p>
-            <Link href="mailto:support@mathverse.app" className="flex items-center gap-2 text-sm hover:text-accent transition-colors">
-              <Mail className="h-4 w-4" /> support@mathverse.app
-            </Link>
-            {/* Add other quick links if needed */}
+            <h3 className="text-lg font-semibold text-primary">Quick Links</h3>
+             <div className="space-y-2">
+                <Link href="/about" className="flex items-center gap-2 text-sm hover:text-accent transition-colors">
+                  <Info className="h-4 w-4" /> About MathVerse
+                </Link>
+                <Link href="mailto:support@mathverse.app" className="flex items-center gap-2 text-sm hover:text-accent transition-colors">
+                  <Mail className="h-4 w-4" /> Contact Support
+                </Link>
+             </div>
           </div>
           
           {/* Social Media Links */}

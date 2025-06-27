@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare, LayoutGrid, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d, Layers, TestTubeDiagonal } from 'lucide-react';
+import { Calculator as CalculatorIconLucide, UserCircle, LogOut, LayoutDashboard, User, BotMessageSquare, LayoutGrid, Sigma, Ratio, Grid3X3, Share2, FunctionSquare, BarChartHorizontalBig, Shapes, Move3d, Layers, TestTubeDiagonal, Info } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '../ui/skeleton';
@@ -86,6 +86,12 @@ export default function Header() {
               {isClient && isCalculatorDialogOpen && <PopupCalculator />}
             </DialogContent>
           </Dialog>
+
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/about" aria-label="About Page">
+              <Info className="h-5 w-5" />
+            </Link>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
