@@ -436,14 +436,16 @@ export default function DifferentiationCalculatorPage() {
         </CardHeader>
         
         <Tabs defaultValue="derivatives" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sticky top-[calc(var(--header-height,60px)+1px)] z-10 bg-card border-b">
-            <TabsTrigger value="derivatives" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
-              <FunctionSquare className="mr-2 h-5 w-5" /> Function Derivatives
-            </TabsTrigger>
-            <TabsTrigger value="des" className="py-3 text-md data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none rounded-none">
-               <Sigma className="mr-2 h-5 w-5" /> Differential Equations
-            </TabsTrigger>
-          </TabsList>
+          <div className="sticky top-[calc(var(--header-height,60px)+1px)] z-10 overflow-x-auto no-scrollbar border-b bg-card">
+              <TabsList className="inline-flex w-full min-w-max justify-start rounded-none bg-transparent p-0">
+                <TabsTrigger value="derivatives" className="whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-md font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none">
+                  <FunctionSquare className="mr-2 h-5 w-5" /> Function Derivatives
+                </TabsTrigger>
+                <TabsTrigger value="des" className="whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-md font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none">
+                   <Sigma className="mr-2 h-5 w-5" /> Differential Equations
+                </TabsTrigger>
+              </TabsList>
+          </div>
           
           <TabsContent value="derivatives" className="p-0">
             <CardContent className="p-6 space-y-6">

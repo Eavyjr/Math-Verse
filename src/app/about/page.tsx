@@ -58,9 +58,9 @@ export default function AboutPage() {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[19rem]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        <BentoCard className="md:col-span-2 row-span-2 p-6 [animation-delay:100ms]">
+        <BentoCard className="md:col-span-2 md:row-span-2 p-6 [animation-delay:100ms]">
           <CardHeader>
             <Dna className="h-10 w-10 text-accent mb-4" />
             <CardTitle className="text-3xl font-bold">Our Mission</CardTitle>
