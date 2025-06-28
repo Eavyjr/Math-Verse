@@ -136,10 +136,11 @@ export default function BasicAlgebraCalculatorPage() {
 
   const handleCopyLatex = () => {
     if (apiResponse?.result) {
-      navigator.clipboard.writeText(apiResponse.result).then(() => {
+      const latexToCopy = `$${apiResponse.result}$`;
+      navigator.clipboard.writeText(latexToCopy).then(() => {
         toast({
           title: "Copied to Clipboard",
-          description: "The LaTeX code for the result has been copied.",
+          description: "The LaTeX code has been copied.",
         });
       }).catch(err => {
         console.error('Failed to copy text: ', err);
