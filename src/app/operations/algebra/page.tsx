@@ -140,7 +140,7 @@ export default function BasicAlgebraCalculatorPage() {
       navigator.clipboard.writeText(latexToCopy).then(() => {
         toast({
           title: "Copied to Clipboard",
-          description: "The LaTeX code has been copied.",
+          description: "The LaTeX code for the result has been copied.",
         });
       }).catch(err => {
         console.error('Failed to copy text: ', err);
@@ -148,6 +148,24 @@ export default function BasicAlgebraCalculatorPage() {
           variant: "destructive",
           title: "Copy Failed",
           description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
+  };
+
+  const handleCopySteps = () => {
+    if (apiResponse?.steps) {
+      navigator.clipboard.writeText(apiResponse.steps).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "The solution steps have been copied.",
+        });
+      }).catch(err => {
+        console.error('Failed to copy steps: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy steps to the clipboard.",
         });
       });
     }
@@ -305,6 +323,11 @@ export default function BasicAlgebraCalculatorPage() {
                 </p>
               </CardContent>
               <CardFooter className="p-4 bg-secondary/50 border-t flex items-center justify-end gap-2">
+                {apiResponse.steps && (
+                  <Button variant="outline" size="sm" onClick={handleCopySteps}>
+                      <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Steps
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleCopyLatex}>
                     <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
                 </Button>
