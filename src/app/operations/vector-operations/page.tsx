@@ -2,9 +2,10 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import katex from 'katex';
 import "katex/dist/katex.min.css";
+import { toPng } from 'html-to-image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowLeft, Move3d, Calculator, Brain, XCircle, Info, Loader2, CheckCircle2, AlertTriangle, ClipboardCopy } from 'lucide-react';
+import { ArrowLeft, Move3d, Calculator, Brain, XCircle, Info, Loader2, CheckCircle2, AlertTriangle, ImageIcon } from 'lucide-react';
 import { handlePerformVectorOperationAction } from '@/app/actions';
 import type { VectorOperationInput, VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
 import { useToast } from '@/hooks/use-toast';
@@ -23,14 +24,13 @@ const renderMath = (mathString: string | number | number[] | undefined | null, d
   let latexString: string;
   if (Array.isArray(mathString)) {
     latexString = `\\begin{bmatrix} ${mathString.join(' \\\\ ')} \\end{bmatrix}`;
-    displayMode = true; // Always display mode for matrices/vectors from array
+    displayMode = true; 
   } else if (typeof mathString === 'number') {
     latexString = mathString.toString();
   } else {
     latexString = mathString.trim();
   }
   
-  // Remove existing delimiters if present, to avoid double-rendering issues
   if ((latexString.startsWith('\\(') && latexString.endsWith('\\)')) ||
       (latexString.startsWith('\\[') && latexString.endsWith('\\]'))) {
     latexString = latexString.substring(2, latexString.length - 2).trim();
@@ -79,6 +79,7 @@ export default function VectorOperationsPage() {
   const [apiResponse, setApiResponse] = useState<VectorOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resultCardRef = useRef<HTMLDivElement>(null);
 
   const operations: { value: VectorOperationInput['operation']; label: string; needsVectorB: boolean; needsScalar: boolean; }[] = [
     { value: "magnitudeA", label: "Magnitude of Vector A", needsVectorB: false, needsScalar: false },
@@ -92,10 +93,10 @@ export default function VectorOperationsPage() {
   ];
 
   const parseVectorString = (vecStr: string): number[] | null => {
-    if (!vecStr.trim()) return []; // Treat empty string as empty vector or allow AI to handle if required
+    if (!vecStr.trim()) return [];
     const parts = vecStr.split(/[,;\s]+/).map(s => s.trim()).filter(s => s !== '');
     const numbers = parts.map(Number);
-    if (parts.length > 0 && numbers.some(isNaN)) return null; // Invalid number found
+    if (parts.length > 0 && numbers.some(isNaN)) return null;
     return numbers;
   };
 
@@ -110,7 +111,7 @@ export default function VectorOperationsPage() {
       setError("Vector A contains invalid numbers. Please use comma, space, or semicolon separated numbers.");
       return;
     }
-    if (vectorA.length === 0 && selectedOperation !== 'scalarMultiplyA') { // Allow empty vector for scalar mult if scalar is also 0
+    if (vectorA.length === 0 && selectedOperation !== 'scalarMultiplyA') {
         setError("Vector A cannot be empty for this operation.");
         return;
     }
@@ -177,33 +178,35 @@ export default function VectorOperationsPage() {
     setError(null);
   };
   
-  const handleCopyLatex = () => {
-    if (apiResponse?.result !== undefined && apiResponse.result !== null) {
-      let latexString = '';
-      if (Array.isArray(apiResponse.result)) {
-        latexString = `$$\\begin{bmatrix} ${apiResponse.result.join(' \\\\ ')} \\end{bmatrix}$$`;
-      } else if (typeof apiResponse.result === 'number') {
-        latexString = `$${apiResponse.result.toString()}$`;
-      } else {
-        toast({ variant: "destructive", title: "Cannot Copy", description: "The result is a message, not a mathematical expression." });
-        return;
-      }
-      
-      navigator.clipboard.writeText(latexString).then(() => {
+  const handleExportAsPng = useCallback(() => {
+    if (resultCardRef.current === null) {
+      return;
+    }
+    toast({
+      title: "Exporting...",
+      description: "Please wait while the image is being generated.",
+    });
+
+    toPng(resultCardRef.current, { cacheBust: true, backgroundColor: 'white', pixelRatio: 2 })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `mathverse-vector-${apiResponse?.originalQuery.operation || 'result'}.png`;
+        link.href = dataUrl;
+        link.click();
         toast({
-          title: "Copied to Clipboard",
-          description: "The LaTeX code for the result has been copied.",
+            title: "Export Successful",
+            description: "Result card has been downloaded as a PNG image.",
         });
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
+      })
+      .catch((err) => {
+        console.error('Image export failed:', err);
         toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy text to the clipboard.",
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the result card as an image.",
         });
       });
-    }
-  };
+  }, [apiResponse, toast]);
 
   const currentOperation = operations.find(op => op.value === selectedOperation);
 
@@ -327,7 +330,7 @@ export default function VectorOperationsPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <Card className="mt-6 border-accent border-t-4 shadow-md">
+            <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
@@ -371,11 +374,9 @@ export default function VectorOperationsPage() {
                 )}
               </CardContent>
               <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                {typeof apiResponse.result !== 'string' && (
-                  <Button variant="outline" size="sm" onClick={handleCopyLatex}>
-                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
-                  </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
+                </Button>
               </CardFooter>
             </Card>
           )}

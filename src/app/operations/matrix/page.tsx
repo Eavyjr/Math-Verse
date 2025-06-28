@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import "katex/dist/katex.min.css";
+import { toPng } from 'html-to-image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, ImageIcon, Shapes, ClipboardCopy } from 'lucide-react';
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, ImageIcon, Shapes } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
@@ -68,20 +69,16 @@ const initialMatrix = () => [[0, 0], [0, 0]];
 const parseAIResult = (resultString: string): number[][] | number | string => {
     if (!resultString) return resultString;
     try {
-        // Attempt to parse as a JSON matrix first
         const parsed = JSON.parse(resultString);
         if (Array.isArray(parsed) && parsed.every(row => Array.isArray(row) && row.every(el => typeof el === 'number'))) {
             return parsed as number[][];
         }
     } catch (e) {
-      // Not a valid JSON matrix string, proceed to check if it's a number or just text
     }
-    // Check if it's a plain number
     const num = parseFloat(resultString);
     if (!isNaN(num) && isFinite(num) && num.toString().trim() === resultString.trim()) {
         return num;
     }
-    // Otherwise, treat it as a descriptive string (which might contain KaTeX for decompositions)
     return resultString; 
 };
 
@@ -107,6 +104,7 @@ export default function MatrixOperationsPage() {
 
   const [matrixAProperties, setMatrixAProperties] = useState<MatrixProperties | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const resultCardRef = useRef<HTMLDivElement>(null);
 
 
   const operations: { label: string; options: { value: MatrixOperationInput['operation']; label: string }[] }[] = [
@@ -181,7 +179,7 @@ export default function MatrixOperationsPage() {
   };
 
   const isZeroMatrixFunc = (matrix: number[][]): boolean => {
-    if (!matrix || matrix.length === 0) return true; // Or false depending on definition for empty
+    if (!matrix || matrix.length === 0) return true;
     return matrix.every(row => row.every(cell => cell === 0));
   };
 
@@ -213,7 +211,7 @@ export default function MatrixOperationsPage() {
 
     const width = canvas.width;
     const height = canvas.height;
-    ctx.clearRect(0, 0, width, height); // Clear canvas
+    ctx.clearRect(0, 0, width, height);
 
     if (!isMatrixA2x2) {
         ctx.font = "14px Arial";
@@ -227,7 +225,6 @@ export default function MatrixOperationsPage() {
     const originY = height / 2;
     const scale = 30; 
 
-    // Draw grid
     ctx.strokeStyle = 'hsl(var(--border))';
     ctx.lineWidth = 0.5;
     for (let x = -Math.floor(width / (2*scale)) * scale; x <= Math.floor(width / (2*scale)) * scale; x += scale) {
@@ -243,7 +240,6 @@ export default function MatrixOperationsPage() {
         ctx.stroke();
     }
 
-    // Draw axes
     ctx.strokeStyle = 'hsl(var(--foreground))';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -263,7 +259,7 @@ export default function MatrixOperationsPage() {
       ctx.beginPath();
       ctx.moveTo(originX, originY);
       const endX = originX + vec.x * scale;
-      const endY = originY - vec.y * scale; // Y is inverted
+      const endY = originY - vec.y * scale;
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
@@ -415,33 +411,35 @@ export default function MatrixOperationsPage() {
     setMatrixAProperties(null);
   };
 
-  const handleCopyLatex = () => {
-    if (apiResponse?.result) {
-      let latexToCopy = apiResponse.result;
-      const parsed = parseAIResult(apiResponse.result);
+  const handleExportAsPng = useCallback(() => {
+    if (resultCardRef.current === null) {
+      return;
+    }
+    toast({
+      title: "Exporting...",
+      description: "Please wait while the image is being generated.",
+    });
 
-      if (typeof parsed === 'number') {
-        latexToCopy = `$${parsed}$`;
-      } else if (Array.isArray(parsed)) {
-        latexToCopy = `$$${formatMatrixForKaTeX(parsed)}$$`;
-      }
-      // If it's a string, we assume it's pre-formatted (e.g., for decompositions) and copy as is.
-      
-      navigator.clipboard.writeText(latexToCopy).then(() => {
+    toPng(resultCardRef.current, { cacheBust: true, backgroundColor: 'white', pixelRatio: 2 })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `mathverse-matrix-${apiResponse?.operation || 'result'}.png`;
+        link.href = dataUrl;
+        link.click();
         toast({
-          title: "Copied to Clipboard",
-          description: "The result has been copied.",
+            title: "Export Successful",
+            description: "Result card has been downloaded as a PNG image.",
         });
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
+      })
+      .catch((err) => {
+        console.error('Image export failed:', err);
         toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy text to the clipboard.",
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the result card as an image.",
         });
       });
-    }
-  };
+  }, [apiResponse, toast]);
 
   const formatMatrixForKaTeX = (matrix: number[][]): string => {
     if (!matrix || matrix.length === 0) return "";
@@ -589,7 +587,7 @@ export default function MatrixOperationsPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <Card className="mt-6 border-accent border-t-4 shadow-md">
+            <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <Brain className="h-7 w-7 mr-2"/>
@@ -626,8 +624,8 @@ export default function MatrixOperationsPage() {
                 )}
               </CardContent>
                <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
-                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result
+                <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
                 </Button>
               </CardFooter>
             </Card>

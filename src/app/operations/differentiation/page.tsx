@@ -1,11 +1,12 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import "katex/dist/katex.min.css"; 
-import { create, all, type MathJsStatic, type EvalFunction } from 'mathjs';
+import { create, all, type MathJsStatic } from 'mathjs';
+import { toPng } from 'html-to-image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +16,12 @@ import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma, LineChart as LineChartIconLucide, ClipboardCopy } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma, LineChart as LineChartIconLucide, ClipboardCopy, ImageIcon } from 'lucide-react';
 import { handlePerformDifferentiationAction, handleSolveDifferentialEquationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; 
 import { Textarea } from '@/components/ui/textarea';
-import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line } from 'recharts';
+import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
 
@@ -84,7 +85,6 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
     str = str.substring(2, str.length - 2).trim();
   }
   
-  // Remove common dependent variable notation like y(x)= or f(x)=
   str = str.replace(/^[a-zA-Z]\((?:[a-zA-Z])\)\s*=\s*/, '');
   str = str.replace(/^[a-zA-Z]\s*=\s*/, '');
 
@@ -100,9 +100,7 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
            .replace(/\\cdot/g, '*')
            .replace(/\^/g, '^')
            .replace(/\\pi/g, 'pi');
-  // Attempt to handle constants like C, C1, C_1 for plotting purposes
-  // For plotting, we'll assume C=0 or C=1 if not specified
-  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)'); // Default C, C1, C_2 etc. to 0 for plotting
+  str = str.replace(/(?<![a-zA-Z0-9_])C(?:_?[0-9]+)?(?![a-zA-Z0-9_])/g, '(0)');
   return str;
 };
 
@@ -117,6 +115,9 @@ export default function DifferentiationCalculatorPage() {
   const [diffPreviewHtml, setDiffPreviewHtml] = useState<string>('');
   const [diffChartData, setDiffChartData] = useState<PlotDataItem[] | null>(null);
   const [diffPlotError, setDiffPlotError] = useState<string | null>(null);
+
+  const diffResultCardRef = useRef<HTMLDivElement>(null);
+  const deResultCardRef = useRef<HTMLDivElement>(null);
 
   const [deString, setDeString] = useState('');
   const [deDependentVar, setDeDependentVar] = useState('y');
@@ -251,7 +252,6 @@ export default function DifferentiationCalculatorPage() {
         for (let i = 0; i < points; i++) {
           const xVal = xMin + i * step;
           let solutionY: number | undefined = undefined;
-          // Pass common constant names to scope, defaulting to 0 or 1 for plotting
           const scope = { [plotVar]: xVal, C: 0, C1: 0, C2: 0, c:0, c1:0, c2:0 }; 
           
           try {
@@ -409,24 +409,27 @@ export default function DifferentiationCalculatorPage() {
     return latex;
   };
 
-  const handleCopyLatex = (latexString: string | null | undefined, type: string) => {
-    if (latexString) {
-      const latexToCopy = `$${latexString}$`;
-      navigator.clipboard.writeText(latexToCopy).then(() => {
-        toast({
-          title: "Copied to Clipboard",
-          description: `The LaTeX code for the ${type} has been copied.`,
-        });
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
-        toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy text to the clipboard.",
-        });
-      });
+  const handleExportAsPng = useCallback((ref: React.RefObject<HTMLDivElement>, filename: string) => {
+    if (ref.current === null) {
+      toast({ variant: "destructive", title: "Export Failed", description: "Result card element not found." });
+      return;
     }
-  };
+    toast({ title: "Exporting...", description: "Generating image, please wait." });
+
+    toPng(ref.current, { cacheBust: true, backgroundColor: 'white', pixelRatio: 2 })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
+        toast({ title: "Export Successful", description: `${filename} downloaded.` });
+      })
+      .catch((err) => {
+        console.error('Image export failed:', err);
+        toast({ variant: "destructive", title: "Export Failed", description: "Could not export the result as an image." });
+      });
+  }, [toast]);
+
 
   const diffChartConfig = {
     original: { label: `f(${variable})`, color: "hsl(var(--chart-1))" },
@@ -579,7 +582,7 @@ export default function DifferentiationCalculatorPage() {
               )}
 
               {diffApiResponse && !isDiffLoading && !diffError && (
-                <Card className="mt-6 border-accent border-t-4 shadow-md">
+                <Card className="mt-6 border-accent border-t-4 shadow-md" ref={diffResultCardRef}>
                   <CardHeader>
                     <CardTitle className="text-2xl flex items-center text-primary">
                       <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
@@ -649,8 +652,8 @@ export default function DifferentiationCalculatorPage() {
                                             <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
                                             <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
                                             <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                            <Line type="monotone" dataKey="original" stroke={diffChartConfig.original.color} strokeWidth={2} dot={false} name={diffChartConfig.original.label} connectNulls />
-                                            <Line type="monotone" dataKey="derivative" stroke={diffChartConfig.derivative.color} strokeWidth={2} dot={false} name={diffChartConfig.derivative.label} connectNulls />
+                                            <RechartsLine type="monotone" dataKey="original" stroke={diffChartConfig.original.color} strokeWidth={2} dot={false} name={diffChartConfig.original.label} connectNulls />
+                                            <RechartsLine type="monotone" dataKey="derivative" stroke={diffChartConfig.derivative.color} strokeWidth={2} dot={false} name={diffChartConfig.derivative.label} connectNulls />
                                           </LineChart>
                                         </ResponsiveContainer>
                                       </ChartContainer>
@@ -668,8 +671,8 @@ export default function DifferentiationCalculatorPage() {
                     )}
                   </CardContent>
                   <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                    <Button variant="outline" size="sm" onClick={() => handleCopyLatex(diffApiResponse.derivativeResult, "derivative")}>
-                      <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                    <Button variant="outline" size="sm" onClick={() => handleExportAsPng(diffResultCardRef, `mathverse-derivative.png`)}>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
                     </Button>
                   </CardFooter>
                 </Card>
@@ -796,7 +799,7 @@ export default function DifferentiationCalculatorPage() {
                 )}
                 
                 {deApiResponse && !isDeLoading && !deError && (
-                     <Card className="mt-6 border-accent border-t-4 shadow-md">
+                     <Card className="mt-6 border-accent border-t-4 shadow-md" ref={deResultCardRef}>
                         <CardHeader>
                             <CardTitle className="text-2xl flex items-center text-primary">
                                 <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
@@ -892,7 +895,7 @@ export default function DifferentiationCalculatorPage() {
                                                     <YAxis label={{ value: deApiResponse.originalQuery?.dependentVariable || 'y', angle: -90, position: 'insideLeft' }} />
                                                     <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
                                                     <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                                    <Line type="monotone" dataKey="deSolution" stroke={deChartConfig.deSolution.color} strokeWidth={2} dot={false} name={deChartConfig.deSolution.label} connectNulls />
+                                                    <RechartsLine type="monotone" dataKey="deSolution" stroke={deChartConfig.deSolution.color} strokeWidth={2} dot={false} name={deChartConfig.deSolution.label} connectNulls />
                                                   </LineChart>
                                                 </ResponsiveContainer>
                                               </ChartContainer>
@@ -910,12 +913,9 @@ export default function DifferentiationCalculatorPage() {
                             )}
                         </CardContent>
                         <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end gap-2">
-                           {deApiResponse.generalSolution && <Button variant="outline" size="sm" onClick={() => handleCopyLatex(deApiResponse.generalSolution, "general solution")}>
-                             <ClipboardCopy className="mr-2 h-4 w-4" /> Copy General Solution LaTeX
-                           </Button>}
-                           {deApiResponse.particularSolution && <Button variant="outline" size="sm" onClick={() => handleCopyLatex(deApiResponse.particularSolution, "particular solution")}>
-                             <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Particular Solution LaTeX
-                           </Button>}
+                           <Button variant="outline" size="sm" onClick={() => handleExportAsPng(deResultCardRef, `mathverse-de-solution.png`)}>
+                             <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
+                           </Button>
                         </CardFooter>
                     </Card>
                 )}
@@ -931,5 +931,3 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
-
-    

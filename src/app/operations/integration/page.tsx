@@ -1,11 +1,12 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import 'katex/dist/katex.min.css'; 
 import { create, all, type MathJsStatic } from 'mathjs';
+import { toPng } from 'html-to-image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +15,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb, ClipboardCopy } from 'lucide-react';
-import { handlePerformIntegrationAction } from '@/app/actions'; // This action now calls the direct Gemini flow
+import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb, ImageIcon } from 'lucide-react';
+import { handlePerformIntegrationAction } from '@/app/actions'; 
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
@@ -40,12 +41,10 @@ const renderMath = (latexString: string | undefined, displayMode: boolean = fals
   }
 };
 
-// Updated to match algebra/page.tsx's renderStepsContent
 const renderKatexEnabledContent = (stepsString: string | undefined | null): string => {
   if (!stepsString) return "";
   console.log("IntegrationPage renderKatexEnabledContent input:", stepsString);
 
-  // Regex to find \(...\) or \[...\] - using greedy .+? from algebra page
   const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g); 
   
   const htmlParts = parts.map((part, index) => {
@@ -57,7 +56,6 @@ const renderKatexEnabledContent = (stepsString: string | undefined | null): stri
         const latex = part.slice(2, -2);
         return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
       }
-      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
         console.error("IntegrationPage KaTeX steps rendering error for part:", part, e);
@@ -111,6 +109,7 @@ export default function IntegrationCalculatorPage() {
   const [apiResponse, setApiResponse] = useState<IntegrationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resultCardRef = useRef<HTMLDivElement>(null);
 
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [chartData, setChartData] = useState<PlotDataItem[] | null>(null);
@@ -261,7 +260,7 @@ export default function IntegrationCalculatorPage() {
       if (actionResult.error) {
         setError(actionResult.error);
       } else if (actionResult.data) {
-        console.log("Raw AI Steps Received:", actionResult.data.steps); // This log remains crucial
+        console.log("Raw AI Steps Received:", actionResult.data.steps);
         setApiResponse(actionResult.data);
       } else {
         setError('Received no data from the server. Please try again.');
@@ -285,24 +284,35 @@ export default function IntegrationCalculatorPage() {
     setPlotError(null);
   };
 
-  const handleCopyLatex = () => {
-    if (apiResponse?.integralResult) {
-      const latexToCopy = `$${apiResponse.integralResult}$`;
-      navigator.clipboard.writeText(latexToCopy).then(() => {
+  const handleExportAsPng = useCallback(() => {
+    if (resultCardRef.current === null) {
+      return;
+    }
+    toast({
+      title: "Exporting...",
+      description: "Please wait while the image is being generated.",
+    });
+
+    toPng(resultCardRef.current, { cacheBust: true, backgroundColor: 'white', pixelRatio: 2 })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `mathverse-integration-${apiResponse?.originalQuery.functionString || 'result'}.png`;
+        link.href = dataUrl;
+        link.click();
         toast({
-          title: "Copied to Clipboard",
-          description: "The LaTeX code for the integral result has been copied.",
+            title: "Export Successful",
+            description: "Result card has been downloaded as a PNG image.",
         });
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
+      })
+      .catch((err) => {
+        console.error('Image export failed:', err);
         toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy text to the clipboard.",
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the result card as an image.",
         });
       });
-    }
-  };
+  }, [apiResponse, toast]);
   
   const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
     if (!query) return "";
@@ -485,7 +495,7 @@ export default function IntegrationCalculatorPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <Card className="mt-6 border-accent border-t-4 shadow-md">
+            <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
@@ -593,8 +603,8 @@ export default function IntegrationCalculatorPage() {
                 )}
               </CardContent>
               <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
-                  <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                  <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
                 </Button>
               </CardFooter>
             </Card>
@@ -609,4 +619,3 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import ExpressionInputForm from '@/components/math-genius/expression-input-form';
 import AiGuidance from '@/components/math-genius/ai-guidance';
@@ -11,15 +11,20 @@ import MathWorkstationTabs from '@/components/landing/math-workstation-tabs';
 import FunTriviaSection from '@/components/landing/fun-trivia-section';
 import NewsletterForm from '@/components/landing/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Brain, Layers, ArrowRight, TestTubeDiagonal } from 'lucide-react'; // Added Layers, ArrowRight, TestTubeDiagonal
+import { AlertCircle, Brain, Layers, ArrowRight, TestTubeDiagonal, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import Link from 'next/link';
+import { toPng } from 'html-to-image';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function HomePage() {
   const [aiResponse, setAiResponse] = useState<ClassifyExpressionOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resultCardRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const handleAiResult = (data: ClassifyExpressionOutput | null) => {
     if (data) {
@@ -45,6 +50,40 @@ export default function HomePage() {
   const handleAiLoading = (loadingState: boolean) => {
     setIsLoading(loadingState);
   };
+
+  const handleExportAsPng = useCallback(() => {
+    if (resultCardRef.current === null) {
+      return;
+    }
+    toast({
+      title: "Exporting...",
+      description: "Please wait while the image is being generated.",
+    });
+
+    toPng(resultCardRef.current, { 
+        cacheBust: true, 
+        backgroundColor: 'white',
+        pixelRatio: 2
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `mathverse-ai-analysis.png`;
+        link.href = dataUrl;
+        link.click();
+        toast({
+            title: "Export Successful",
+            description: "Result has been downloaded as a PNG image.",
+        });
+      })
+      .catch((err) => {
+        console.error('Oops, something went wrong!', err);
+        toast({
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the result as an image.",
+        });
+      });
+  }, [toast]);
 
   return (
     <div className="flex flex-col items-center space-y-12 md:space-y-16">
@@ -95,7 +134,7 @@ export default function HomePage() {
             </Alert>
           )}
           {aiResponse && !isLoading && !error && (
-            <div className={cn("mt-6 space-y-6", aiResponse ? 'fade-in-content' : '')}>
+            <div className={cn("mt-6 space-y-6", aiResponse ? 'fade-in-content' : '')} ref={resultCardRef}>
               <AiGuidance 
                 classification={aiResponse.classification} 
                 solutionStrategies={aiResponse.solutionStrategies} 
@@ -104,6 +143,9 @@ export default function HomePage() {
                 expression={aiResponse.originalExpression} 
                 classification={aiResponse.classification} 
               />
+               <Button variant="outline" size="sm" onClick={handleExportAsPng} className="w-full">
+                    <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
+                </Button>
             </div>
           )}
         </div>
