@@ -1,17 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import katex from 'katex';
 import "katex/dist/katex.min.css";
+import { toPng } from 'html-to-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info, ClipboardCopy } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info, ImageIcon } from 'lucide-react';
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,7 @@ export default function BasicAlgebraCalculatorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const resultCardRef = useRef<HTMLDivElement>(null);
 
   const handleProcessExpression = async () => {
     if (!expression.trim()) {
@@ -134,42 +136,39 @@ export default function BasicAlgebraCalculatorPage() {
     setError(null);
   };
 
-  const handleCopyLatex = () => {
-    if (apiResponse?.result) {
-      const latexToCopy = `$${apiResponse.result}$`;
-      navigator.clipboard.writeText(latexToCopy).then(() => {
-        toast({
-          title: "Copied to Clipboard",
-          description: "The LaTeX code for the result has been copied.",
-        });
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
-        toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy text to the clipboard.",
-        });
-      });
+  const handleExportAsPng = useCallback(() => {
+    if (resultCardRef.current === null) {
+      return;
     }
-  };
+    toast({
+      title: "Exporting...",
+      description: "Please wait while the image is being generated.",
+    });
 
-  const handleCopySteps = () => {
-    if (apiResponse?.steps) {
-      navigator.clipboard.writeText(apiResponse.steps).then(() => {
+    toPng(resultCardRef.current, { 
+        cacheBust: true, 
+        backgroundColor: 'white',
+        pixelRatio: 2 // For higher resolution output
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `mathverse-algebra-${apiResponse?.operation || 'result'}.png`;
+        link.href = dataUrl;
+        link.click();
         toast({
-          title: "Copied to Clipboard",
-          description: "The solution steps have been copied.",
+            title: "Export Successful",
+            description: "Result card has been downloaded as a PNG image.",
         });
-      }).catch(err => {
-        console.error('Failed to copy steps: ', err);
+      })
+      .catch((err) => {
+        console.error('Oops, something went wrong!', err);
         toast({
-          variant: "destructive",
-          title: "Copy Failed",
-          description: "Could not copy steps to the clipboard.",
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the result card as an image.",
         });
       });
-    }
-  };
+  }, [apiResponse, toast]);
 
   return (
     <div className="space-y-8">
@@ -275,7 +274,7 @@ export default function BasicAlgebraCalculatorPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <Card className={cn("mt-6 border-accent border-t-4 shadow-md", apiResponse ? 'fade-in-content' : '')}>
+            <Card ref={resultCardRef} className={cn("mt-6 border-accent border-t-4 shadow-md", apiResponse ? 'fade-in-content' : '')}>
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center text-primary">
                   <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
@@ -323,13 +322,8 @@ export default function BasicAlgebraCalculatorPage() {
                 </p>
               </CardContent>
               <CardFooter className="p-4 bg-secondary/50 border-t flex items-center justify-end gap-2">
-                {apiResponse.steps && (
-                  <Button variant="outline" size="sm" onClick={handleCopySteps}>
-                      <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Steps
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
-                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
                 </Button>
               </CardFooter>
             </Card>
