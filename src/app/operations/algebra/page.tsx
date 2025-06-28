@@ -11,10 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Brain, ArrowLeft, XCircle, Info, ClipboardCopy } from 'lucide-react';
 import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast";
 
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
@@ -82,6 +83,7 @@ export default function BasicAlgebraCalculatorPage() {
   const [apiResponse, setApiResponse] = useState<AlgebraicOperationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleProcessExpression = async () => {
     if (!expression.trim()) {
@@ -130,6 +132,24 @@ export default function BasicAlgebraCalculatorPage() {
     setSelectedOperation(null); 
     setApiResponse(null);
     setError(null);
+  };
+
+  const handleCopyLatex = () => {
+    if (apiResponse?.result) {
+      navigator.clipboard.writeText(apiResponse.result).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "The LaTeX code for the result has been copied.",
+        });
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
   };
 
   return (
@@ -283,6 +303,11 @@ export default function BasicAlgebraCalculatorPage() {
                   Mathematical expressions are rendered using KaTeX.
                 </p>
               </CardContent>
+              <CardFooter className="p-4 bg-secondary/50 border-t flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
+                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                </Button>
+              </CardFooter>
             </Card>
           )}
         </CardContent>
