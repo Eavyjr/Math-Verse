@@ -14,11 +14,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Sigma, ArrowLeft, XCircle, Info, Brain, LineChart as LineChartIconLucide, Lightbulb, ClipboardCopy } from 'lucide-react';
 import { handlePerformIntegrationAction } from '@/app/actions'; // This action now calls the direct Gemini flow
 import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-integration-flow';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { useToast } from "@/hooks/use-toast";
 
 const math: MathJsStatic = create(all);
 
@@ -100,6 +101,7 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
 
 
 export default function IntegrationCalculatorPage() {
+  const { toast } = useToast();
   const [functionString, setFunctionString] = useState('');
   const [variable, setVariable] = useState('x');
   const [integralType, setIntegralType] = useState<'indefinite' | 'definite'>('indefinite');
@@ -281,6 +283,25 @@ export default function IntegrationCalculatorPage() {
     setError(null);
     setChartData(null);
     setPlotError(null);
+  };
+
+  const handleCopyLatex = () => {
+    if (apiResponse?.integralResult) {
+      const latexToCopy = `$${apiResponse.integralResult}$`;
+      navigator.clipboard.writeText(latexToCopy).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "The LaTeX code for the integral result has been copied.",
+        });
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
   };
   
   const getOriginalQueryAsLatex = (query: IntegrationInput | undefined): string => {
@@ -570,11 +591,12 @@ export default function IntegrationCalculatorPage() {
                     </AccordionItem>
                   </Accordion>
                 )}
-                
-                <p className="mt-4 text-xs text-muted-foreground italic">
-                  Mathematical expressions are rendered using KaTeX. Integration performed by AI.
-                </p>
               </CardContent>
+              <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
+                  <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                </Button>
+              </CardFooter>
             </Card>
           )}
         </CardContent>

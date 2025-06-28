@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, ImageIcon, Shapes } from 'lucide-react';
+import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma, Ratio, Brain, XCircle, Info, Loader2, Activity, ImageIcon, Shapes, ClipboardCopy } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
@@ -415,6 +415,34 @@ export default function MatrixOperationsPage() {
     setMatrixAProperties(null);
   };
 
+  const handleCopyLatex = () => {
+    if (apiResponse?.result) {
+      let latexToCopy = apiResponse.result;
+      const parsed = parseAIResult(apiResponse.result);
+
+      if (typeof parsed === 'number') {
+        latexToCopy = `$${parsed}$`;
+      } else if (Array.isArray(parsed)) {
+        latexToCopy = `$$${formatMatrixForKaTeX(parsed)}$$`;
+      }
+      // If it's a string, we assume it's pre-formatted (e.g., for decompositions) and copy as is.
+      
+      navigator.clipboard.writeText(latexToCopy).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "The result has been copied.",
+        });
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
+  };
+
   const formatMatrixForKaTeX = (matrix: number[][]): string => {
     if (!matrix || matrix.length === 0) return "";
     const rows = matrix.map(row => row.join(' & '));
@@ -596,10 +624,12 @@ export default function MatrixOperationsPage() {
                     </AccordionItem>
                   </Accordion>
                 )}
-                 <p className="mt-4 text-xs text-muted-foreground italic">
-                  Mathematical expressions are rendered using KaTeX.
-                </p>
               </CardContent>
+               <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                <Button variant="outline" size="sm" onClick={handleCopyLatex}>
+                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result
+                </Button>
+              </CardFooter>
             </Card>
           )}
           
@@ -644,4 +674,3 @@ export default function MatrixOperationsPage() {
     </div>
   );
 }
-

@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowLeft, Move3d, Calculator, Brain, XCircle, Info, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Move3d, Calculator, Brain, XCircle, Info, Loader2, CheckCircle2, AlertTriangle, ClipboardCopy } from 'lucide-react';
 import { handlePerformVectorOperationAction } from '@/app/actions';
 import type { VectorOperationInput, VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
 import { useToast } from '@/hooks/use-toast';
@@ -177,6 +177,34 @@ export default function VectorOperationsPage() {
     setError(null);
   };
   
+  const handleCopyLatex = () => {
+    if (apiResponse?.result !== undefined && apiResponse.result !== null) {
+      let latexString = '';
+      if (Array.isArray(apiResponse.result)) {
+        latexString = `$$\\begin{bmatrix} ${apiResponse.result.join(' \\\\ ')} \\end{bmatrix}$$`;
+      } else if (typeof apiResponse.result === 'number') {
+        latexString = `$${apiResponse.result.toString()}$`;
+      } else {
+        toast({ variant: "destructive", title: "Cannot Copy", description: "The result is a message, not a mathematical expression." });
+        return;
+      }
+      
+      navigator.clipboard.writeText(latexString).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: "The LaTeX code for the result has been copied.",
+        });
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
+  };
+
   const currentOperation = operations.find(op => op.value === selectedOperation);
 
   return (
@@ -341,10 +369,14 @@ export default function VectorOperationsPage() {
                     </AccordionItem>
                   </Accordion>
                 )}
-                <p className="mt-4 text-xs text-muted-foreground italic">
-                  Mathematical expressions are rendered using KaTeX.
-                </p>
               </CardContent>
+              <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                {typeof apiResponse.result !== 'string' && (
+                  <Button variant="outline" size="sm" onClick={handleCopyLatex}>
+                    <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                  </Button>
+                )}
+              </CardFooter>
             </Card>
           )}
         </CardContent>
@@ -357,4 +389,3 @@ export default function VectorOperationsPage() {
     </div>
   );
 }
-

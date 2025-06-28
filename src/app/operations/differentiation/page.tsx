@@ -11,17 +11,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
+import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma, LineChart as LineChartIconLucide } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, ArrowLeft, XCircle, Info, Brain, Ratio, FunctionSquare, PlusCircle, Trash2, Sigma, LineChart as LineChartIconLucide, ClipboardCopy } from 'lucide-react';
 import { handlePerformDifferentiationAction, handleSolveDifferentialEquationAction } from '@/app/actions';
 import type { DifferentiationInput, DifferentiationOutput } from '@/ai/flows/perform-differentiation-flow';
 import type { DESolutionInput, DESolutionOutput } from '@/ai/flows/solve-differential-equation-flow'; 
 import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { useToast } from "@/hooks/use-toast";
 
 const math: MathJsStatic = create(all);
 
@@ -106,6 +107,7 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
 };
 
 export default function DifferentiationCalculatorPage() {
+  const { toast } = useToast();
   const [functionString, setFunctionString] = useState('');
   const [variable, setVariable] = useState('x');
   const [order, setOrder] = useState<number>(1);
@@ -407,6 +409,25 @@ export default function DifferentiationCalculatorPage() {
     return latex;
   };
 
+  const handleCopyLatex = (latexString: string | null | undefined, type: string) => {
+    if (latexString) {
+      const latexToCopy = `$${latexString}$`;
+      navigator.clipboard.writeText(latexToCopy).then(() => {
+        toast({
+          title: "Copied to Clipboard",
+          description: `The LaTeX code for the ${type} has been copied.`,
+        });
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({
+          variant: "destructive",
+          title: "Copy Failed",
+          description: "Could not copy text to the clipboard.",
+        });
+      });
+    }
+  };
+
   const diffChartConfig = {
     original: { label: `f(${variable})`, color: "hsl(var(--chart-1))" },
     derivative: { label: `f'(${variable})`, color: "hsl(var(--chart-2))" },
@@ -645,11 +666,12 @@ export default function DifferentiationCalculatorPage() {
                         </AccordionItem>
                       </Accordion>
                     )}
-                    
-                    <p className="mt-4 text-xs text-muted-foreground italic">
-                      Mathematical expressions are rendered using KaTeX.
-                    </p>
                   </CardContent>
+                  <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                    <Button variant="outline" size="sm" onClick={() => handleCopyLatex(diffApiResponse.derivativeResult, "derivative")}>
+                      <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Result LaTeX
+                    </Button>
+                  </CardFooter>
                 </Card>
               )}
             </CardContent>
@@ -886,11 +908,15 @@ export default function DifferentiationCalculatorPage() {
                                 </AccordionItem>
                             </Accordion>
                             )}
-                            
-                            <p className="mt-4 text-xs text-muted-foreground italic">
-                                Mathematical expressions are rendered using KaTeX. Solution quality depends on AI interpretation.
-                            </p>
                         </CardContent>
+                        <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end gap-2">
+                           {deApiResponse.generalSolution && <Button variant="outline" size="sm" onClick={() => handleCopyLatex(deApiResponse.generalSolution, "general solution")}>
+                             <ClipboardCopy className="mr-2 h-4 w-4" /> Copy General Solution LaTeX
+                           </Button>}
+                           {deApiResponse.particularSolution && <Button variant="outline" size="sm" onClick={() => handleCopyLatex(deApiResponse.particularSolution, "particular solution")}>
+                             <ClipboardCopy className="mr-2 h-4 w-4" /> Copy Particular Solution LaTeX
+                           </Button>}
+                        </CardFooter>
                     </Card>
                 )}
             </CardContent>
