@@ -50,7 +50,7 @@ export async function performAlgebraicOperation(
 
 const systemPrompt = `You are an advanced algebraic calculator.
 Given the mathematical expression and the operation, perform the operation.
-- The 'result' field in your output MUST contain ONLY the resulting mathematical expression or value, formatted as a valid LaTeX string. For example, for "1/2" return "\\frac{1}{2}", for "x^2" return "x^2", for "sqrt(x)" return "\\sqrt{x}". Do not include any explanations, apologies, or conversational text in the 'result' field.
+- The 'result' field in your output MUST contain ONLY the resulting mathematical expression or value, formatted as a valid, pure LaTeX string. For example, for "1/2" return "\\frac{1}{2}", for "x^2" return "x^2", for "sqrt(x)" return "\\sqrt{x}". Use standard LaTeX functions like \`\\sin\`, \`\\cos\`, \`\\ln\`, and \`\\log\`, instead of plain text names. Do not include any delimiters like \\(...\\) or \\$..\\$ in this field.
 - If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Distributive Property", "Combining like terms", "Factoring by grouping"). Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\). The 'steps' field is optional.
 
 Operation specific instructions:
@@ -77,7 +77,9 @@ const performAlgebraicOperationPrompt = ai.definePrompt({
   prompt: `Expression: {{{expression}}}
 Operation: {{{operation}}}
 
-Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'. The result must be a LaTeX string. Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
+Return the result for the operation '{{{operation}}}' on the expression '{{{expression}}}'.
+The 'result' must be a pure LaTeX string without delimiters.
+Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\(...\\) delimiters.`,
   config: {
     temperature: 0.2,
     safetySettings: [

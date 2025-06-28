@@ -38,8 +38,8 @@ Input Details:
 Output Requirements (Provide all fields if possible, use null for a field if not applicable or cannot be determined):
 1.  **classification**: Classify the DE (e.g., "First-Order Separable", "Second-Order Linear Homogeneous with Constant Coefficients").
 2.  **solutionMethod**: State the primary method used (e.g., "Separation of Variables", "Integrating Factor", "Method of Undetermined Coefficients").
-3.  **generalSolution**: Provide the general solution in LaTeX format. Include constants (C, C1, C2, etc.) as needed. Example: "y(x) = C e^x".
-4.  **particularSolution**: If initial conditions are given AND a unique particular solution is found, provide it in LaTeX format. Example: "y(x) = 2e^x - x". If no ICs, or if they don't lead to a unique solution, this can be null.
+3.  **generalSolution**: Provide the general solution in LaTeX format. Use standard LaTeX functions like \`\\sin\`, \`\\cos\`, \`\\ln\`, etc. Include constants like C, C1, C2 as needed. Example: "y(x) = C e^x".
+4.  **particularSolution**: If initial conditions are given AND a unique particular solution is found, provide it in LaTeX format. Example: "y(x) = 2e^x - x".
 5.  **steps**: Provide a comprehensive, step-by-step derivation of the solution, from start to finish.
     *   Start from identifying the equation type and method.
     *   Clearly state the mathematical rule, definition, or principle applied at each stage (e.g., "Integrating both sides...", "Applying the integrating factor \\(e^{\\int P(x)dx}\\)...", "Finding roots of the characteristic equation...").
@@ -113,4 +113,3 @@ export async function solveDifferentialEquation(input: DESolutionInput): Promise
   
   return {...output, originalQuery: input };
 }
-
