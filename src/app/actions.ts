@@ -1,6 +1,9 @@
 
 'use server';
 
+import { z } from 'zod';
+import { updateProfile, type User } from 'firebase/auth';
+import { updateProfileSchema, type UpdateProfileFormData } from '@/lib/schemas';
 import { classifyExpression, type ClassifyExpressionInput, type ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
 import { performAlgebraicOperation, type AlgebraicOperationInput, type AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { performIntegration, type IntegrationInput, type IntegrationOutput } from '@/ai/flows/perform-integration-flow';
@@ -530,5 +533,39 @@ export async function fetchWolframAlphaStepsAction(
         errorMessage = 'An API service quota may have been exceeded.';
     }
     return { data: enhancedResultData, error: errorMessage };
+  }
+}
+
+export async function handleUpdateProfileAction(
+  user: User,
+  data: UpdateProfileFormData
+): Promise<ActionResult<{ success: boolean }>> {
+  if (!user) {
+    return { data: null, error: 'You must be signed in to update your profile.' };
+  }
+  
+  try {
+    const validatedData = updateProfileSchema.parse(data);
+    await updateProfile(user, {
+      displayName: validatedData.fullName,
+    });
+    return { data: { success: true }, error: null };
+  } catch (e: any) {
+    console.error('Error updating profile:', e);
+    let errorMessage = 'An unexpected error occurred while updating your profile.';
+    if (e instanceof z.ZodError) {
+        errorMessage = e.errors.map(err => err.message).join(', ');
+    } else if (e.code) { // Firebase auth error
+        switch (e.code) {
+            case 'auth/requires-recent-login':
+                errorMessage = 'This action is sensitive and requires a recent login. Please sign out and sign back in to continue.';
+                break;
+            default:
+                errorMessage = e.message;
+        }
+    } else if (e instanceof Error) {
+        errorMessage = e.message;
+    }
+    return { data: null, error: errorMessage };
   }
 }

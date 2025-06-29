@@ -15,3 +15,9 @@ export const signInSchema = z.object({
 });
 
 export type SignInFormData = z.infer<typeof signInSchema>;
+
+export const updateProfileSchema = z.object({
+  fullName: z.string().min(1, 'Full name cannot be empty.').max(50, 'Full name must be 50 characters or less.'),
+});
+
+export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>;

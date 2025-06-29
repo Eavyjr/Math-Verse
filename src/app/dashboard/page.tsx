@@ -81,8 +81,8 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mb-2">
                 Manage your profile and preferences.
               </p>
-              <Button variant="link" disabled className="p-0 h-auto text-muted-foreground">
-                Manage Account (Coming Soon)
+              <Button asChild variant="link" className="p-0 h-auto">
+                <Link href="/dashboard/profile">Manage Account</Link>
               </Button>
             </CardContent>
           </Card>
