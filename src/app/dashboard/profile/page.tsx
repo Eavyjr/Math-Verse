@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, UserCircle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -77,12 +78,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto max-w-2xl py-8">
       <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-primary hover:underline mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Dashboard
       </Link>
-       <Card className="shadow-lg max-w-2xl mx-auto">
+       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl flex items-center gap-3">
             <UserCircle className="h-8 w-8 text-primary" />

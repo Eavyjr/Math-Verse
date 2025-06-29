@@ -67,7 +67,7 @@ export default function DashboardPage() {
                 Quickly access your favorite math tools.
               </p>
               <Button asChild variant="link" className="p-0 h-auto">
-                <Link href="/">Go to Workstations</Link>
+                <Link href="/workstations">Go to Workstations</Link>
               </Button>
             </CardContent>
           </Card>
