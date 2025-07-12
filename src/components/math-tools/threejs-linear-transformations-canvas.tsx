@@ -71,9 +71,9 @@ const ThreejsLinearTransformationsCanvas: React.FC<ThreejsLinearTransformationsC
 
     // === Initial Vectors Setup ===
     const basisVectorsData = [
-      { dir: [1, 0, 0] as [number,number,number], color: 0xff0000, transformedColor: 0xff9999, label: "i" },
-      { dir: [0, 1, 0] as [number,number,number], color: 0x00ff00, transformedColor: 0x99ff99, label: "j" },
-      { dir: [0, 0, 1] as [number,number,number], color: 0x0000ff, transformedColor: 0x9999ff, label: "k" },
+      { dir: [1, 0, 0] as [number,number,number], color: "hsl(var(--chart-1))", transformedColor: '#FFBABA', label: "i" },
+      { dir: [0, 1, 0] as [number,number,number], color: "hsl(var(--chart-2))", transformedColor: '#B9F6CA', label: "j" },
+      { dir: [0, 0, 1] as [number,number,number], color: "hsl(var(--chart-4))", transformedColor: '#BBDEFB', label: "k" },
     ];
 
     originalArrowsRef.current.forEach(arrow => scene.remove(arrow));

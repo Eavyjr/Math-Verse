@@ -12,4 +12,3 @@ import '@/ai/flows/perform-matrix-operation.ts';
 import '@/ai/flows/math-chatbot-flow.ts';
 import '@/ai/flows/perform-vector-operation.ts';
 import '@/ai/flows/preprocess-wolfram-query-flow.ts';
-// Removed: import '@/ai/flows/explain-wolfram-steps-flow.ts';

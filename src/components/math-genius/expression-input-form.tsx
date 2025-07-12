@@ -9,44 +9,48 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { handleClassifyExpressionAction } from '@/app/actions';
-import type { ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
 import { Loader2 } from 'lucide-react';
+import { useGlobalStore, shallow } from '@/lib/store';
 
 const formSchema = z.object({
   expression: z.string().min(1, 'Expression cannot be empty.'),
 });
 type FormData = z.infer<typeof formSchema>;
 
-interface ExpressionInputFormProps {
-  onResult: (data: ClassifyExpressionOutput | null) => void;
-  onError: (error: string | null) => void;
-  onLoading: (loading: boolean) => void;
-  isLoading: boolean;
-}
 
-export default function ExpressionInputForm({ onResult, onError, onLoading, isLoading }: ExpressionInputFormProps) {
+export default function ExpressionInputForm() {
+  const { setAiResponse, setIsLoading, setError, isLoading } = useGlobalStore(
+    (state) => ({
+      setAiResponse: state.setAiResponse,
+      setIsLoading: state.setIsLoading,
+      setError: state.setError,
+      isLoading: state.isLoading
+    }),
+    shallow
+  );
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { expression: '' },
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    onLoading(true);
-    onError(null); 
-    onResult(null); 
+    setIsLoading(true);
+    setError(null); 
+    setAiResponse(null); 
     
     console.log("ExpressionInputForm: Submitting expression:", data.expression);
     const actionResult = await handleClassifyExpressionAction(data.expression);
     console.log("ExpressionInputForm: Received actionResult:", actionResult);
 
     if (actionResult.error) {
-      onError(actionResult.error);
+      setError(actionResult.error);
     } else if (actionResult.data) {
-      onResult(actionResult.data);
+      setAiResponse(actionResult.data);
     } else {
-      onError("An unexpected issue occurred. No data or error received from the classifier.");
+      setError("An unexpected issue occurred. No data or error received from the classifier.");
     }
-    onLoading(false);
+    setIsLoading(false);
   };
 
   return (

@@ -1,12 +1,11 @@
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import ExpressionInputForm from '@/components/math-genius/expression-input-form';
 import AiGuidance from '@/components/math-genius/ai-guidance';
 import VisualizationPlaceholder from '@/components/math-genius/visualization-placeholder';
-import type { ClassifyExpressionOutput } from '@/ai/flows/classify-expression';
 import MathWorkstationTabs from '@/components/landing/math-workstation-tabs';
 import FunTriviaSection from '@/components/landing/fun-trivia-section';
 import NewsletterForm from '@/components/landing/newsletter-form';
@@ -17,40 +16,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
+import { useGlobalStore, shallow } from '@/lib/store';
 
 
 export default function HomePage() {
-  const [aiResponse, setAiResponse] = useState<ClassifyExpressionOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    aiResponse, 
+    setAiResponse, 
+    isLoading, 
+    setIsLoading, 
+    error, 
+    setError 
+  } = useGlobalStore(
+    (state) => ({
+      aiResponse: state.aiResponse,
+      setAiResponse: state.setAiResponse,
+      isLoading: state.isLoading,
+      setIsLoading: state.setIsLoading,
+      error: state.error,
+      setError: state.setError
+    }),
+    shallow
+  );
+
   const resultCardRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  const handleAiResult = (data: ClassifyExpressionOutput | null) => {
-    if (data) {
-      console.log("HomePage received AI result:", data);
-      setAiResponse(data);
-      setError(null);
-    } else {
-      console.log("HomePage received null data for AI result. Clearing previous response.");
-      setAiResponse(null); 
-    }
-  };
-
-  const handleAiError = (errorMessage: string | null) => {
-    if (errorMessage) {
-      console.error("HomePage received error:", errorMessage);
-    } else {
-      console.log("HomePage: AI error state cleared.");
-    }
-    setError(errorMessage);
-    setAiResponse(null); 
-  };
-
-  const handleAiLoading = (loadingState: boolean) => {
-    setIsLoading(loadingState);
-  };
-
+  
   const handleExportAsPng = useCallback(() => {
     if (resultCardRef.current === null) {
       return;
@@ -115,12 +106,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-semibold text-center text-primary flex items-center justify-center gap-2">
             <Brain className="h-7 w-7" /> Quick AI Classifier
           </h2>
-          <ExpressionInputForm 
-            onResult={handleAiResult} 
-            onError={handleAiError}
-            onLoading={handleAiLoading}
-            isLoading={isLoading}
-          />
+          <ExpressionInputForm />
           {isLoading && (
             <div className="mt-4 text-center text-muted-foreground">
               AI is classifying your expression...
@@ -134,15 +120,17 @@ export default function HomePage() {
             </Alert>
           )}
           {aiResponse && !isLoading && !error && (
-            <div className={cn("mt-6 space-y-6", aiResponse ? 'fade-in-content' : '')} ref={resultCardRef}>
-              <AiGuidance 
-                classification={aiResponse.classification} 
-                solutionStrategies={aiResponse.solutionStrategies} 
-              />
-              <VisualizationPlaceholder 
-                expression={aiResponse.originalExpression} 
-                classification={aiResponse.classification} 
-              />
+            <div className={cn("mt-6 space-y-6", aiResponse ? 'fade-in-content' : '')}>
+                <div ref={resultCardRef} className="bg-card p-4 rounded-lg">
+                    <AiGuidance 
+                    classification={aiResponse.classification} 
+                    solutionStrategies={aiResponse.solutionStrategies} 
+                    />
+                    <VisualizationPlaceholder 
+                    expression={aiResponse.originalExpression} 
+                    classification={aiResponse.classification} 
+                    />
+                </div>
                <Button variant="outline" size="sm" onClick={handleExportAsPng} className="w-full">
                     <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
                 </Button>

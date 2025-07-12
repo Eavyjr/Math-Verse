@@ -455,10 +455,10 @@ export async function fetchWolframAlphaStepsAction(
     return { data: enhancedResultData, error: 'Expression cannot be empty.' };
   }
 
-  const WOLFRAM_APP_ID = process.env.WOLFRAM_ALPHA_APP_ID || 'LKRWWW-KW2L4V2652'; // Default public test key
+  const WOLFRAM_APP_ID = process.env.WOLFRAM_ALPHA_APP_ID;
   if (!WOLFRAM_APP_ID) {
-    console.error("fetchWolframAlphaStepsAction: WOLFRAM_ALPHA_APP_ID is not set.");
-    return { data: enhancedResultData, error: "WolframAlpha App ID is not configured on the server." };
+    console.error("fetchWolframAlphaStepsAction: WOLFRAM_ALPHA_APP_ID is not set in environment variables.");
+    return { data: enhancedResultData, error: "The WolframAlpha feature is not configured on the server. Please contact the administrator." };
   }
 
   try {
