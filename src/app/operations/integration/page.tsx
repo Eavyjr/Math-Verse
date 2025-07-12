@@ -3,10 +3,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import katex from 'katex';
-import 'katex/dist/katex.min.css'; 
-import { create, all, type MathJsStatic } from 'mathjs';
 import { toPng } from 'html-to-image';
+import { create, all, type MathJsStatic } from 'mathjs';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,52 +19,9 @@ import type { IntegrationInput, IntegrationOutput } from '@/ai/flows/perform-int
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
+import KatexRenderer from '@/components/math-tools/katex-renderer';
 
 const math: MathJsStatic = create(all);
-
-const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
-  let cleanLatexString = latexString.trim();
-  
-  try {
-    return katex.renderToString(cleanLatexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-      output: 'html', 
-      macros: {"\\dd": "\\mathrm{d}"} 
-    });
-  } catch (e) {
-    console.error("Katex rendering error:", e, "Original string:", latexString);
-    return latexString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-};
-
-const renderKatexEnabledContent = (stepsString: string | undefined | null): string => {
-  if (!stepsString) return "";
-  console.log("IntegrationPage renderKatexEnabledContent input:", stepsString);
-
-  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g); 
-  
-  const htmlParts = parts.map((part, index) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("IntegrationPage KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    }
-  });
-  const finalHtml = htmlParts.join('');
-  console.log("IntegrationPage renderKatexEnabledContent output HTML:", finalHtml);
-  return finalHtml;
-};
-
 
 interface PlotDataItem {
   x: number;
@@ -126,7 +81,7 @@ export default function IntegrationCalculatorPage() {
     } else {
       latexPreview = `\\int ${func} \\, \\mathrm{d}${v}`; 
     }
-    setPreviewHtml(renderMath(latexPreview, true));
+    setPreviewHtml(latexPreview);
   }, [functionString, variable, integralType, lowerBound, upperBound]);
 
   useEffect(() => {
@@ -260,7 +215,6 @@ export default function IntegrationCalculatorPage() {
       if (actionResult.error) {
         setError(actionResult.error);
       } else if (actionResult.data) {
-        console.log("Raw AI Steps Received:", actionResult.data.steps);
         setApiResponse(actionResult.data);
       } else {
         setError('Received no data from the server. Please try again.');
@@ -357,10 +311,9 @@ export default function IntegrationCalculatorPage() {
           
           <div className="p-4 border rounded-md bg-secondary/30">
             <p className="text-xl font-semibold text-center text-primary mb-2">Integral Preview:</p>
-            <div 
-                className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto min-h-[50px] flex items-center justify-center"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
+            <div className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto min-h-[50px] flex items-center justify-center">
+              <KatexRenderer content={previewHtml} displayMode={true} />
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -505,18 +458,16 @@ export default function IntegrationCalculatorPage() {
               <CardContent className="space-y-6 p-6 text-lg">
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Query: </span> 
-                  <span 
-                    className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto"
-                    dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(apiResponse.originalQuery), true) }}
-                  />
+                  <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
+                    <KatexRenderer content={getOriginalQueryAsLatex(apiResponse.originalQuery)} displayMode={true} />
+                  </span>
                 </div>
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                  <div 
-                    className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.integralResult, true) }} 
-                  />
+                  <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
+                    <KatexRenderer content={apiResponse.integralResult} displayMode={true} />
+                  </div>
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
@@ -527,8 +478,8 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent> 
                         <div 
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                           dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.steps) }} 
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                           dangerouslySetInnerHTML={{ __html: apiResponse.steps }} 
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -543,8 +494,8 @@ export default function IntegrationCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent> 
                         <div 
-                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                           dangerouslySetInnerHTML={{ __html: renderKatexEnabledContent(apiResponse.additionalHints) }}
+                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                           dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints }}
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -563,7 +514,9 @@ export default function IntegrationCalculatorPage() {
                             <CardHeader>
                                 <CardTitle className="text-lg">Visualizing the Functions</CardTitle>
                                 {apiResponse.plotHint && 
-                                 <CardDescription dangerouslySetInnerHTML={{__html: renderKatexEnabledContent(apiResponse.plotHint)}} />
+                                 <CardDescription>
+                                    <KatexRenderer content={apiResponse.plotHint} />
+                                  </CardDescription>
                                 }
                             </CardHeader>
                             <CardContent>
