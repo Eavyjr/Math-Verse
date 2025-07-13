@@ -528,7 +528,7 @@ export default function IntegrationCalculatorPage() {
                                 </Alert>
                               )}
                               {chartData && chartData.length > 0 ? (
-                                <div className="h-[400px] w-full">
+                                <div className="h-[300px] md:h-[400px] w-full">
                                   <ChartContainer config={chartConfig} className="h-full w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                       <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
