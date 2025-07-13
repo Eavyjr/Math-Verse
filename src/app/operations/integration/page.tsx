@@ -447,8 +447,8 @@ export default function IntegrationCalculatorPage() {
             </Alert>
           )}
 
-          {apiResponse && !isLoading && !error && (
-            <div className="space-y-6">
+          <div className="space-y-6">
+            {apiResponse && !isLoading && !error && (
               <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
                   <CardHeader>
                       <CardTitle className="text-2xl flex items-center text-primary">
@@ -509,20 +509,24 @@ export default function IntegrationCalculatorPage() {
                       </Button>
                   </CardFooter>
               </Card>
+            )}
 
-              { (chartData || plotError || apiResponse.plotHint) && (
-                  <Card className="mt-6 border-blue-400 border-t-4 shadow-md">
-                      <CardHeader>
-                          <CardTitle className="text-xl flex items-center text-primary">
-                          <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
-                          </CardTitle>
-                      </CardHeader>
-                       <CardContent>
-                          {apiResponse.plotHint && 
-                              <CardDescription className="mb-4">
-                              <KatexRenderer content={apiResponse.plotHint} />
-                              </CardDescription>
-                          }
+            { (chartData || plotError || apiResponse?.plotHint) && (
+              <Accordion type="single" collapsible className="w-full mt-6" defaultValue='plot-info'>
+                <AccordionItem value="plot-info">
+                  <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                    <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Card className="shadow-none">
+                        <CardHeader>
+                            {apiResponse?.plotHint && 
+                                <CardDescription>
+                                <KatexRenderer content={apiResponse.plotHint} />
+                                </CardDescription>
+                            }
+                        </CardHeader>
+                        <CardContent>
                           {plotError && (
                               <Alert variant="destructive" className="mb-4">
                               <AlertTriangle className="h-4 w-4" />
@@ -551,11 +555,13 @@ export default function IntegrationCalculatorPage() {
                               <p className="text-sm text-muted-foreground">No plot data available or expression(s) could not be plotted.</p>
                               </div>
                           )}
-                      </CardContent>
-                  </Card>
-              )}
-            </div>
-          )}
+                        </CardContent>
+                    </Card>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+          </div>
         </CardContent>
          <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground">
@@ -566,3 +572,4 @@ export default function IntegrationCalculatorPage() {
     </div>
   );
 }
+
