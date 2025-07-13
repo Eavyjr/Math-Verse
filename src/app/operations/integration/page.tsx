@@ -448,7 +448,7 @@ export default function IntegrationCalculatorPage() {
           )}
 
           {apiResponse && !isLoading && !error && (
-            <div>
+            <div className="space-y-6">
               <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
                   <CardHeader>
                       <CardTitle className="text-2xl flex items-center text-primary">
