@@ -449,115 +449,117 @@ export default function IntegrationCalculatorPage() {
               )}
 
               {apiResponse && !isLoading && !error && (
-                <Card className="mt-6 border-accent border-t-4 shadow-md" ref={resultCardRef}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl flex items-center text-primary">
-                      <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
-                      AI Integration Result
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6 p-6 text-lg">
-                    <div>
-                      <span className="font-semibold text-muted-foreground">Original Query: </span> 
-                      <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
-                        <KatexRenderer content={getOriginalQueryAsLatex(apiResponse.originalQuery)} displayMode={true} />
-                      </span>
-                    </div>
-                    
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                      <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
-                        <KatexRenderer content={apiResponse.integralResult} displayMode={true} />
-                      </div>
-                    </div>
-
-                    {apiResponse.steps && apiResponse.steps.trim() !== "" && (
-                      <Accordion type="single" collapsible className="w-full mt-4" defaultValue="steps">
-                        <AccordionItem value="steps">
-                          <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                            <Info className="mr-2 h-5 w-5" /> Show Steps
-                          </AccordionTrigger>
-                          <AccordionContent> 
-                            <div 
-                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto min-h-[50px]"
-                              dangerouslySetInnerHTML={{ __html: apiResponse.steps }} 
-                            />
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    )}
-
-                    {apiResponse.additionalHints && apiResponse.additionalHints.trim() !== "" && (
-                      <Accordion type="single" collapsible className="w-full mt-2">
-                        <AccordionItem value="hints">
-                          <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                            <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
-                          </AccordionTrigger>
-                          <AccordionContent> 
-                            <div 
-                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                              dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints }}
-                            />
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    )}
-                  </CardContent>
-                  <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                    <Button variant="outline" size="sm" onClick={handleExportAsPng}>
-                      <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
-
-              { (chartData || plotError || apiResponse?.plotHint) && (
-                <Card className="mt-6">
-                  <Accordion type="single" collapsible className="w-full" defaultValue='plot-info'>
-                    <AccordionItem value="plot-info">
-                      <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline p-6">
-                        <div className="flex items-center">
-                          <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-6 pt-0">
-                        {apiResponse?.plotHint && 
-                            <CardDescription className="mb-4">
-                            <KatexRenderer content={apiResponse.plotHint} />
-                            </CardDescription>
-                        }
-                        {plotError && (
-                            <Alert variant="destructive" className="mb-4">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Plotting Error/Info</AlertTitle>
-                            <AlertDescription>{plotError}</AlertDescription>
-                            </Alert>
-                        )}
-                        {chartData && chartData.length > 0 ? (
-                            <div className="w-full aspect-video">
-                              <ChartContainer config={chartConfig} className="h-full w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
-                                    <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
-                                    <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
-                                    <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                    <RechartsLine type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
-                                    <RechartsLine type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
-                                </LineChart>
-                                </ResponsiveContainer>
-                              </ChartContainer>
+                <div className="space-y-6">
+                    <Card className="mt-6 border-accent border-t-4 shadow-md w-full max-w-4xl mx-auto" ref={resultCardRef}>
+                        <CardHeader>
+                            <CardTitle className="text-2xl flex items-center text-primary">
+                            <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
+                            AI Integration Result
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6 p-6 text-lg !min-h-0 !h-auto">
+                            <div>
+                                <span className="font-semibold text-muted-foreground">Original Query: </span> 
+                                <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
+                                <KatexRenderer content={getOriginalQueryAsLatex(apiResponse.originalQuery)} displayMode={true} />
+                                </span>
                             </div>
-                        ) : !plotError && (
-                            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                            <p className="text-sm text-muted-foreground">No plot data available or expression(s) could not be plotted.</p>
+                            
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
+                                <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
+                                <KatexRenderer content={apiResponse.integralResult} displayMode={true} />
+                                </div>
                             </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </Card>
+
+                            {apiResponse.steps && apiResponse.steps.trim() !== "" && (
+                                <Accordion type="single" collapsible className="w-full mt-4" defaultValue="steps">
+                                <AccordionItem value="steps">
+                                    <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                                    <Info className="mr-2 h-5 w-5" /> Show Steps
+                                    </AccordionTrigger>
+                                    <AccordionContent> 
+                                    <div 
+                                        className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                                        dangerouslySetInnerHTML={{ __html: apiResponse.steps }} 
+                                    />
+                                    </AccordionContent>
+                                </AccordionItem>
+                                </Accordion>
+                            )}
+
+                            {apiResponse.additionalHints && apiResponse.additionalHints.trim() !== "" && (
+                                <Accordion type="single" collapsible className="w-full mt-2">
+                                <AccordionItem value="hints">
+                                    <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                                    <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
+                                    </AccordionTrigger>
+                                    <AccordionContent> 
+                                    <div 
+                                        className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                                        dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints }}
+                                    />
+                                    </AccordionContent>
+                                </AccordionItem>
+                                </Accordion>
+                            )}
+                        </CardContent>
+                        <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                            <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                            <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
+                            </Button>
+                        </CardFooter>
+                    </Card>
+
+                    {(chartData || plotError) && (
+                      <Card className="mt-6 border-accent/50 border-t-4 shadow-md w-full max-w-4xl mx-auto">
+                        <Accordion type="single" collapsible className="w-full" defaultValue='plot-info'>
+                          <AccordionItem value="plot-info">
+                            <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline p-6">
+                              <div className="flex items-center">
+                                <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-6 pt-0">
+                              {apiResponse?.plotHint && 
+                                  <CardDescription className="mb-4">
+                                  <KatexRenderer content={apiResponse.plotHint} />
+                                  </CardDescription>
+                              }
+                              {plotError && (
+                                  <Alert variant="destructive" className="mb-4">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertTitle>Plotting Error/Info</AlertTitle>
+                                  <AlertDescription>{plotError}</AlertDescription>
+                                  </Alert>
+                              )}
+                              {chartData && chartData.length > 0 ? (
+                                  <div className="w-full aspect-video">
+                                    <ChartContainer config={chartConfig} className="h-full w-full">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                                          <CartesianGrid strokeDasharray="3 3" />
+                                          <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
+                                          <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
+                                          <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                                          <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
+                                          <RechartsLine type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
+                                          <RechartsLine type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
+                                      </LineChart>
+                                      </ResponsiveContainer>
+                                    </ChartContainer>
+                                  </div>
+                              ) : !plotError && (
+                                  <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
+                                  <p className="text-sm text-muted-foreground">No plot data available or expression(s) could not be plotted.</p>
+                                  </div>
+                              )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      </Card>
+                    )}
+                </div>
               )}
             </div>
         </CardContent>
