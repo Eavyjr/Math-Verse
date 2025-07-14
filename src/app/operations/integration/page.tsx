@@ -5,6 +5,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { create, all, type MathJsStatic } from 'mathjs';
+import katex from 'katex';
+import "katex/dist/katex.min.css";
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +52,30 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
 
 
   return str;
+};
+
+const renderStepsContent = (stepsString: string | undefined): string => {
+  if (!stepsString) return "";
+  // This regex splits the string by block KaTeX delimiters, keeping the delimiters.
+  const parts = stepsString.split(/(\\\[.*?\\\])/g);
+  
+  const htmlParts = parts.map((part) => {
+    try {
+      // Check if the part is a block KaTeX expression
+      if (part.startsWith('\\[') && part.endsWith('\\]')) {
+        const latex = part.slice(2, -2); // Extract the LaTeX content
+        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+      }
+      // For regular text parts, escape HTML special characters to prevent XSS
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) {
+      console.error("KaTeX steps rendering error for part:", part, e);
+      // Fallback for failed rendering, still escaping HTML
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  });
+
+  return htmlParts.join('');
 };
 
 
@@ -436,28 +462,27 @@ export default function IntegrationCalculatorPage() {
             </Button>
           </div>
           
-          <div>
-              {isLoading && (
-                <div className="flex items-center justify-center p-8 rounded-md bg-muted mt-6">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="ml-3 text-xl font-medium text-foreground">
-                    AI is calculating the integral of &quot;{functionString}&quot;...
-                  </p>
-                </div>
-              )}
+          {isLoading && (
+            <div className="flex items-center justify-center p-8 rounded-md bg-muted mt-6">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="ml-3 text-xl font-medium text-foreground">
+                AI is calculating the integral of &quot;{functionString}&quot;...
+              </p>
+            </div>
+          )}
 
-              {error && !isLoading && (
-                <Alert variant="destructive" className="mt-6">
-                  <AlertTriangle className="h-5 w-5" />
-                  <AlertTitle className="font-semibold">Processing Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-            
-            <div className="mt-6">
+          {error && !isLoading && (
+            <Alert variant="destructive" className="mt-6">
+              <AlertTriangle className="h-5 w-5" />
+              <AlertTitle className="font-semibold">Processing Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="mt-6 space-y-6">
               {apiResponse && !isLoading && !error && (
                 <Card 
-                  className="border-accent border-t-4 shadow-md mb-6" 
+                  className="border-accent border-t-4 shadow-md" 
                   ref={resultCardRef}
                 >
                     <CardHeader>
@@ -563,7 +588,6 @@ export default function IntegrationCalculatorPage() {
                       </CardContent>
                   </Card>
               )}
-            </div>
             </div>
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
