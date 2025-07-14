@@ -42,9 +42,9 @@ const MatrixOperationOutputSchema = z.object({
   result: z
     .string()
     .describe(
-      'The result of the matrix operation. This could be a scalar number (as a string e.g. "5"), a string representation of the result matrix (e.g., "[[1,2],[3,4]]"), or a descriptive message. For decompositions (LU, QR, SVD), describe the resulting matrices using inline KaTeX for math notation.'
+      'The result of the matrix operation. This could be a scalar number (as a string e.g. "5"), a string representation of the result matrix (e.g., "[[1,2],[3,4]]"), or a descriptive message. For decompositions (LU, QR, SVD), describe the resulting matrices using block KaTeX for math notation.'
     ),
-  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in \\(...\\) delimiters."),
+  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in \\[...\\] delimiters."),
   originalQuery: MatrixOperationInputSchema.describe("The original input parameters for the operation."),
 });
 export type MatrixOperationOutput = z.infer<typeof MatrixOperationOutputSchema>;
@@ -62,9 +62,9 @@ Given one or two matrices (as string representations of 2D arrays), a scalar val
 - The 'result' field in your output MUST contain the result of the operation.
   - If the result is a scalar (e.g., determinant, rank), return it as a number string (e.g., "5").
   - If the result is a matrix, return it as a stringified 2D array (e.g., "[[5,6],[7,8]]"). This stringified array should be directly parsable by JSON.parse().
-  - For decompositions (LU, QR, SVD) or other descriptive results, if mathematical notation or matrices are part of the description in the 'result' field, they MUST be formatted using inline MathJax/KaTeX delimiters \\(...\\) (e.g., "L = \\(\\begin{bmatrix} 1 & 0 \\\\ 0.5 & 1 \\end{bmatrix}\\), U = \\(\\begin{bmatrix} 2 & 4 \\\\ 0 & 1 \\end{bmatrix}\\)"). Do NOT return a JSON stringified matrix in this case, use the descriptive KaTeX format.
+  - For decompositions (LU, QR, SVD) or other descriptive results, if mathematical notation or matrices are part of the description in the 'result' field, they MUST be formatted using block MathJax/KaTeX delimiters \\[...\\] (e.g., "L = \\[\\begin{bmatrix} 1 & 0 \\\\ 0.5 & 1 \\end{bmatrix}\\] U = \\[\\begin{bmatrix} 2 & 4 \\\\ 0 & 1 \\end{bmatrix}\\]"). Do NOT return a JSON stringified matrix in this case, use the descriptive KaTeX format.
   - If an operation cannot be performed (e.g., inverse of a singular matrix, multiplication of incompatible matrices), provide a clear error message or explanation in the 'result' field. Do not just say "error".
-- If possible and applicable, provide a detailed step-by-step explanation in the 'steps' field. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, such as those involving fractions or specific matrix elements, ensuring they are wrapped in inline MathJax/KaTeX delimiters \\(...\\).
+- If possible and applicable, provide a detailed step-by-step explanation in the 'steps' field. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, such as those involving fractions or specific matrix elements, ensuring they are wrapped in block MathJax/KaTeX delimiters \\[...\\]
 - The 'originalQuery' field in the output should be an echo of the input you received.
 
 Operation Specific Instructions:
@@ -78,7 +78,7 @@ Operation Specific Instructions:
 - rankA: Rank of Matrix A.
 - eigenvaluesA: Eigenvalues of Matrix A (must be square). List them comma-separated if multiple (e.g., "2, 5.5") within the 'result' string.
 - eigenvectorsA: Eigenvectors of Matrix A (must be square). Represent each eigenvector as a stringified array or using KaTeX notation within the 'result' string.
-- charPolynomialA: Characteristic polynomial of Matrix A (must be square). Present as a string in terms of lambda, e.g., "\\(\\lambda^2 - Tr(A)\\lambda + Det(A)\\)".
+- charPolynomialA: Characteristic polynomial of Matrix A (must be square). Present as a string in terms of lambda, e.g., "\\[\\lambda^2 - Tr(A)\\lambda + Det(A)\\]".
 - luDecompositionA: LU decomposition of Matrix A. Output L and U matrices in the 'result' field using descriptive KaTeX format.
 - qrDecompositionA: QR decomposition of Matrix A. Output Q and R matrices in the 'result' field using descriptive KaTeX format.
 - svdDecompositionA: Singular Value Decomposition of Matrix A. Output U, Sigma (as a vector of singular values or a diagonal matrix), and V^T matrices in the 'result' field using descriptive KaTeX format.
@@ -101,8 +101,8 @@ Perform the operation '{{{operation}}}'.
 Return the result as specified (stringified matrix, number string, or descriptive text for decompositions/errors).
 Provide detailed steps if applicable, stating the rule for each step.
 Ensure 'originalQuery' in your output accurately reflects the input parameters.
-Ensure all mathematical expressions in 'steps' are formatted with inline MathJax/KaTeX delimiters \\(...\\).
-For descriptive 'result' outputs (like decompositions), use inline KaTeX delimiters \\(...\\) for all mathematical notation.`,
+Ensure all mathematical expressions in 'steps' are formatted with block MathJax/KaTeX delimiters \\[...\\]
+For descriptive 'result' outputs (like decompositions), use block KaTeX delimiters \\[...\\] for all mathematical notation.`,
   config: {
     temperature: 0.1,
     safetySettings: [
@@ -139,4 +139,3 @@ const performMatrixOperationFlow = ai.defineFlow(
     };
   }
 );
-

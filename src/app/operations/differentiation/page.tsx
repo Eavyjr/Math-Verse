@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import katex from 'katex';
 import "katex/dist/katex.min.css"; 
 import { create, all, type MathJsStatic } from 'mathjs';
 import { toPng } from 'html-to-image';
@@ -24,52 +23,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line as RechartsLine } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
+import KatexRenderer from '@/components/math-tools/katex-renderer';
 
 const math: MathJsStatic = create(all);
-
-const renderMath = (latexString: string | undefined | null, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
-  let cleanLatexString = latexString.trim();
-
-  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
-      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
-    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
-  }
-  
-  try {
-    return katex.renderToString(cleanLatexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-      macros: { "\\dd": "\\mathrm{d}"} 
-    });
-  } catch (e) {
-    console.error("Katex rendering error for main result:", e, "Original string:", latexString);
-    return cleanLatexString; 
-  }
-};
-
-const renderStepsContent = (stepsString: string | undefined | null): string => {
-  if (!stepsString) return "";
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  
-  const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    }
-  });
-  const finalHtml = htmlParts.join('');
-  return finalHtml;
-};
 
 interface PlotDataItem {
   x: number;
@@ -81,14 +37,7 @@ interface PlotDataItem {
 const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undefined): string => {
   if (!latexStr) return "";
   let str = latexStr.trim();
-  if ((str.startsWith('\\(') && str.endsWith('\\)')) || (str.startsWith('\\[') && str.endsWith('\\]'))) {
-    str = str.substring(2, str.length - 2).trim();
-  }
   
-  str = str.replace(/^[a-zA-Z]\((?:[a-zA-Z])\)\s*=\s*/, '');
-  str = str.replace(/^[a-zA-Z]\s*=\s*/, '');
-
-
   str = str.replace(/\\sin/g, 'sin')
            .replace(/\\cos/g, 'cos')
            .replace(/\\tan/g, 'tan')
@@ -139,7 +88,7 @@ export default function DifferentiationCalculatorPage() {
   ];
 
   const getDerivativeNotation = (func: string, v: string, ord: number) => {
-    if (!func.trim() && !v.trim()) return renderMath("d/dx(f(x))", true); 
+    if (!func.trim() && !v.trim()) return "d/dx(f(x))"; 
     const cleanFunc = func || `f(${v || 'x'})`;
     if (ord === 1) return `\\frac{\\mathrm{d}}{\\mathrm{d}${v}} \\left( ${cleanFunc} \\right)`;
     return `\\frac{\\mathrm{d}^{${ord}}}{\\mathrm{d}${v}^{${ord}}} \\left( ${cleanFunc} \\right)`;
@@ -147,7 +96,7 @@ export default function DifferentiationCalculatorPage() {
   
   useEffect(() => {
     const latexPreview = getDerivativeNotation(functionString, variable, order);
-    setDiffPreviewHtml(renderMath(latexPreview, true));
+    setDiffPreviewHtml(latexPreview);
   }, [functionString, variable, order]);
 
   useEffect(() => {
@@ -156,9 +105,9 @@ export default function DifferentiationCalculatorPage() {
         if(initialConditions.length > 0){
             preview += `, \\quad ` + initialConditions.map(ic => ic.replace(/=/g, " = ")).join(",\\ ");
         }
-        setDePreviewHtml(renderMath(preview, true));
+        setDePreviewHtml(preview);
     } else {
-        setDePreviewHtml(renderMath("y' + P(x)y = Q(x)", true)); 
+        setDePreviewHtml("y' + P(x)y = Q(x)"); 
     }
   }, [deString, deDependentVar, deIndependentVar, initialConditions]);
 
@@ -477,8 +426,9 @@ export default function DifferentiationCalculatorPage() {
                 <p className="text-xl font-semibold text-center text-primary mb-2">Derivative Preview:</p>
                 <div 
                     className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto min-h-[50px] flex items-center justify-center"
-                    dangerouslySetInnerHTML={{ __html: diffPreviewHtml }}
-                />
+                >
+                  <KatexRenderer content={diffPreviewHtml} displayMode={true} />
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -594,16 +544,18 @@ export default function DifferentiationCalculatorPage() {
                       <span className="font-semibold text-muted-foreground">Original Query: </span> 
                       <span 
                         className="font-mono p-1 rounded-sm bg-muted text-sm block overflow-x-auto"
-                        dangerouslySetInnerHTML={{ __html: renderMath(getOriginalQueryAsLatex(diffApiResponse.originalQuery), true) }}
-                      />
+                      >
+                         <KatexRenderer content={getOriginalQueryAsLatex(diffApiResponse.originalQuery)} displayMode={true} />
+                      </span>
                     </div>
                     
                     <div className="border-t pt-4 mt-4">
                       <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Derivative:</h3>
                       <div 
                         className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                        dangerouslySetInnerHTML={{ __html: renderMath(diffApiResponse.derivativeResult, false) }} 
-                      />
+                      >
+                         <KatexRenderer content={diffApiResponse.derivativeResult || ''} displayMode={false} />
+                      </div>
                     </div>
 
                     {diffApiResponse.steps && diffApiResponse.steps.trim() !== "" && (
@@ -615,7 +567,7 @@ export default function DifferentiationCalculatorPage() {
                           <AccordionContent>
                             <div 
                               className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                              dangerouslySetInnerHTML={{ __html: renderStepsContent(diffApiResponse.steps) }}
+                              dangerouslySetInnerHTML={{ __html: diffApiResponse.steps }}
                             />
                           </AccordionContent>
                         </AccordionItem>
@@ -691,8 +643,9 @@ export default function DifferentiationCalculatorPage() {
                     <p className="text-xl font-semibold text-center text-primary mb-2">DE Preview:</p>
                     <div 
                         className="text-2xl text-center font-mono p-2 bg-background rounded-md overflow-x-auto min-h-[50px] flex items-center justify-center"
-                        dangerouslySetInnerHTML={{ __html: dePreviewHtml }}
-                    />
+                    >
+                      <KatexRenderer content={dePreviewHtml} displayMode={true} />
+                    </div>
                 </div>
 
                 <div className="space-y-2">
@@ -741,7 +694,9 @@ export default function DifferentiationCalculatorPage() {
                     <Label className="block text-md font-semibold text-foreground">Initial Conditions (Optional - one per line):</Label>
                     {initialConditions.map((ic, index) => (
                         <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50 text-sm">
-                           <span className="font-mono flex-grow p-1 bg-background rounded" dangerouslySetInnerHTML={{__html: renderMath(ic, false) }} />
+                           <span className="font-mono flex-grow p-1 bg-background rounded">
+                             <KatexRenderer content={ic} displayMode={false} />
+                           </span>
                             <Button variant="ghost" size="icon" onClick={() => removeInitialCondition(index)} aria-label="Remove initial condition">
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -811,8 +766,9 @@ export default function DifferentiationCalculatorPage() {
                                 <h3 className="font-semibold text-muted-foreground mb-1">Original Query:</h3>
                                 <div 
                                     className="font-mono p-2 rounded-md bg-muted text-sm overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderMath(getDEOriginalQueryAsLatex(deApiResponse.originalQuery), true) }}
-                                />
+                                >
+                                  <KatexRenderer content={getDEOriginalQueryAsLatex(deApiResponse.originalQuery)} displayMode={true} />
+                                </div>
                             </div>
                             
                             {deApiResponse.classification && (
@@ -834,8 +790,9 @@ export default function DifferentiationCalculatorPage() {
                                 <h3 className="text-xl font-semibold text-muted-foreground mb-2">General Solution:</h3>
                                 <div 
                                     className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderMath(deApiResponse.generalSolution, true) }} 
-                                />
+                                >
+                                  <KatexRenderer content={deApiResponse.generalSolution} displayMode={true} />
+                                </div>
                             </div>
                             )}
 
@@ -844,8 +801,9 @@ export default function DifferentiationCalculatorPage() {
                                 <h3 className="text-xl font-semibold text-muted-foreground mb-2">Particular Solution:</h3>
                                 <div 
                                     className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderMath(deApiResponse.particularSolution, true) }} 
-                                />
+                                >
+                                  <KatexRenderer content={deApiResponse.particularSolution} displayMode={true} />
+                                </div>
                             </div>
                             )}
 
@@ -858,7 +816,7 @@ export default function DifferentiationCalculatorPage() {
                                 <AccordionContent>
                                     <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse.steps) }}
+                                    dangerouslySetInnerHTML={{ __html: deApiResponse.steps }}
                                     />
                                 </AccordionContent>
                                 </AccordionItem>

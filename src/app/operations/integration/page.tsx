@@ -215,7 +215,13 @@ export default function IntegrationCalculatorPage() {
       if (actionResult.error) {
         setError(actionResult.error);
       } else if (actionResult.data) {
-        setApiResponse(actionResult.data);
+        // Trim whitespace from steps and hints
+        const trimmedData = {
+          ...actionResult.data,
+          steps: actionResult.data.steps?.trim(),
+          additionalHints: actionResult.data.additionalHints?.trim(),
+        };
+        setApiResponse(trimmedData);
       } else {
         setError('Received no data from the server. Please try again.');
       }
@@ -448,10 +454,10 @@ export default function IntegrationCalculatorPage() {
                 </Alert>
               )}
             
-            <div className="grid grid-cols-1 gap-6 mt-6">
+            <div className="mt-6">
               {apiResponse && !isLoading && !error && (
                 <Card 
-                  className="border-accent border-t-4 shadow-md" 
+                  className="border-accent border-t-4 shadow-md mb-6" 
                   ref={resultCardRef}
                 >
                     <CardHeader>
@@ -484,7 +490,7 @@ export default function IntegrationCalculatorPage() {
                                 <AccordionContent> 
                                 <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: apiResponse.steps ? apiResponse.steps.trim() : '' }} 
+                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }} 
                                 />
                                 </AccordionContent>
                             </AccordionItem>
@@ -500,7 +506,7 @@ export default function IntegrationCalculatorPage() {
                                 <AccordionContent> 
                                 <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints ? apiResponse.additionalHints.trim() : '' }}
+                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.additionalHints) }}
                                 />
                                 </AccordionContent>
                             </AccordionItem>

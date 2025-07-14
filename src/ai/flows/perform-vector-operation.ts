@@ -42,7 +42,7 @@ const VectorOperationOutputSchema = z.object({
   ]).describe(
     'The result of the vector operation. This could be a scalar number (for magnitude, dot product, angle), a vector array (for normalize, add, subtract, scalarMultiply, crossProduct), or a descriptive string message (e.g., for errors like incompatible dimensions or cross product of non-3D vectors).'
   ),
-  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in \\\\(...\\\\) delimiters (e.g., \\\\(\\sqrt{x^2 + y^2}\\\\), \\\\(A \\cdot B\\\\))."),
+  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied. Use simple LaTeX for mathematical expressions within steps, ensuring they are wrapped in block KaTeX delimiters \\[...\\] (e.g., \\[\\sqrt{x^2 + y^2}\\] \\[A \\cdot B\\])."),
   originalQuery: VectorOperationInputSchema.describe("The original input parameters for the operation."),
 });
 export type VectorOperationOutput = z.infer<typeof VectorOperationOutputSchema>;
@@ -62,19 +62,19 @@ Output Requirements:
     - If the result is a scalar (e.g., magnitude, dot product, angle), return it as a number.
     - If the result is a vector (e.g., normalization, addition, cross product), return it as an array of numbers.
     - If an operation is invalid (e.g., cross product of 2D vectors, different dimensions for addition/dot product, angle with zero vector), the 'result' field should be a concise string explaining the error (e.g., "Error: Cross product is only defined for 3D vectors.").
-- 'steps': Provide a detailed step-by-step explanation for how the result was obtained. Use LaTeX notation wrapped in \\\\(...\\\\) for all mathematical expressions, variables, and numbers within the steps. Clearly state the formula or rule used at each step.
+- 'steps': Provide a detailed step-by-step explanation for how the result was obtained. Use LaTeX notation wrapped in \\[...\\] for all mathematical expressions, variables, and numbers within the steps. Clearly state the formula or rule used at each step.
 
 Operation Specific Instructions:
-- magnitudeA: Calculate the magnitude (length or norm) of Vector A. Formula: \\\\(|A| = \\sqrt{\\sum A_i^2}\\\\).
-- normalizeA: Normalize Vector A to a unit vector. Formula: \\\\(\\hat{A} = \\frac{A}{|A|}\\\\). If magnitude is 0, result should be an error string "Error: Cannot normalize a zero vector."
-- add: Add Vector A and Vector B. (e.g., \\\\(A+B = [A_x+B_x, A_y+B_y, ... ]\\\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
-- subtract: Subtract Vector B from Vector A. (e.g., \\\\(A-B = [A_x-B_x, A_y+B_y, ... ]\\\\)). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
-- scalarMultiplyA: Multiply Vector A by the scalar 'k'. (e.g., \\\\(kA = [k A_x, k A_y, ... ]\\\\)). Result is a vector.
-- dotProduct: Calculate the dot product (scalar product) of Vector A and Vector B. (e.g., \\\\(A \\cdot B = \\sum A_i B_i\\\\)). Result is a number. Vectors must have the same dimension, otherwise, result is an error string.
-- crossProduct: Calculate the cross product of Vector A and Vector B. (e.g., \\\\(A \\times B\\\\)). Result is a vector. Both Vector A and Vector B MUST be 3D vectors. If not, result is an error string "Error: Cross product is only defined for 3D vectors." For \\\\(A = [A_x, A_y, A_z]\\\\) and \\\\(B = [B_x, B_y, B_z]\\\\), the result is \\\\([A_y B_z - A_z B_y, A_z B_x - A_x B_z, A_x B_y - A_y B_x]\\\\).
-- angleBetween: Calculate the angle in RADIANS between Vector A and Vector B. Formula: \\\\(\\theta = \\arccos\\left(\\frac{A \\cdot B}{|A| |B|}\\right)\\\\\). Result is a number (radians). If either vector is a zero vector, result is an error string "Error: Angle is undefined for zero vectors." Vectors must have the same dimension.
+- magnitudeA: Calculate the magnitude (length or norm) of Vector A. Formula: \\[\\|A| = \\sqrt{\\sum A_i^2}\\]
+- normalizeA: Normalize Vector A to a unit vector. Formula: \\[\hat{A} = \\frac{A}{|A|}\\] If magnitude is 0, result should be an error string "Error: Cannot normalize a zero vector."
+- add: Add Vector A and Vector B. (e.g., \\[A+B = [A_x+B_x, A_y+B_y, ... ]\\]). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
+- subtract: Subtract Vector B from Vector A. (e.g., \\[A-B = [A_x-B_x, A_y+B_y, ... ]\\]). Result is a vector. Vectors must have the same dimension, otherwise, result is an error string.
+- scalarMultiplyA: Multiply Vector A by the scalar 'k'. (e.g., \\[kA = [k A_x, k A_y, ... ]\\]). Result is a vector.
+- dotProduct: Calculate the dot product (scalar product) of Vector A and Vector B. (e.g., \\[A \\cdot B = \\sum A_i B_i\\]). Result is a number. Vectors must have the same dimension, otherwise, result is an error string.
+- crossProduct: Calculate the cross product of Vector A and Vector B. (e.g., \\[A \\times B\\]). Result is a vector. Both Vector A and Vector B MUST be 3D vectors. If not, result is an error string "Error: Cross product is only defined for 3D vectors." For \\[A = [A_x, A_y, A_z]\\] and \\[B = [B_x, B_y, B_z]\\], the result is \\[[A_y B_z - A_z B_y, A_z B_x - A_x B_z, A_x B_y - A_y B_x]\\].
+- angleBetween: Calculate the angle in RADIANS between Vector A and Vector B. Formula: \\[\theta = \\arccos\\left(\\frac{A \\cdot B}{|A| |B|}\\right)\\] Result is a number (radians). If either vector is a zero vector, result is an error string "Error: Angle is undefined for zero vectors." Vectors must have the same dimension.
 
-Ensure mathematical notation in 'steps' is always wrapped in \\\\(...\\\\).
+Ensure mathematical notation in 'steps' is always wrapped in \\[...\\]
 The 'originalQuery' field in the output should be an echo of the input you received.
 If an input vector is empty or invalid based on the operation, the 'result' should be an error string.
 `;
@@ -92,7 +92,7 @@ const vectorOperationPrompt = ai.definePrompt({
 
     Perform the operation '{{{operation}}}' based on the system instructions.
     Return the 'result' as a number, an array of numbers, or an error string.
-    Provide detailed 'steps', ensuring all mathematical notation is wrapped in \\\\(...\\\\) delimiters.`,
+    Provide detailed 'steps', ensuring all mathematical notation is wrapped in \\[...\\] delimiters.`,
     config: {
         temperature: 0.1,
         safetySettings: [
@@ -141,4 +141,3 @@ const performVectorOperationFlow = ai.defineFlow(
     };
   }
 );
-

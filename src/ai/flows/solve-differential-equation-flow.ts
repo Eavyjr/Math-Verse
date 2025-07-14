@@ -20,7 +20,7 @@ const DESolutionOutputSchema = z.object({
   solutionMethod: z.string().nullable().describe('The primary method used to solve the DE (e.g., "Separation of Variables", "Integrating Factor", "Characteristic Equation").'),
   generalSolution: z.string().nullable().describe("The general solution to the DE, formatted in LaTeX. Include constants like C, C1, C2 as needed. Example: \\(y(x) = C e^x\\)"),
   particularSolution: z.string().optional().nullable().describe("The particular solution if initial conditions were provided and a unique solution is found, formatted in LaTeX. Example: \\(y(x) = 2e^x - x\\)"),
-  steps: z.string().nullable().describe("A detailed step-by-step explanation of how the solution was obtained. Each step should clearly state the mathematical rule or principle applied. Mathematical expressions within steps should be in inline LaTeX using \\(...\\) delimiters. Example: Step 1: Identify the type of DE. This is a first-order linear DE of the form \\(y' + P(x)y = Q(x)\\)..."),
+  steps: z.string().nullable().describe("A detailed step-by-step explanation of how the solution was obtained. Each step should clearly state the mathematical rule or principle applied. Mathematical expressions within steps should be in block LaTeX using \\[...\\] delimiters. Example: Step 1: Identify the type of DE. This is a first-order linear DE of the form \\[y' + P(x)y = Q(x)\\]..."),
   plotHint: z.string().optional().nullable().describe("A brief textual description of what a plot of the solution(s) might look like (e.g., 'A family of exponential curves', 'A sinusoidal wave')."),
   originalQuery: DESolutionInputSchema.describe("An echo of the input parameters received."),
 });
@@ -42,13 +42,13 @@ Output Requirements (Provide all fields if possible, use null for a field if not
 4.  **particularSolution**: If initial conditions are given AND a unique particular solution is found, provide it in LaTeX format. Example: "y(x) = 2e^x - x".
 5.  **steps**: Provide a comprehensive, step-by-step derivation of the solution, from start to finish.
     *   Start from identifying the equation type and method.
-    *   Clearly state the mathematical rule, definition, or principle applied at each stage (e.g., "Integrating both sides...", "Applying the integrating factor \\(e^{\\int P(x)dx}\\)...", "Finding roots of the characteristic equation...").
+    *   Clearly state the mathematical rule, definition, or principle applied at each stage (e.g., "Integrating both sides...", "Applying the integrating factor \\[e^{\\int P(x)dx}\\]...", "Finding roots of the characteristic equation...").
     *   Show all significant intermediate calculations.
-    *   Ensure mathematical expressions within the steps are formatted using inline LaTeX delimiters: \\(...\\). For example, a fraction should be \\(\\frac{a}{b}\\) and an exponent should be \\(x^2\\).
+    *   Ensure mathematical expressions within the steps are formatted using block LaTeX delimiters: \\[...\\] For example, a fraction should be \\[\\frac{a}{b}\\] and an exponent should be \\[x^2\\]
     *   The explanation should be detailed enough for a student to follow and should not be truncated.
 6.  **plotHint**: A brief textual description of what a plot of the general solution (e.g., family of curves) or particular solution (a specific curve) might look like.
 
-Ensure all LaTeX output for 'generalSolution' and 'particularSolution' fields is *only* the mathematical expression, without any surrounding text or delimiters. Mathematical notation within the 'steps' field *must* use \\(...\\) delimiters.
+Ensure all LaTeX output for 'generalSolution' and 'particularSolution' fields is *only* the mathematical expression, without any surrounding text or delimiters. Mathematical notation within the 'steps' field *must* use \\[...\\] delimiters.
 If the equation is too complex or unsolvable with standard methods, clearly state that in the 'classification' or 'steps' field and provide any possible simplification or analysis.
 `;
 

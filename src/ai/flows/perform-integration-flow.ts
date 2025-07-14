@@ -26,10 +26,10 @@ const IntegrationOutputSchema = z.object({
     .describe(
       'The result of the integration. This MUST be ONLY the pure mathematical expression or value, suitable for direct LaTeX rendering (e.g., "x^3/3 + C" or "1/2"). Do NOT include any delimiters like \\(...\\) or \\[...\\] in this field. For indefinite integrals, include "+ C".'
     ),
-  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\"). This should be formatted as readable text. Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or exponents (e.g., \\(x^2\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\)."),
+  steps: z.string().optional().describe("A detailed step-by-step explanation of how the result was obtained. For each step, clearly state the mathematical rule or principle applied (e.g., \"Power Rule for Integration\", \"Integration by Parts\"). This should be formatted as readable text. Mathematical expressions within the steps, like fractions (e.g., \\[\\frac{1}{2}\\]) or exponents (e.g., \\[x^2\\]), should be written in simple LaTeX and enclosed in block MathJax/KaTeX delimiters \\[...\\]"),
   originalQuery: IntegrationInputSchema.describe("The original input parameters for the integration."),
-  plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its integral might show. Use inline LaTeX \\(...\\) for any math."),
-  additionalHints: z.string().optional().describe("Additional educational hints or insights about the integration problem. Mathematical notation here should also use inline LaTeX delimiters \\(...\\)."),
+  plotHint: z.string().optional().describe("A brief description of what a plot of the original function and its integral might show. Use block LaTeX \\[...\\] for any math."),
+  additionalHints: z.string().optional().describe("Additional educational hints or insights about the integration problem. Mathematical notation here should also use block LaTeX delimiters \\[...\\]"),
 });
 export type IntegrationOutput = z.infer<typeof IntegrationOutputSchema>;
 
@@ -44,9 +44,9 @@ Given a function, a variable of integration, and optionally bounds for a definit
 
 Output Requirements:
 - 'integralResult': Provide ONLY the resulting mathematical expression or value, formatted as a clean, pure LaTeX string (e.g., "\\frac{x^3}{3} + C" or "\\frac{1}{2}"). Use standard LaTeX functions like \`\\sin\`, \`\\cos\`, \`\\ln\`, etc., instead of plain text. For indefinite integrals, ALWAYS add "+ C". DO NOT use any delimiters like \\(...\\) or \\[...\\] around this result.
-- 'steps': If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method"). Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Mathematical expressions within the steps, like fractions (e.g., \\(\\frac{1}{2}\\)) or integrals (e.g., \\(\\int x \\, dx\\)), should be written in simple LaTeX and enclosed in inline MathJax/KaTeX delimiters \\(...\\). The 'steps' field is optional.
-- 'plotHint': Briefly describe what a plot of the original function and its integral (or the area for definite integrals) might look like. Use inline LaTeX \\(...\\) for any mathematical notation in the hint.
-- 'additionalHints': (Optional) Offer 1-2 brief, helpful insights, common pitfalls related to this type of integration, or connections to other mathematical concepts. Format math in hints with \\(...\\) as well.
+- 'steps': If possible and applicable, provide a detailed step-by-step explanation of how you arrived at the result in the 'steps' field. For each step, clearly state the mathematical rule or principle applied (e.g., "Power Rule for Integration", "Integration by Parts", "Substitution Method"). Format these steps clearly for readability (e.g., using numbered lists or distinct paragraphs). Mathematical expressions within the steps, like fractions (e.g., \\[\\frac{1}{2}\\]) or integrals (e.g., \\[\\int x \\, dx\\]), should be written in simple LaTeX and enclosed in block MathJax/KaTeX delimiters \\[...\\] The 'steps' field is optional.
+- 'plotHint': Briefly describe what a plot of the original function and its integral (or the area for definite integrals) might look like. Use block LaTeX \\[...\\] for any mathematical notation in the hint.
+- 'additionalHints': (Optional) Offer 1-2 brief, helpful insights, common pitfalls related to this type of integration, or connections to other mathematical concepts. Format math in hints with \\[...\\] as well.
 - 'originalQuery': This field will be an echo of the input you received; you don't need to generate it.
 
 If the integral is too complex or cannot be expressed in elementary terms, state this clearly in the 'integralResult' (e.g., "Non-elementary integral") and provide an explanation in the 'steps' field.
@@ -68,8 +68,8 @@ Upper Bound: {{{upperBound}}}
 
 Perform the integration according to the system instructions.
 Provide the 'integralResult' as a pure LaTeX string.
-Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\(...\\) delimiters.
-Provide 'plotHint' and 'additionalHints' (optional) with math also wrapped in \\(...\\) delimiters.
+Also, provide detailed steps if applicable, ensuring each step states the mathematical rule applied and mathematical notation in steps is wrapped in \\[...\\] delimiters.
+Provide 'plotHint' and 'additionalHints' (optional) with math also wrapped in \\[...\\] delimiters.
 `,
   config: {
     temperature: 0.2, 
