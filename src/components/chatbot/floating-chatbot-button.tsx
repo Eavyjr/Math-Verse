@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { handleChatbotMessageAction } from "@/app/actions";
+import { renderStepsContent } from '@/lib/katex-helper';
 
 interface DisplayMessage {
   id: string;
@@ -126,7 +127,11 @@ export default function FloatingChatbotButton() {
                       : 'bg-destructive/20 text-destructive-foreground border border-destructive/50 rounded-md w-full'
                   }`}
                 >
-                  {msg.text}
+                  {msg.sender === 'bot' || msg.sender === 'system' ? (
+                    <div dangerouslySetInnerHTML={{ __html: renderStepsContent(msg.text) }} />
+                  ) : (
+                    msg.text
+                  )}
                   <div className={`text-xs mt-1 ${
                     msg.sender === 'user' ? 'text-primary-foreground/70 text-right' 
                     : msg.sender === 'bot' ? 'text-muted-foreground/70' 
