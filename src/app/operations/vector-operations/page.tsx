@@ -3,7 +3,6 @@
 
 import Link from 'next/link';
 import React, { useState, useRef, useCallback } from 'react';
-import katex from 'katex';
 import "katex/dist/katex.min.css";
 import { toPng } from 'html-to-image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -17,57 +16,8 @@ import { ArrowLeft, Move3d, Calculator, Brain, XCircle, Info, Loader2, CheckCirc
 import { handlePerformVectorOperationAction } from '@/app/actions';
 import type { VectorOperationInput, VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
 import { useToast } from '@/hooks/use-toast';
-
-const renderMath = (mathString: string | number | number[] | undefined | null, displayMode: boolean = false): string => {
-  if (mathString === undefined || mathString === null) return "";
-  
-  let latexString: string;
-  if (Array.isArray(mathString)) {
-    latexString = `\\begin{bmatrix} ${mathString.join(' \\\\ ')} \\end{bmatrix}`;
-    displayMode = true; 
-  } else if (typeof mathString === 'number') {
-    latexString = mathString.toString();
-  } else {
-    latexString = mathString.trim();
-  }
-  
-  if ((latexString.startsWith('\\(') && latexString.endsWith('\\)')) ||
-      (latexString.startsWith('\\[') && latexString.endsWith('\\]'))) {
-    latexString = latexString.substring(2, latexString.length - 2).trim();
-  }
-  
-  try {
-    return katex.renderToString(latexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-    });
-  } catch (e) {
-    console.error("Katex rendering error:", e, "Original string:", mathString);
-    return typeof mathString === 'string' ? mathString : JSON.stringify(mathString); 
-  }
-};
-
-const renderStepsContent = (stepsString: string | undefined): string => {
-  if (!stepsString) return "";
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    }
-  });
-  return htmlParts.join('');
-};
-
+import KatexRenderer from '@/components/math-tools/katex-renderer';
+import { renderStepsContent } from '@/lib/katex-helper';
 
 export default function VectorOperationsPage() {
   const { toast } = useToast();
@@ -209,6 +159,19 @@ export default function VectorOperationsPage() {
   }, [apiResponse, toast]);
 
   const currentOperation = operations.find(op => op.value === selectedOperation);
+  
+  const formatVectorForKaTeX = (vector: number[]): string => `\\begin{bmatrix} ${vector.join(' \\\\ ')} \\end{bmatrix}`;
+
+  const renderComputedResult = (result: VectorOperationOutput['result']) => {
+    if (typeof result === 'number') {
+      return <KatexRenderer content={result.toString()} />;
+    }
+    if (Array.isArray(result)) {
+      return <KatexRenderer content={formatVectorForKaTeX(result)} displayMode={true} />;
+    }
+    return <p className="text-destructive text-base">{result}</p>;
+  };
+
 
   return (
     <div className="space-y-8">
@@ -353,8 +316,9 @@ export default function VectorOperationsPage() {
                 
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                   <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl inline-block overflow-x-auto"
-                        dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.result, Array.isArray(apiResponse.result)) }} />
+                   <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl inline-block overflow-x-auto">
+                      {renderComputedResult(apiResponse.result)}
+                   </div>
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (

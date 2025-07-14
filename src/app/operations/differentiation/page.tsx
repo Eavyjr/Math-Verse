@@ -24,6 +24,7 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
 import KatexRenderer from '@/components/math-tools/katex-renderer';
+import { renderStepsContent } from '@/lib/katex-helper';
 
 const math: MathJsStatic = create(all);
 
@@ -566,8 +567,8 @@ export default function DifferentiationCalculatorPage() {
                           </AccordionTrigger>
                           <AccordionContent>
                             <div 
-                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                              dangerouslySetInnerHTML={{ __html: diffApiResponse.steps }}
+                              className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
+                              dangerouslySetInnerHTML={{ __html: renderStepsContent(diffApiResponse.steps) }}
                             />
                           </AccordionContent>
                         </AccordionItem>
@@ -815,8 +816,8 @@ export default function DifferentiationCalculatorPage() {
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div 
-                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                                    dangerouslySetInnerHTML={{ __html: deApiResponse.steps }}
+                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(deApiResponse.steps) }}
                                     />
                                 </AccordionContent>
                                 </AccordionItem>

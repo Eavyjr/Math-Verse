@@ -16,6 +16,7 @@ import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flo
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import KatexRenderer from '@/components/math-tools/katex-renderer';
+import { renderStepsContent } from '@/lib/katex-helper';
 
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
@@ -27,30 +28,6 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "log", label: "Logarithm", example: "e.g., 2:8 (for log base 2 of 8) or e^x" },
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
-
-const renderStepsContent = (stepsString: string | undefined): string => {
-  if (!stepsString) return "";
-  const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g);
-  
-  const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return `<span class="katex-inline">${latex}</span>`;
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return `<span class="katex-display">${latex}</span>`;
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-  });
-
-  return htmlParts.join('');
-};
-
 
 export default function BasicAlgebraCalculatorPage() {
   const [expression, setExpression] = useState('');
@@ -293,7 +270,7 @@ export default function BasicAlgebraCalculatorPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
                           dangerouslySetInnerHTML={{ __html: stepsHtml }}
                         />
                       </AccordionContent>

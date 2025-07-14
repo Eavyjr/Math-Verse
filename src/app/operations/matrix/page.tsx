@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import katex from 'katex';
 import "katex/dist/katex.min.css";
 import { toPng } from 'html-to-image';
 
@@ -18,51 +17,7 @@ import { ArrowLeft, BarChartHorizontalBig, PlusCircle, Trash2, Calculator, Sigma
 import { useToast } from "@/hooks/use-toast";
 import { handlePerformMatrixOperationAction } from '@/app/actions';
 import type { MatrixOperationInput, MatrixOperationOutput } from '@/ai/flows/perform-matrix-operation';
-
-const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
-  let cleanLatexString = latexString.trim();
-
-  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
-      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
-    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
-  }
-  
-  try {
-    return katex.renderToString(cleanLatexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-    });
-  } catch (e) {
-    console.error("Katex rendering error for math string:", latexString, e);
-    return cleanLatexString; 
-  }
-};
-
-const renderStepsContent = (stepsString: string | undefined): string => {
-  if (!stepsString) return "";
-  console.log("renderStepsContent input:", stepsString);
-
-  const parts = stepsString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-  const htmlParts = parts.map((part, index) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-        console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-  });
-  const finalHtml = htmlParts.join('');
-  console.log("renderStepsContent output HTML:", finalHtml);
-  return finalHtml;
-};
+import { renderStepsContent } from '@/lib/katex-helper';
 
 const initialMatrix = () => [[0, 0], [0, 0]];
 
@@ -451,13 +406,11 @@ export default function MatrixOperationsPage() {
     const parsedResult = parseAIResult(resultString);
 
     if (typeof parsedResult === 'number') {
-      return <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg" dangerouslySetInnerHTML={{ __html: renderMath(parsedResult.toString(), false) }} />;
+      return <div className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground text-lg"><KatexRenderer content={parsedResult.toString()} /></div>;
     } else if (Array.isArray(parsedResult)) { 
-      return <div className="p-2 bg-muted rounded-md overflow-x-auto text-lg"
-                  dangerouslySetInnerHTML={{ __html: renderMath(formatMatrixForKaTeX(parsedResult), true) }} />;
+      return <div className="p-2 bg-muted rounded-md overflow-x-auto text-lg"><KatexRenderer content={formatMatrixForKaTeX(parsedResult)} displayMode /></div>;
     } else { 
-      return <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
-                  dangerouslySetInnerHTML={{ __html: renderStepsContent(parsedResult) }} />;
+      return <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word" dangerouslySetInnerHTML={{ __html: renderStepsContent(parsedResult) }} />;
     }
   };
 
@@ -612,7 +565,7 @@ export default function MatrixOperationsPage() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div 
-                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
+                          className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word"
                           dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
                         />
                         <p className="mt-2 text-xs text-muted-foreground italic">

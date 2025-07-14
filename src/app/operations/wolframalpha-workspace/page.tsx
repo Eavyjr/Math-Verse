@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -11,52 +12,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ArrowLeft, Send, Loader2, TestTubeDiagonal, AlertCircle, Sigma, HelpCircle } from 'lucide-react';
 import { fetchWolframAlphaStepsAction, type EnhancedWolframResult } from '@/app/actions'; 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import katex from 'katex';
-import "katex/dist/katex.min.css";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { renderStepsContent } from '@/lib/katex-helper';
 
 
 const cleanAndPrepareContentForDisplay = (content: string | undefined | null): string => {
   if (!content) return "";
   // Added form feed character replacement
   return content.replace(/\f/g, '\n').trim(); 
-};
-
-const renderKaTeX = (mathString: string | undefined, displayMode: boolean = false): string => {
-    if (mathString === undefined || mathString === null || typeof mathString !== 'string') return "";
-    try {
-        return katex.renderToString(mathString, {
-            throwOnError: false,
-            displayMode: displayMode,
-        });
-    } catch (e) {
-        console.error("Katex rendering error:", e, "Original string:", mathString);
-        return mathString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-};
-
-const renderWolframStepsWithKatex = (stepsString: string | undefined | null): string => {
-  if (!stepsString) return "";
-  const cleanedString = cleanAndPrepareContentForDisplay(stepsString);
-  const parts = cleanedString.split(/(\\\(.*?\\\)|\\\[.*?\\\])/g);
-
-  const htmlParts = parts.map((part) => {
-    try {
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
-      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-      console.error("KaTeX steps rendering error for part:", part, e);
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-  });
-
-  return htmlParts.join('');
 };
 
 const operations = [
@@ -248,7 +211,7 @@ export default function WolframAlphaWorkspacePage() {
                                     </div>
                                   ) : (
                                     <div className="p-2 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto"
-                                         dangerouslySetInnerHTML={{ __html: renderWolframStepsWithKatex(subpod.plaintext) }}>
+                                         dangerouslySetInnerHTML={{ __html: renderStepsContent(cleanAndPrepareContentForDisplay(subpod.plaintext)) }}>
                                     </div>
                                   )}
                                 </div>

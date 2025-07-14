@@ -5,7 +5,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { create, all, type MathJsStatic } from 'mathjs';
-import katex from 'katex';
 import "katex/dist/katex.min.css";
 
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useToast } from "@/hooks/use-toast";
 import KatexRenderer from '@/components/math-tools/katex-renderer';
+import { renderStepsContent } from '@/lib/katex-helper';
 
 const math: MathJsStatic = create(all);
 
@@ -53,31 +53,6 @@ const stripLatexDelimitersAndPrepareForMathJS = (latexStr: string | null | undef
 
   return str;
 };
-
-const renderStepsContent = (stepsString: string | undefined): string => {
-  if (!stepsString) return "";
-  // This regex splits the string by block KaTeX delimiters, keeping the delimiters.
-  const parts = stepsString.split(/(\\\[.*?\\\])/g);
-  
-  const htmlParts = parts.map((part) => {
-    try {
-      // Check if the part is a block KaTeX expression
-      if (part.startsWith('\\[') && part.endsWith('\\]')) {
-        const latex = part.slice(2, -2); // Extract the LaTeX content
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
-      }
-      // For regular text parts, escape HTML special characters to prevent XSS
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    } catch (e) {
-      console.error("KaTeX steps rendering error for part:", part, e);
-      // Fallback for failed rendering, still escaping HTML
-      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-  });
-
-  return htmlParts.join('');
-};
-
 
 export default function IntegrationCalculatorPage() {
   const { toast } = useToast();
@@ -479,74 +454,73 @@ export default function IntegrationCalculatorPage() {
             </Alert>
           )}
 
-          <div className="mt-6 space-y-6">
-              {apiResponse && !isLoading && !error && (
-                <Card 
-                  className="border-accent border-t-4 shadow-md" 
-                  ref={resultCardRef}
-                >
-                    <CardHeader>
-                        <CardTitle className="text-2xl flex items-center text-primary">
-                        <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
-                        AI Integration Result
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                        <div>
-                            <span className="font-semibold text-muted-foreground">Original Query: </span> 
-                            <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
-                            <KatexRenderer content={getOriginalQueryAsLatex(apiResponse.originalQuery)} displayMode={true} />
-                            </span>
-                        </div>
-                        
-                        <div className="border-t pt-4 mt-4">
-                            <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
-                            <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
-                            <KatexRenderer content={apiResponse.integralResult || ''} displayMode={true} />
-                            </div>
-                        </div>
+          {apiResponse && !isLoading && !error && (
+            <div className="space-y-6">
+              <Card 
+                className="mt-6 border-accent border-t-4 shadow-md" 
+                ref={resultCardRef}
+              >
+                  <CardHeader>
+                      <CardTitle className="text-2xl flex items-center text-primary">
+                      <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
+                      AI Integration Result
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                      <div>
+                          <span className="font-semibold text-muted-foreground">Original Query: </span> 
+                          <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
+                          <KatexRenderer content={getOriginalQueryAsLatex(apiResponse.originalQuery)} displayMode={true} />
+                          </span>
+                      </div>
+                      
+                      <div className="border-t pt-4 mt-4">
+                          <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
+                          <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
+                          <KatexRenderer content={apiResponse.integralResult || ''} displayMode={true} />
+                          </div>
+                      </div>
 
-                        {apiResponse.steps && apiResponse.steps.trim() !== "" && (
-                            <Accordion type="single" collapsible className="w-full mt-4" defaultValue="steps">
-                            <AccordionItem value="steps">
-                                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                <Info className="mr-2 h-5 w-5" /> Show Steps
-                                </AccordionTrigger>
-                                <AccordionContent> 
-                                <div 
-                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }} 
-                                />
-                                </AccordionContent>
-                            </AccordionItem>
-                            </Accordion>
-                        )}
+                      {apiResponse.steps && apiResponse.steps.trim() !== "" && (
+                          <Accordion type="single" collapsible className="w-full mt-4" defaultValue="steps">
+                          <AccordionItem value="steps">
+                              <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                              <Info className="mr-2 h-5 w-5" /> Show Steps
+                              </AccordionTrigger>
+                              <AccordionContent> 
+                              <div 
+                                  className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                                  dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }} 
+                              />
+                              </AccordionContent>
+                          </AccordionItem>
+                          </Accordion>
+                      )}
 
-                        {apiResponse.additionalHints && apiResponse.additionalHints.trim() !== "" && (
-                            <Accordion type="single" collapsible className="w-full mt-2">
-                            <AccordionItem value="hints">
-                                <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
-                                <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
-                                </AccordionTrigger>
-                                <AccordionContent> 
-                                <div 
-                                    className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.additionalHints) }}
-                                />
-                                </AccordionContent>
-                            </AccordionItem>
-                            </Accordion>
-                        )}
-                    </CardContent>
-                    <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
-                        <Button variant="outline" size="sm" onClick={handleExportAsPng}>
-                        <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
-                        </Button>
-                    </CardFooter>
-                </Card>
-              )}
+                      {apiResponse.additionalHints && apiResponse.additionalHints.trim() !== "" && (
+                          <Accordion type="single" collapsible className="w-full mt-2">
+                          <AccordionItem value="hints">
+                              <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline">
+                              <Lightbulb className="mr-2 h-5 w-5 text-yellow-400" /> Additional Hints & Insights
+                              </AccordionTrigger>
+                              <AccordionContent> 
+                              <div 
+                                  className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
+                                  dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.additionalHints) }}
+                              />
+                              </AccordionContent>
+                          </AccordionItem>
+                          </Accordion>
+                      )}
+                  </CardContent>
+                  <CardFooter className="p-4 bg-secondary/50 border-t flex justify-end">
+                      <Button variant="outline" size="sm" onClick={handleExportAsPng}>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Export as PNG
+                      </Button>
+                  </CardFooter>
+              </Card>
             
-              {(chartData || plotError) && !isLoading && (
+              {(chartData || plotError) && (
                   <Card className="border-accent/50 border-t-4 shadow-md w-full">
                       <CardHeader>
                         <CardTitle className="text-xl flex items-center"><LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information</CardTitle>
@@ -589,6 +563,7 @@ export default function IntegrationCalculatorPage() {
                   </Card>
               )}
             </div>
+          )}
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">
             <p className="text-sm text-muted-foreground">
