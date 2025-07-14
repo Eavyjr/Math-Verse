@@ -450,7 +450,11 @@ export default function IntegrationCalculatorPage() {
 
               {apiResponse && !isLoading && !error && (
                 <div>
-                    <Card className="mt-6 border-accent border-t-4 shadow-md w-full max-w-4xl mx-auto" ref={resultCardRef}>
+                    <Card 
+                      className="mt-6 border-accent border-t-4 shadow-md w-full max-w-4xl mx-auto" 
+                      ref={resultCardRef}
+                      style={{ height: 'auto', minHeight: '0' }}
+                    >
                         <CardHeader>
                             <CardTitle className="text-2xl flex items-center text-primary">
                             <CheckCircle2 className="h-7 w-7 mr-2 text-green-600" />
