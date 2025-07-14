@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-import ThreejsLinearTransformationsCanvas from '@/components/math-tools/threejs-linear-transformations-canvas'; // Ensure this path is correct
+import ThreejsLinearTransformationsCanvas from '@/components/math-tools/threejs-linear-transformations-canvas';
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
@@ -112,7 +112,7 @@ export default function LinearTransformationsPage() {
                 <p><span className="font-semibold" style={{color: "#FF6B6B"}}>Red (i):</span> Original X-axis unit vector.</p>
                 <p><span className="font-semibold" style={{color: "#69F0AE"}}>Green (j):</span> Original Y-axis unit vector.</p>
                 <p><span className="font-semibold" style={{color: "#74C0FC"}}>Blue (k):</span> Original Z-axis unit vector.</p>
-                <p><span className="font-semibold" style={{color: "#FFBABA"}}>Light Red (i'):</span> Transformed X-axis basis vector.</p>
+                <p className="border-t pt-2 mt-2"><span className="font-semibold" style={{color: "#FFBABA"}}>Light Red (i'):</span> Transformed X-axis basis vector.</p>
                 <p><span className="font-semibold" style={{color: "#B9F6CA"}}>Light Green (j'):</span> Transformed Y-axis basis vector.</p>
                 <p><span className="font-semibold" style={{color: "#BBDEFB"}}>Light Blue (k'):</span> Transformed Z-axis basis vector.</p>
               </CardContent>
