@@ -186,7 +186,7 @@ export default function DifferentiationCalculatorPage() {
       const solutionFuncStr = stripLatexDelimitersAndPrepareForMathJS(solutionToPlot);
       const plotVar = deApiResponse.originalQuery.independentVariable || 'x';
 
-      if (!solutionFuncStr) {
+      if (!solutionFuncStr || solutionFuncStr.trim() === '') {
         setDePlotError("Solution string is missing or invalid for plotting.");
         setDePlotData(null);
         return;
@@ -890,3 +890,4 @@ export default function DifferentiationCalculatorPage() {
     </div>
   );
 }
+
