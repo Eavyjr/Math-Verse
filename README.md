@@ -28,7 +28,7 @@ MathVerse is an interactive, AI-powered web application designed to be a compreh
 - **AI/Backend**: [Google AI & Genkit](https://firebase.google.com/docs/genkit)
 - **Authentication & Backend Services**: [Firebase](https://firebase.google.com/)
 - **3D Graphics**: [Three.js](https://threejs.org/)
-- **Graph Visualization**: [React Flow (@xyflow/react)](https://reactflow.dev/)
+- **Graph Visgit push -uualization**: [React Flow (@xyflow/react)](https://reactflow.dev/)
 - **Package Manager**: [pnpm](https://pnpm.io/)
 
 ## ⚙️ Development
