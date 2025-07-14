@@ -3,8 +3,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import katex from 'katex';
-import "katex/dist/katex.min.css";
 import { toPng } from 'html-to-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +15,7 @@ import { handlePerformAlgebraicOperationAction } from '@/app/actions';
 import type { AlgebraicOperationInput, AlgebraicOperationOutput } from '@/ai/flows/perform-algebraic-operation';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+import KatexRenderer from '@/components/math-tools/katex-renderer';
 
 const operations: { value: AlgebraicOperationInput['operation']; label: string; example: string }[] = [
   { value: "simplify", label: "Simplify", example: "e.g., 2^2+2(2)" },
@@ -29,52 +28,27 @@ const operations: { value: AlgebraicOperationInput['operation']; label: string; 
   { value: "trigsimplify", label: "Trigonometric Simplify", example: "e.g., sin(x)^2+cos(x)^2" },
 ];
 
-const renderMath = (latexString: string | undefined, displayMode: boolean = false): string => {
-  if (latexString === undefined || latexString === null || typeof latexString !== 'string') return "";
-  let cleanLatexString = latexString.trim();
-
-  if ((cleanLatexString.startsWith('\\(') && cleanLatexString.endsWith('\\)')) ||
-      (cleanLatexString.startsWith('\\[') && cleanLatexString.endsWith('\\]'))) {
-    cleanLatexString = cleanLatexString.substring(2, cleanLatexString.length - 2).trim();
-  }
-  
-  try {
-    return katex.renderToString(cleanLatexString, {
-      throwOnError: false,
-      displayMode: displayMode,
-    });
-  } catch (e) {
-    console.error("Katex rendering error for main result:", e, "Original string:", latexString);
-    return cleanLatexString; 
-  }
-};
-
 const renderStepsContent = (stepsString: string | undefined): string => {
   if (!stepsString) return "";
-  console.log("renderStepsContent input:", stepsString);
-
-  // Regex to find \(...\) or \[...\]
   const parts = stepsString.split(/(\\\(.+?\\\)|\\\[.+?\\\])/g);
   
-  const htmlParts = parts.map((part, index) => {
+  const htmlParts = parts.map((part) => {
     try {
       if (part.startsWith('\\(') && part.endsWith('\\)')) {
         const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: false, output: 'html' });
+        return `<span class="katex-inline">${latex}</span>`;
       } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
         const latex = part.slice(2, -2);
-        return katex.renderToString(latex, { throwOnError: false, displayMode: true, output: 'html' });
+        return `<span class="katex-display">${latex}</span>`;
       }
-      // Sanitize plain text parts
       return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } catch (e) {
         console.error("KaTeX steps rendering error for part:", part, e);
-        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Fallback to sanitized original part
+        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
   });
-  const finalHtml = htmlParts.join('');
-  console.log("renderStepsContent output HTML:", finalHtml);
-  return finalHtml;
+
+  return htmlParts.join('');
 };
 
 
@@ -86,6 +60,7 @@ export default function BasicAlgebraCalculatorPage() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const resultCardRef = useRef<HTMLDivElement>(null);
+  const [stepsHtml, setStepsHtml] = useState('');
 
   const handleProcessExpression = async () => {
     if (!expression.trim()) {
@@ -134,6 +109,7 @@ export default function BasicAlgebraCalculatorPage() {
     setSelectedOperation(null); 
     setApiResponse(null);
     setError(null);
+    setStepsHtml('');
   };
 
   const handleExportAsPng = useCallback(() => {
@@ -169,6 +145,16 @@ export default function BasicAlgebraCalculatorPage() {
         });
       });
   }, [apiResponse, toast]);
+
+  // Update dangerouslySetInnerHTML content in a useEffect
+  useEffect(() => {
+    if (apiResponse?.steps) {
+        setStepsHtml(renderStepsContent(apiResponse.steps));
+    } else {
+        setStepsHtml('');
+    }
+  }, [apiResponse]);
+
 
   return (
     <div className="space-y-8">
@@ -288,17 +274,15 @@ export default function BasicAlgebraCalculatorPage() {
                 </div>
                 <div>
                   <span className="font-semibold text-muted-foreground">Original Expression: </span>
-                   <span 
-                    className="font-mono p-1 rounded-sm bg-muted"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.expression, false) }}
-                   />
+                   <span className="font-mono p-1 rounded-sm bg-muted">
+                     <KatexRenderer content={apiResponse.expression} />
+                   </span>
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <span className="font-semibold text-muted-foreground">Computed Result: </span>
-                  <span 
-                    className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground"
-                    dangerouslySetInnerHTML={{ __html: renderMath(apiResponse.result, false) }}
-                  />
+                  <span className="font-mono p-1 rounded-sm bg-muted text-primary dark:text-primary-foreground">
+                     <KatexRenderer content={apiResponse.result} />
+                  </span>
                 </div>
 
                 {apiResponse.steps && apiResponse.steps.trim() !== "" && (
@@ -310,7 +294,7 @@ export default function BasicAlgebraCalculatorPage() {
                       <AccordionContent>
                         <div 
                           className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto overflow-wrap-break-word min-h-[50px]"
-                          dangerouslySetInnerHTML={{ __html: renderStepsContent(apiResponse.steps) }}
+                          dangerouslySetInnerHTML={{ __html: stepsHtml }}
                         />
                       </AccordionContent>
                     </AccordionItem>

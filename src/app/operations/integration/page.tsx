@@ -447,10 +447,11 @@ export default function IntegrationCalculatorPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
+            
+            <div className="grid grid-cols-1 gap-6 mt-6">
               {apiResponse && !isLoading && !error && (
                 <Card 
-                  className="mt-6 border-accent border-t-4 shadow-md" 
+                  className="border-accent border-t-4 shadow-md" 
                   ref={resultCardRef}
                 >
                     <CardHeader>
@@ -470,7 +471,7 @@ export default function IntegrationCalculatorPage() {
                         <div className="border-t pt-4 mt-4">
                             <h3 className="text-xl font-semibold text-muted-foreground mb-2">Computed Result:</h3>
                             <div className="font-mono p-2 rounded-md bg-muted text-primary dark:text-primary-foreground text-xl block overflow-x-auto">
-                            <KatexRenderer content={apiResponse.integralResult} displayMode={true} />
+                            <KatexRenderer content={apiResponse.integralResult || ''} displayMode={true} />
                             </div>
                         </div>
 
@@ -483,7 +484,7 @@ export default function IntegrationCalculatorPage() {
                                 <AccordionContent> 
                                 <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: apiResponse.steps.trim() }} 
+                                    dangerouslySetInnerHTML={{ __html: apiResponse.steps ? apiResponse.steps.trim() : '' }} 
                                 />
                                 </AccordionContent>
                             </AccordionItem>
@@ -499,7 +500,7 @@ export default function IntegrationCalculatorPage() {
                                 <AccordionContent> 
                                 <div 
                                     className="p-4 bg-secondary rounded-md text-sm text-foreground/90 whitespace-pre-wrap overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints.trim() }}
+                                    dangerouslySetInnerHTML={{ __html: apiResponse.additionalHints ? apiResponse.additionalHints.trim() : '' }}
                                 />
                                 </AccordionContent>
                             </AccordionItem>
@@ -515,7 +516,7 @@ export default function IntegrationCalculatorPage() {
               )}
             
               {(chartData || plotError) && !isLoading && (
-                  <Card className="mt-6 border-accent/50 border-t-4 shadow-md w-full">
+                  <Card className="border-accent/50 border-t-4 shadow-md w-full">
                       <CardHeader>
                         <CardTitle className="text-xl flex items-center"><LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information</CardTitle>
                         {apiResponse?.plotHint && 
@@ -556,6 +557,7 @@ export default function IntegrationCalculatorPage() {
                       </CardContent>
                   </Card>
               )}
+            </div>
             </div>
         </CardContent>
         <CardFooter className="p-6 bg-secondary/50 border-t">

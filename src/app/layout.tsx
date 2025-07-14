@@ -35,32 +35,6 @@ export default function RootLayout({
       <head>
         {/* KaTeX CSS */}
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossOrigin="anonymous" />
-        
-        {/* KaTeX JS Core */}
-        <Script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmFGEkkP2" crossOrigin="anonymous" strategy="afterInteractive" />
-        
-        {/* KaTeX Auto-render extension */}
-        <Script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44SU3AYYGpArKGYrSqsTnJ5TTd3FSEE5ADZslDxXm" crossOrigin="anonymous" strategy="afterInteractive" />
-
-        {/* Inline script to trigger rendering after scripts are loaded */}
-        <Script id="katex-render" strategy="afterInteractive">
-          {`
-            document.addEventListener("DOMContentLoaded", function() {
-              if (window.renderMathInElement) {
-                window.renderMathInElement(document.body, {
-                  delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\\\[', right: '\\\\]', display: true},
-                    {left: '\\\\(', right: '\\\\)', display: false}
-                  ]
-                });
-              }
-            });
-          `}
-        </Script>
-        
-        {/* Desmos API script */}
       </head>
       <body className={`${inter.variable} ${firaCode.variable} antialiased flex flex-col min-h-screen bg-background text-foreground`}>
         <AuthProvider>
