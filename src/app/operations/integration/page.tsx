@@ -449,7 +449,7 @@ export default function IntegrationCalculatorPage() {
               )}
 
               {apiResponse && !isLoading && !error && (
-                <div className="space-y-6">
+                <div>
                     <Card className="mt-6 border-accent border-t-4 shadow-md w-full max-w-4xl mx-auto" ref={resultCardRef}>
                         <CardHeader>
                             <CardTitle className="text-2xl flex items-center text-primary">
@@ -457,7 +457,7 @@ export default function IntegrationCalculatorPage() {
                             AI Integration Result
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-6 p-6 text-lg !min-h-0 !h-auto">
+                        <CardContent className="p-6 space-y-6">
                             <div>
                                 <span className="font-semibold text-muted-foreground">Original Query: </span> 
                                 <span className="font-mono p-1 rounded-sm bg-muted text-sm inline-block overflow-x-auto">
@@ -513,50 +513,44 @@ export default function IntegrationCalculatorPage() {
 
                     {(chartData || plotError) && (
                       <Card className="mt-6 border-accent/50 border-t-4 shadow-md w-full max-w-4xl mx-auto">
-                        <Accordion type="single" collapsible className="w-full" defaultValue='plot-info'>
-                          <AccordionItem value="plot-info">
-                            <AccordionTrigger className="text-xl font-semibold text-primary hover:no-underline p-6">
-                              <div className="flex items-center">
-                                <LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-6 pt-0">
-                              {apiResponse?.plotHint && 
-                                  <CardDescription className="mb-4">
-                                  <KatexRenderer content={apiResponse.plotHint} />
-                                  </CardDescription>
-                              }
-                              {plotError && (
-                                  <Alert variant="destructive" className="mb-4">
-                                  <AlertTriangle className="h-4 w-4" />
-                                  <AlertTitle>Plotting Error/Info</AlertTitle>
-                                  <AlertDescription>{plotError}</AlertDescription>
-                                  </Alert>
-                              )}
-                              {chartData && chartData.length > 0 ? (
-                                  <div className="w-full aspect-video">
-                                    <ChartContainer config={chartConfig} className="h-full w-full">
-                                      <ResponsiveContainer width="100%" height="100%">
-                                      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
-                                          <CartesianGrid strokeDasharray="3 3" />
-                                          <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
-                                          <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
-                                          <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
-                                          <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
-                                          <RechartsLine type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
-                                          <RechartsLine type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
-                                      </LineChart>
-                                      </ResponsiveContainer>
-                                    </ChartContainer>
-                                  </div>
-                              ) : !plotError && (
-                                  <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
-                                  <p className="text-sm text-muted-foreground">No plot data available or expression(s) could not be plotted.</p>
-                                  </div>
-                              )}
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
+                          <CardHeader>
+                            <CardTitle className="text-xl flex items-center"><LineChartIconLucide className="mr-2 h-5 w-5" /> Plot Information</CardTitle>
+                            {apiResponse?.plotHint && 
+                                <CardDescription>
+                                <KatexRenderer content={apiResponse.plotHint} />
+                                </CardDescription>
+                            }
+                          </CardHeader>
+                          <CardContent>
+                            {plotError && (
+                                <Alert variant="destructive" className="mb-4">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Plotting Error/Info</AlertTitle>
+                                <AlertDescription>{plotError}</AlertDescription>
+                                </Alert>
+                            )}
+                            {chartData && chartData.length > 0 ? (
+                                <div className="h-[400px] w-full">
+                                  <ChartContainer config={chartConfig} className="h-full w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="x" type="number" label={{ value: variable || 'x', position: 'insideBottomRight', offset: -10 }} />
+                                        <YAxis label={{ value: 'y', angle: -90, position: 'insideLeft' }} />
+                                        <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                                        <Legend verticalAlign="top" wrapperStyle={{paddingBottom: "10px"}} />
+                                        <RechartsLine type="monotone" dataKey="original" stroke={chartConfig.original.color} strokeWidth={2} dot={false} name={chartConfig.original.label} connectNulls />
+                                        <RechartsLine type="monotone" dataKey="integral" stroke={chartConfig.integral.color} strokeWidth={2} dot={false} name={chartConfig.integral.label} connectNulls />
+                                    </LineChart>
+                                    </ResponsiveContainer>
+                                  </ChartContainer>
+                                </div>
+                            ) : !plotError && (
+                                <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md p-4 bg-background">
+                                <p className="text-sm text-muted-foreground">No plot data available or expression(s) could not be plotted.</p>
+                                </div>
+                            )}
+                          </CardContent>
                       </Card>
                     )}
                 </div>
