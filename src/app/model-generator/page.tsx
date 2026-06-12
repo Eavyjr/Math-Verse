@@ -11,17 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Alert, AlertTitle as AlertUITitle, AlertDescription as AlertUIDescription } from "@/components/ui/alert";
-import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { handleGenerateModelAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 
 interface ModelSuggestion {
   name: string;
   rationale: string;
-}
-
-interface FirebaseFunctionResponse {
-  models: ModelSuggestion[];
 }
 
 interface ParameterDefinition {
@@ -101,11 +96,6 @@ export default function MathematicalModelGeneratorPage() {
       setSelectedModelName(null);
       return;
     }
-     if (!app) {
-      setGenerationError("Firebase app is not initialized. Please check the configuration.");
-      setIsGenerating(false);
-      return;
-    }
 
     setIsGenerating(true);
     setSuggestedModels(null);
@@ -115,39 +105,17 @@ export default function MathematicalModelGeneratorPage() {
     setParameterValues({});
 
     try {
-      const functions = getFunctions(app);
-      const generateMathematicalModel = httpsCallable<
-        { problemDescription: string },
-        FirebaseFunctionResponse
-      >(functions, 'generateMathematicalModel');
-      
-      console.log('Calling generateMathematicalModel with:', problemDescription);
-      const result: HttpsCallableResult<FirebaseFunctionResponse> = await generateMathematicalModel({ problemDescription });
-      console.log('Firebase Function response:', result.data);
-      
-      if (result.data && result.data.models && Array.isArray(result.data.models)) {
-        setSuggestedModels(result.data.models);
-        if (result.data.models.length === 0) {
-             setGenerationError("The AI didn't suggest any models for this problem. Try rephrasing or adding more detail.");
-        }
+      const { data, error } = await handleGenerateModelAction(problemDescription);
+
+      if (error) {
+        setGenerationError(error);
+      } else if (data) {
+        setSuggestedModels(data);
       } else {
-        console.error('Unexpected response structure from Firebase Function:', result.data);
-        setGenerationError('Received an unexpected response format from the model generator.');
+        setGenerationError('Received an unexpected response from the model generator.');
       }
     } catch (error: any) {
-      console.error('Error calling Firebase Function:', error);
-      let errorMessage = "An error occurred while generating models. Please try again.";
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      if (error.code === 'functions/unavailable') {
-        errorMessage = "The model generation service is currently unavailable. Please try again later.";
-      } else if (error.code === 'functions/internal' || error.message.includes("internal")) {
-        errorMessage = "An internal error occurred in the model generator. The AI might have had trouble with the request. Please check the function logs or try rephrasing your problem.";
-      } else if (error.message.includes("quota")) {
-        errorMessage = "The AI service quota has been exceeded. Please try again later.";
-      }
-      setGenerationError(errorMessage);
+      setGenerationError(error?.message || 'An error occurred while generating models. Please try again.');
     } finally {
       setIsGenerating(false);
     }

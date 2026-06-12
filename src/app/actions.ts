@@ -13,13 +13,35 @@ import { performMatrixOperation, type MatrixOperationInput, type MatrixOperation
 import { performVectorOperation, type VectorOperationInput, type VectorOperationOutput } from '@/ai/flows/perform-vector-operation';
 import { getMathChatbotResponse, type MathChatbotInput } from '@/ai/flows/math-chatbot-flow';
 import { preprocessWolframQuery, type PreprocessWolframQueryInput, type PreprocessWolframQueryOutput } from '@/ai/flows/preprocess-wolfram-query-flow';
+import { generateMathematicalModel, type ModelSuggestion } from '@/ai/flows/generate-model-flow';
+import { computeMatrixOperation, computeVectorOperation } from '@/lib/math-engine';
+import { TtlCache } from '@/lib/cache';
 
 interface ActionResult<T> {
   data: T | null;
   error: string | null;
 }
 
-const genkitUnreachableError = 'Failed to connect to the AI service (Genkit). Please ensure it is running and accessible (e.g., `pnpm genkit:dev`).';
+const genkitUnreachableError = 'Could not reach the AI service. Please check your network connection and that the AI API key is configured, then try again.';
+
+/**
+ * Translate an unknown error thrown by an AI flow into a friendly, safe message.
+ * Centralizes the error-mapping logic that was duplicated across every action.
+ */
+function resolveAiError(e: unknown, fallback: string): string {
+  if (e instanceof Error) {
+    const msg = e.message.toLowerCase();
+    if (msg.includes('fetch failed') || msg.includes('econnrefused')) return genkitUnreachableError;
+    if (msg.includes('api key') || msg.includes('auth')) return 'AI service authentication error. Please check the API key configuration.';
+    if (msg.includes('quota')) return 'AI service quota exceeded. Please try again later.';
+    if (msg.includes('model did not return a valid output') || msg.includes('not available due to model error')) {
+      return 'The AI model could not process this request. Please try rephrasing your input.';
+    }
+    return e.message || fallback;
+  }
+  if (typeof e === 'string') return e;
+  return fallback;
+}
 
 // Types for WolframAlpha API response structure
 interface WolframSubpod {
@@ -92,18 +114,12 @@ export async function handleClassifyExpressionAction(
   expression: string
 ): Promise<ActionResult<ClassifyExpressionOutput>> {
   if (!expression || expression.trim() === '') {
-    console.log("handleClassifyExpressionAction: Expression is empty.");
     return { data: null, error: 'Expression cannot be empty.' };
   }
 
   try {
-    console.log("handleClassifyExpressionAction: Calling classifyExpression flow for:", expression);
     const input: ClassifyExpressionInput = { expression };
     const result = await classifyExpression(input);
-    console.log("handleClassifyExpressionAction: Received result from flow:", result);
-    if (!result || (result.classification === "Classification not available." && result.solutionStrategies === "Solution strategies not available." && result.originalExpression === expression)) {
-      console.warn("handleClassifyExpressionAction: AI flow returned default/empty-like data for expression:", expression);
-    }
     return { data: result, error: null };
   } catch (e) {
     let errorMessage = 'An error occurred while processing your request. Please try again.';
@@ -120,11 +136,7 @@ export async function handleClassifyExpressionAction(
         }
     } else if (typeof e === 'string') {
         errorMessage = e;
-        console.error("String error in handleClassifyExpressionAction (server) for expression '"+expression+"':", e);
-    } else {
-        console.error("Unknown error type in handleClassifyExpressionAction (server) for expression '"+expression+"':", e);
     }
-    console.error("handleClassifyExpressionAction: Returning error to client:", errorMessage);
     return { data: null, error: errorMessage };
   }
 }
@@ -178,16 +190,12 @@ export async function handlePerformIntegrationAction(
   }
 
   try {
-    console.log("[Action:Integration] Calling direct performIntegration flow with input:", input);
     const result = await performIntegration(input);
-    console.log("Raw AI Steps Received:", result.steps); 
-    
+
     if (!result || result.integralResult.startsWith("Error: AI model failed")) {
-      console.error("[Action:Integration] Error from performIntegration flow:", result?.integralResult);
       return { data: null, error: result?.integralResult || 'AI model failed to provide a valid integration result.' };
     }
-    
-    console.log("[Action:Integration] Received result from performIntegration flow:", result);
+
     return { data: result, error: null };
 
   } catch (e: any) {
@@ -339,6 +347,28 @@ export async function handlePerformMatrixOperationAction(
     ...(scalarValue !== undefined && { scalarValue }),
   };
 
+  // Try deterministic computation with mathjs first for guaranteed correctness.
+  // Operations mathjs cannot handle natively report handled:false and fall back to the AI flow.
+  const engineResult = computeMatrixOperation({
+    matrixA,
+    matrixB,
+    scalar: scalarValue,
+    operation,
+  });
+  if (engineResult.handled) {
+    if (engineResult.error) {
+      return { data: null, error: engineResult.error };
+    }
+    return {
+      data: {
+        result: engineResult.result as string,
+        steps: engineResult.steps,
+        originalQuery: input,
+      },
+      error: null,
+    };
+  }
+
   try {
     const result = await performMatrixOperation(input);
     return { data: result, error: null };
@@ -380,6 +410,27 @@ export async function handlePerformVectorOperationAction(
     return { data: null, error: 'A valid scalar value is required for scalar multiplication.' };
   }
 
+  // Vector operations are fully deterministic via mathjs.
+  const engineResult = computeVectorOperation({
+    vectorA: input.vectorA,
+    vectorB: input.vectorB,
+    scalar: input.scalar,
+    operation: input.operation,
+  });
+  if (engineResult.handled) {
+    if (engineResult.error) {
+      return { data: null, error: engineResult.error };
+    }
+    return {
+      data: {
+        result: engineResult.result as VectorOperationOutput['result'],
+        steps: engineResult.steps,
+        originalQuery: input,
+      },
+      error: null,
+    };
+  }
+
   try {
     const result = await performVectorOperation(input);
     return { data: result, error: null };
@@ -406,15 +457,12 @@ export async function handlePerformVectorOperationAction(
 
 export async function handleChatbotMessageAction(userInput: string): Promise<string> {
   if (!userInput || userInput.trim() === '') {
-    console.warn("[Action:handleChatbotMessageAction] User input is empty.");
     return 'User input cannot be empty.';
   }
 
   const input: MathChatbotInput = { userInput };
-  console.log("[Action:handleChatbotMessageAction] Calling getMathChatbotResponse with input:", input);
   try {
     const botResponse = await getMathChatbotResponse(input);
-    console.log("[Action:handleChatbotMessageAction] Received botResponse from flow:", botResponse);
 
     if (!botResponse || botResponse.trim() === '') {
       console.warn("[Action:handleChatbotMessageAction] Flow returned null, undefined, or empty string.");
@@ -442,6 +490,10 @@ export async function handleChatbotMessageAction(userInput: string): Promise<str
   }
 }
 
+// Cache successful WolframAlpha results: the external API + AI preprocessing are the
+// most expensive calls in the app and the same query reliably yields the same result.
+const wolframCache = new TtlCache<EnhancedWolframResult>(1000 * 60 * 30, 100);
+
 export async function fetchWolframAlphaStepsAction(
   userExpression: string
 ): Promise<ActionResult<EnhancedWolframResult>> {
@@ -455,6 +507,12 @@ export async function fetchWolframAlphaStepsAction(
     return { data: enhancedResultData, error: 'Expression cannot be empty.' };
   }
 
+  const cacheKey = userExpression.trim().toLowerCase();
+  const cached = wolframCache.get(cacheKey);
+  if (cached) {
+    return { data: cached, error: null };
+  }
+
   const WOLFRAM_APP_ID = process.env.WOLFRAM_ALPHA_APP_ID;
   if (!WOLFRAM_APP_ID) {
     console.error("fetchWolframAlphaStepsAction: WOLFRAM_ALPHA_APP_ID is not set in environment variables.");
@@ -465,7 +523,6 @@ export async function fetchWolframAlphaStepsAction(
     const preprocessInput: PreprocessWolframQueryInput = { userQuery: userExpression };
     const preprocessOutput: PreprocessWolframQueryOutput = await preprocessWolframQuery(preprocessInput);
     enhancedResultData.cleanedQuery = preprocessOutput.cleanedQuery || userExpression;
-    console.log("[Action:WolframTest] Preprocessed query for Wolfram:", enhancedResultData.cleanedQuery);
 
     const encodedInput = encodeURIComponent(enhancedResultData.cleanedQuery);
     // Updated API URL to explicitly request image format
@@ -520,6 +577,9 @@ export async function fetchWolframAlphaStepsAction(
     
     enhancedResultData.pods = relevantPods;
 
+    // Cache only fully successful results with usable pods.
+    wolframCache.set(cacheKey, enhancedResultData);
+
     return { data: enhancedResultData, error: null };
 
   } catch (err: any) {
@@ -567,5 +627,23 @@ export async function handleUpdateProfileAction(
         errorMessage = e.message;
     }
     return { data: null, error: errorMessage };
+  }
+}
+
+export async function handleGenerateModelAction(
+  problemDescription: string
+): Promise<ActionResult<ModelSuggestion[]>> {
+  if (!problemDescription || problemDescription.trim() === '') {
+    return { data: null, error: 'Please enter a problem description.' };
+  }
+
+  try {
+    const result = await generateMathematicalModel({ problemDescription });
+    if (!result.models || result.models.length === 0) {
+      return { data: null, error: "The AI didn't suggest any models for this problem. Try rephrasing or adding more detail." };
+    }
+    return { data: result.models, error: null };
+  } catch (e) {
+    return { data: null, error: resolveAiError(e, 'An error occurred while generating models. Please try again.') };
   }
 }

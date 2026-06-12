@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, Shapes, RotateCcw, Zap, Info as InfoIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -10,7 +11,21 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-import ThreejsLinearTransformationsCanvas from '@/components/math-tools/threejs-linear-transformations-canvas';
+
+// Lazy-load the Three.js canvas so the 3D engine bundle is only fetched on this page,
+// after the rest of the UI has rendered. It relies on the DOM, so SSR is disabled.
+const ThreejsLinearTransformationsCanvas = dynamic(
+  () => import('@/components/math-tools/threejs-linear-transformations-canvas'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-[400px] w-full items-center justify-center rounded-md bg-muted">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Loading 3D visualizer...</span>
+      </div>
+    ),
+  }
+);
 
 const initialMatrix3x3 = (): number[][] => [
   [1, 0, 0],
